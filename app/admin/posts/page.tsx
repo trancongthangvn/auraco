@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
+import PageHeader from "@/components/admin/PageHeader";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { journalPosts as initialPosts } from "@/data/site";
@@ -26,23 +27,20 @@ export default function AdminPostsPage() {
 
   return (
     <AdminShell>
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <h1 className="font-serif-display text-2xl">Bài viết</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-black/50">
-            {posts.length} bài viết, thay đổi chỉ lưu tạm trong phiên demo
-          </span>
-          <button
-            onClick={() => {
-              setNewBody("");
-              setCreating(true);
-            }}
-            className="text-sm border border-[#2b261f] px-4 py-2 hover:bg-[#2b261f] hover:text-white transition-colors"
-          >
-            + Thêm bài viết
-          </button>
-        </div>
-      </div>
+      <PageHeader>
+        <span className="text-xs text-black/50">
+          {posts.length} bài viết, thay đổi chỉ lưu tạm trong phiên demo
+        </span>
+        <button
+          onClick={() => {
+            setNewBody("");
+            setCreating(true);
+          }}
+          className="text-sm border border-[#2b261f] px-4 py-2 hover:bg-[#2b261f] hover:text-white transition-colors"
+        >
+          + Thêm bài viết
+        </button>
+      </PageHeader>
 
       <div className="bg-white border border-black/10 overflow-x-auto">
         <table className="w-full text-sm min-w-[600px]">

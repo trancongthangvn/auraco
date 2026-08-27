@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
+import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { collections as initialCollections } from "@/data/site";
 
@@ -23,21 +24,17 @@ export default function AdminCollectionsPage() {
 
   return (
     <AdminShell>
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <h1 className="font-serif-display text-2xl">Collections</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-black/50">
-            {collections.length} bộ sưu tập, hiển thị trên trang chủ và bộ lọc
-            catalog
-          </span>
-          <button
-            onClick={() => setCreating(true)}
-            className="text-sm border border-[#2b261f] px-4 py-2 hover:bg-[#2b261f] hover:text-white transition-colors"
-          >
-            + Thêm collection
-          </button>
-        </div>
-      </div>
+      <PageHeader>
+        <span className="text-xs text-black/50">
+          {collections.length} bộ sưu tập
+        </span>
+        <button
+          onClick={() => setCreating(true)}
+          className="text-sm border border-[#2b261f] px-4 py-2 hover:bg-[#2b261f] hover:text-white transition-colors"
+        >
+          + Thêm collection
+        </button>
+      </PageHeader>
 
       <div className="bg-white border border-black/10 overflow-x-auto">
         <table className="w-full text-sm min-w-[560px]">

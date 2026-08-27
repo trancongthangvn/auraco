@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
+import PageHeader from "@/components/admin/PageHeader";
 import { mockOrders, type OrderStatus } from "@/data/admin";
 import { ChevronLeftIcon } from "@/components/icons";
 
@@ -39,8 +40,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
         <ChevronLeftIcon size={14} /> Quay lại danh sách đơn hàng
       </Link>
 
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <h1 className="font-serif-display text-2xl">Đơn hàng {order.id}</h1>
+      <PageHeader>
+        <span className="text-sm text-black/50">Mã đơn {order.id}</span>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value as OrderStatus)}
@@ -52,7 +53,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
             </option>
           ))}
         </select>
-      </div>
+      </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">

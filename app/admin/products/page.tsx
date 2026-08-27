@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
+import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { products as initialProducts, type FullProduct } from "@/data/products";
 
@@ -26,12 +27,11 @@ export default function AdminProductsPage() {
 
   return (
     <AdminShell>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-serif-display text-2xl">Sản phẩm</h1>
+      <PageHeader>
         <span className="text-xs text-black/50">
           {products.length} sản phẩm, thay đổi chỉ lưu tạm trong phiên demo
         </span>
-      </div>
+      </PageHeader>
 
       <div className="bg-white border border-black/10 overflow-x-auto">
         <table className="w-full text-sm min-w-[640px]">

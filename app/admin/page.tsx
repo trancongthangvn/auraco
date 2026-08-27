@@ -1,6 +1,7 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import PageHeader from "@/components/admin/PageHeader";
 import { products } from "@/data/products";
 import { mockOrders } from "@/data/admin";
 
@@ -20,7 +21,7 @@ export default function AdminDashboardPage() {
 
   return (
     <AdminShell>
-      <h1 className="font-serif-display text-2xl mb-6">Tổng quan</h1>
+      <PageHeader />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-8">
         {stats.map((s) => (
           <div key={s.label} className="bg-white border border-black/10 p-5">

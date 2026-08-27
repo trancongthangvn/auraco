@@ -144,3 +144,104 @@ export const mockAccounts = adminAccounts.map((a) => ({
   username: a.username,
   role: a.role,
 }));
+
+export type DiscountType = "percent" | "fixed";
+
+export type DiscountCode = {
+  id: string;
+  code: string;
+  type: DiscountType;
+  value: number;
+  minOrder: number;
+  usageLimit: number;
+  used: number;
+  startDate: string;
+  endDate: string;
+  active: boolean;
+};
+
+export const discountCodes: DiscountCode[] = [
+  {
+    id: "d1",
+    code: "AURA10",
+    type: "percent",
+    value: 10,
+    minOrder: 50,
+    usageLimit: 200,
+    used: 87,
+    startDate: "01/08/2026",
+    endDate: "30/09/2026",
+    active: true,
+  },
+  {
+    id: "d2",
+    code: "WELCOME20",
+    type: "percent",
+    value: 20,
+    minOrder: 0,
+    usageLimit: 500,
+    used: 342,
+    startDate: "01/01/2026",
+    endDate: "31/12/2026",
+    active: true,
+  },
+  {
+    id: "d3",
+    code: "FREESHIP",
+    type: "fixed",
+    value: 5,
+    minOrder: 80,
+    usageLimit: 1000,
+    used: 610,
+    startDate: "01/06/2026",
+    endDate: "31/08/2026",
+    active: false,
+  },
+];
+
+export type Inquiry = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  date: string;
+  resolved: boolean;
+};
+
+export const inquiries: Inquiry[] = [
+  {
+    id: "i1",
+    name: "Đặng Thu Hà",
+    email: "ha.dang@example.com",
+    phone: "0909 111 222",
+    subject: "Hỏi về kích thước nhẫn",
+    message:
+      "Chào shop, mình muốn hỏi vòng size nhẫn AURA & CO có tương đương bảng size quốc tế không, mình đeo size 6 US.",
+    date: "25/08/2026",
+    resolved: false,
+  },
+  {
+    id: "i2",
+    name: "Ngô Bảo Long",
+    email: "long.ngo@example.com",
+    phone: "0933 222 111",
+    subject: "Đơn hàng chưa nhận được",
+    message:
+      "Em đặt đơn AC-1038 từ tuần trước mà chưa thấy giao, shop kiểm tra giúp em với.",
+    date: "24/08/2026",
+    resolved: false,
+  },
+  {
+    id: "i3",
+    name: "Trịnh Yến Nhi",
+    email: "nhi.trinh@example.com",
+    phone: "0977 333 444",
+    subject: "Hợp tác KOL/Affiliate",
+    message:
+      "Mình làm nội dung về trang sức, muốn trao đổi cơ hội hợp tác review sản phẩm với AURA & CO.",
+    date: "22/08/2026",
+    resolved: true,
+  },
+];

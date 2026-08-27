@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
+import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { mockAccounts } from "@/data/admin";
 
@@ -29,9 +30,7 @@ export default function AdminAccountsPage() {
 
   return (
     <AdminShell>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-serif-display text-2xl">Tài khoản quản trị</h1>
-      </div>
+      <PageHeader />
 
       <div className="bg-white border border-black/10 overflow-x-auto">
         <table className="w-full text-sm min-w-[400px]">

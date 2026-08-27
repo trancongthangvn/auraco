@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
+import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import {
   heroSlides as initialHeroSlides,
@@ -59,7 +60,7 @@ export default function AdminHomepagePage() {
 
   return (
     <AdminShell>
-      <h1 className="font-serif-display text-2xl mb-6">Nội dung trang chủ</h1>
+      <PageHeader />
 
       <div className="flex gap-1 border-b border-black/10 mb-6 overflow-x-auto">
         {TABS.map((t) => (

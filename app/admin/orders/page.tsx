@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import PageHeader from "@/components/admin/PageHeader";
 import { mockOrders, type OrderStatus } from "@/data/admin";
 
 const STATUSES: OrderStatus[] = ["Đang xử lý", "Đã giao", "Đã hủy"];
@@ -16,7 +17,7 @@ export default function AdminOrdersPage() {
 
   return (
     <AdminShell>
-      <h1 className="font-serif-display text-2xl mb-6">Đơn hàng</h1>
+      <PageHeader />
       <div className="bg-white border border-black/10 overflow-x-auto">
         <table className="w-full text-sm min-w-[620px]">
           <thead>

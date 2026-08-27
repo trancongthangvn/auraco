@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 
 export default function AdminLoginPage() {
@@ -10,21 +11,27 @@ export default function AdminLoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f7f4f0] px-6">
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          setLoading(true);
           const ok = login(username, password);
           if (ok) {
             router.replace("/admin");
           } else {
             setError("Tên đăng nhập hoặc mật khẩu không đúng.");
+            setLoading(false);
           }
         }}
         className="w-full max-w-sm bg-white border border-black/10 p-8"
       >
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#2b261f]/5 text-[#2b261f]">
+          <Lock size={20} strokeWidth={2} />
+        </div>
         <h1 className="font-serif-display text-2xl mb-1 text-center">AURA & CO</h1>
         <p className="text-xs text-center text-black/50 mb-6 tracking-wide uppercase">
           Đăng nhập trang quản trị
@@ -58,9 +65,10 @@ export default function AdminLoginPage() {
 
         <button
           type="submit"
-          className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors"
+          disabled={loading}
+          className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors disabled:opacity-60"
         >
-          ĐĂNG NHẬP
+          {loading ? "Đang xác thực..." : "ĐĂNG NHẬP"}
         </button>
         <p className="text-xs text-black/40 mt-4 text-center">
           Tài khoản quản trị được cấp riêng cho AURA & CO, không tự đăng ký

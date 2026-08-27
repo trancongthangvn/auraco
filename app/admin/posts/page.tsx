@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { journalPosts as initialPosts } from "@/data/site";
 
@@ -13,6 +14,8 @@ export default function AdminPostsPage() {
   const [posts, setPosts] = useState<JournalPost[]>(initialPosts);
   const [editing, setEditing] = useState<JournalPost | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editingBody, setEditingBody] = useState("");
+  const [newBody, setNewBody] = useState("");
 
   const isAdmin = session?.role === "admin";
 
@@ -30,7 +33,10 @@ export default function AdminPostsPage() {
             {posts.length} bài viết, thay đổi chỉ lưu tạm trong phiên demo
           </span>
           <button
-            onClick={() => setCreating(true)}
+            onClick={() => {
+              setNewBody("");
+              setCreating(true);
+            }}
             className="text-sm border border-[#2b261f] px-4 py-2 hover:bg-[#2b261f] hover:text-white transition-colors"
           >
             + Thêm bài viết
@@ -68,7 +74,12 @@ export default function AdminPostsPage() {
                 <td className="py-2 px-4 text-black/40">/news/{p.slug}</td>
                 <td className="py-2 px-4 text-right space-x-3 whitespace-nowrap">
                   <button
-                    onClick={() => setEditing(p)}
+                    onClick={() => {
+                      setEditingBody(
+                        p.body.map((para) => `<p>${para}</p>`).join("")
+                      );
+                      setEditing(p);
+                    }}
                     className="text-xs underline"
                   >
                     Sửa
@@ -91,8 +102,8 @@ export default function AdminPostsPage() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
-          <div className="bg-white p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
+          <div className="bg-white p-6 w-full max-w-2xl my-auto">
             <h2 className="text-lg font-medium mb-4">Sửa bài viết</h2>
             <label className="block text-xs uppercase tracking-wide mb-2">
               Tiêu đề
@@ -106,7 +117,7 @@ export default function AdminPostsPage() {
             </label>
             <textarea
               defaultValue={editing.excerpt}
-              rows={3}
+              rows={2}
               className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
             />
             <label className="block text-xs uppercase tracking-wide mb-2">
@@ -114,8 +125,14 @@ export default function AdminPostsPage() {
             </label>
             <input
               defaultValue={editing.date}
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
+              className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
             />
+            <label className="block text-xs uppercase tracking-wide mb-2">
+              Nội dung bài viết
+            </label>
+            <div className="mb-6">
+              <RichTextEditor content={editingBody} onChange={setEditingBody} />
+            </div>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setEditing(null)}
@@ -135,8 +152,8 @@ export default function AdminPostsPage() {
       )}
 
       {creating && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
-          <div className="bg-white p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
+          <div className="bg-white p-6 w-full max-w-2xl my-auto">
             <h2 className="text-lg font-medium mb-4">Thêm bài viết mới</h2>
             <label className="block text-xs uppercase tracking-wide mb-2">
               Tiêu đề
@@ -146,9 +163,19 @@ export default function AdminPostsPage() {
               Mô tả ngắn
             </label>
             <textarea
-              rows={3}
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
+              rows={2}
+              className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
             />
+            <label className="block text-xs uppercase tracking-wide mb-2">
+              Nội dung bài viết
+            </label>
+            <div className="mb-6">
+              <RichTextEditor
+                content={newBody}
+                onChange={setNewBody}
+                placeholder="Viết nội dung bài viết, chèn ảnh hoặc video bằng nút trên thanh công cụ…"
+              />
+            </div>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setCreating(false)}

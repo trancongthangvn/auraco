@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme inline {
   --font-serif: var(--font-serif);
@@ -14,4 +15,12 @@ body {
 
 .font-serif-display {
   font-family: var(--font-serif), Georgia, serif;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: rgba(43, 38, 31, 0.4);
 }

@@ -1,0 +1,291 @@
+export const heroSlides = [
+  {
+    label: "TRENDING NOW",
+    title: "HARNESS HIGH-FREQUENCY ENERGY. MANIFEST PROSPERITY.",
+    href: "/catalog/TRENDING-NOW",
+    img: "https://auracojewelry.com/storage/settings/banner-slides/c950bcae-d034-4c14-acc1-7398e4768966.webp",
+  },
+  {
+    label: "BEACH VIBE",
+    title: "TIMELESS GOLD AND SILVER. UNDERSTATED LUXURY.",
+    href: "/catalog/BEACH-VIBE",
+    img: "https://auracojewelry.com/storage/settings/banner-slides/fbdd39e1-7f29-4a4f-9ace-620a90d3b392.webp",
+  },
+  {
+    label: "NEW ARRIVALS",
+    title: "EFFORTLESS GOLD AND SILVER. EVERYDAY MINIMALIST STYLE.",
+    href: "/catalog/NEW-ARRIVALS",
+    img: "https://auracojewelry.com/storage/settings/banner-slides/a11d91e2-35fe-4d01-8734-bf22cce547dc.webp",
+  },
+];
+
+export const navLinks = [
+  { label: "Necklaces", href: "/catalog?brand=Necklaces" },
+  { label: "Bracelets", href: "/catalog?brand=Bracelets" },
+  { label: "Earrings", href: "/catalog?brand=Earrings" },
+  { label: "Signature Sets", href: "/catalog?brand=Signature-Sets" },
+  { label: "Collections", href: "/catalog" },
+  { label: "Best Sellers", href: "/catalog/BEST-SELLERS" },
+];
+
+export const ourStoryLinks = [
+  { label: "News", href: "/news" },
+  { label: "About", href: "/pages/about" },
+  { label: "Contact", href: "/pages/contact" },
+];
+
+export const collections = [
+  {
+    name: "QUIET LUXURY",
+    href: "/catalog/QUIET-LUXURY",
+    img: "https://auracojewelry.com/storage/categories/597c968f-fa9f-4a50-92ee-db3e62e50530.webp",
+  },
+  {
+    name: "MINIMALIST",
+    href: "/catalog/MINIMALIST",
+    img: "https://auracojewelry.com/storage/categories/5499695d-e818-4273-8398-93ea00c50d4d.webp",
+  },
+  {
+    name: "STATEMENT",
+    href: "/catalog/STATEMENT",
+    img: "https://auracojewelry.com/storage/categories/5e108e94-1253-4768-8e26-79f45e3f5e48.webp",
+  },
+  {
+    name: "TRENDING NOW",
+    href: "/catalog/TRENDING-NOW",
+    img: "https://auracojewelry.com/storage/categories/554e8a22-ade8-455b-9ba7-de3fd5edf3f4.webp",
+  },
+  {
+    name: "BEACH VIBE",
+    href: "/catalog/BEACH-VIBE",
+    img: "https://auracojewelry.com/storage/categories/0d38ab5d-2d10-4318-9621-5c680680c077.webp",
+  },
+  {
+    name: "BEST SELLERS",
+    href: "/product",
+    img: "https://auracojewelry.com/storage/categories/fc518167-d54d-46fe-892f-cb403d55414e.webp",
+  },
+];
+
+export type Product = {
+  name: string;
+  href: string;
+  material: string;
+  price: string;
+  rating: number;
+  img: string;
+};
+
+export const beachVibeProducts: Product[] = [
+  {
+    name: "Pure Alhambra",
+    href: "/product/Pure-Alhambra",
+    material: "18k Gold Vermeil, Mother of Pearl",
+    price: "$130.00 USD",
+    rating: 1,
+    img: "https://auracojewelry.com/storage/products/thumbnails/01937a3b-cd91-477a-a68f-ab079668d02c.webp",
+  },
+  {
+    name: "Evermere Heart Necklace",
+    href: "/product/Evermere-Heart-Necklace",
+    material: "18ct Gold Vermeil",
+    price: "$130.00 USD",
+    rating: 4,
+    img: "https://auracojewelry.com/storage/products/thumbnails/1fb8c789-ece5-4cdb-9022-0a20ee3a1261.webp",
+  },
+  {
+    name: "Audrey Diamond Hoops",
+    href: "/product/Audrey-Diamond-Hoops",
+    material: "18k Gold Vermeil, Cubic Zirconia",
+    price: "$100.00 USD",
+    rating: 0,
+    img: "https://auracojewelry.com/storage/products/variants/822cc99c-8e65-45f6-bb68-9ea8962cefb3.webp",
+  },
+  {
+    name: "The Radiant Flow Tennis Bracelet",
+    href: "/product/The-Radiant-Flow-Tennis-Bracelet",
+    material: "Sterling Silver, Cubic Zirconia",
+    price: "$100.00 USD",
+    rating: 2,
+    img: "https://auracojewelry.com/storage/products/thumbnails/99c4a20e-a5e9-418d-a729-d13e457846f5.webp",
+  },
+  {
+    name: "Layered Opal Necklace",
+    href: "/product/Layered-Opal-Necklace",
+    material: "18k Gold Vermeil, Opal",
+    price: "$130.00 USD",
+    rating: 5,
+    img: "https://auracojewelry.com/storage/products/thumbnails/97fce6ae-f0bd-419d-a95d-97e5a0825815.webp",
+  },
+  {
+    name: "Celeste Pavé Hoops",
+    href: "/product/Celeste-Pav%C3%A9-Hoops",
+    material: "18k Gold Vermeil, Cubic Zirconia",
+    price: "$100.00 USD",
+    rating: 0,
+    img: "https://auracojewelry.com/storage/products/thumbnails/4ab16aa0-17a6-4bb9-bd7b-36b887fda492.webp",
+  },
+];
+
+export const newArrivalProducts: Product[] = [
+  {
+    name: "Square Pearl Baya Pendant Necklace",
+    href: "/product/Square-Pearl-Baya-Pendant-Necklace",
+    material: "18k Gold Vermeil, Pearl",
+    price: "$100.00 USD",
+    rating: 0,
+    img: "https://auracojewelry.com/storage/products/thumbnails/40c7b319-e147-4a6e-bd81-561396aff76d.webp",
+  },
+  {
+    name: "The Timeless Green Stone Locket Necklace",
+    href: "/product/The-Timeless-Green-Stone-Locket-Necklace",
+    material: "18k Gold Vermeil, Green Stone",
+    price: "$100.00 USD",
+    rating: 0,
+    img: "https://auracojewelry.com/storage/products/thumbnails/315fb859-2ccd-4bcb-9a3a-e038c1d344a0.webp",
+  },
+  {
+    name: "The Emerald Tide Station Bracelet",
+    href: "/product/The-Emerald-Tide-Station-Bracelet",
+    material: "18k Gold Vermeil, Emerald",
+    price: "$130.00 USD",
+    rating: 0,
+    img: "https://auracojewelry.com/storage/products/thumbnails/1b26c5c9-612d-4ee9-91d9-f04477e03206.webp",
+  },
+  {
+    name: "The Solstice Pyramid Stone Hoops",
+    href: "/product/The-Solstice-Pyramid-Stone-Hoops",
+    material: "18k Gold Vermeil, Cubic Zirconia",
+    price: "$100.00 USD",
+    rating: 0,
+    img: "https://auracojewelry.com/storage/products/thumbnails/1bd7f070-d6ec-45c5-b38f-5fecb8bdf720.webp",
+  },
+  {
+    name: "Heritage Triple Ridge Huggies",
+    href: "/product/Heritage-Triple-Ridge-Huggies",
+    material: "18k Gold Vermeil",
+    price: "$100.00 USD",
+    rating: 0,
+    img: "https://auracojewelry.com/storage/products/thumbnails/9a4dd914-84d1-4f4e-8bd5-dee639858232.webp",
+  },
+  {
+    name: "Dot Chain Necklace",
+    href: "/product/Dot-Chain-Necklace",
+    material: "Sterling Silver",
+    price: "$100.00 USD",
+    rating: 0,
+    img: "https://auracojewelry.com/storage/products/thumbnails/4bdc27f4-f778-4cdd-ba40-b69666f9ebea.webp",
+  },
+];
+
+export const testimonials = [
+  {
+    initials: "MA",
+    name: "Mairia",
+    date: "08/09/2026",
+    quote:
+      "Really pretty and delicate, I love how it looks on my wrist. The chain is a little thinner than I expected, but overall I’m very happy with it.",
+  },
+  {
+    initials: "DM",
+    name: "Denise Myers",
+    date: "08/05/2026",
+    quote:
+      "Love the mixed gold tones. It goes with everything. I just wish the chain was a little longer.",
+  },
+  {
+    initials: "ME",
+    name: "Maria Evans",
+    date: "08/04/2026",
+    quote:
+      "Really impressed with the quality. The stones catch the light beautifully and look so elegant",
+  },
+  {
+    initials: "HO",
+    name: "Hope",
+    date: "08/04/2026",
+    quote:
+      "Obsessed with this! Fits great, looks super high quality, and arrived faster than expected.",
+  },
+  {
+    initials: "KM",
+    name: "Kimberly Martin",
+    date: "08/01/2026",
+    quote:
+      "Love this layered necklace. It makes even a simple outfit look so put together.",
+  },
+  {
+    initials: "SR",
+    name: "Sarah Rodriguez",
+    date: "07/29/2026",
+    quote:
+      "Really impressed with the quality. The chain feels delicate but secure and the pendant has such a pretty sparkle.",
+  },
+];
+
+export const trustBadges = [
+  "2 YEAR WARRANTY",
+  "FREE DELIVERY $120+",
+  "30-DAY RETURNS",
+];
+
+export const journalPosts = [
+  {
+    slug: "it-girl-guide-styling-gold-silver-jewelry",
+    date: "Dec 11, 2025",
+    title:
+      "Styling Gold & Silver: The Ultimate IT-Girl Guide to Necklaces, Bracelets & Earrings",
+    excerpt:
+      "Discover how to mix and layer gold and silver necklaces, bracelets, and earrings. Learn the art of balancing high-shine metals and statement pieces for an effortless, modern stack.",
+    img: "https://auracojewelry.com/storage/posts/cdaafa23-ef64-445a-8808-61f1bd018c7c.jpeg",
+    body: [
+      "Mixing metals used to be a styling taboo. Not anymore. The modern jewelry stack is built on contrast: warm 18k gold vermeil paired with cool sterling silver, worn together without apology.",
+      "Start with your necklaces. Layer a short choker-length chain closest to the neck, a mid-length pendant piece in the middle, and a longer chain as your anchor layer. Keep at least one piece in each metal tone so the eye has somewhere to land.",
+      "For bracelets, the same rule applies but on a smaller scale. A slim bangle, a beaded chain, and one statement cuff is usually enough — more than four pieces starts to look cluttered rather than curated.",
+      "Earrings are where you can have the most fun. A mismatched pair, one gold hoop and one silver stud, reads as intentional when the rest of your stack is balanced. If in doubt, keep your earrings simple and let your necklace layers carry the statement.",
+      "The golden rule of any mixed-metal stack: repeat each tone at least twice across your look. One gold piece on its own can look like an accident. Two gold pieces, deliberately placed, look like a decision.",
+    ],
+  },
+  {
+    slug: "it-girl-guide-gold-silver-jewelry-protection-energy",
+    date: "Dec 11, 2025",
+    title:
+      "The IT-Girl Guide to Gold & Silver Jewelry: Protection, Energy & Everyday Stacks",
+    excerpt:
+      "Precious gold and silver metals combined with mindful stones have long been worn for abundance and modern protection. Here is your chic guide to styling, layering, and caring for your daily stack.",
+    img: "https://auracojewelry.com/storage/posts/4eb6771c-4c27-4fcd-b6a7-0a2f9be11b90.jpeg",
+    body: [
+      "Gold and silver have been worn as everyday armor for centuries, long before they were simply an accessory. Today that same instinct shows up as the pieces we reach for without thinking: the necklace we never take off, the hoops we default to every morning.",
+      "Building a daily stack starts with your foundation pieces, the ones that stay on through the shower, the gym, and the nights out. Choose tarnish-resistant 18k gold vermeil or solid sterling silver for anything you plan to wear continuously.",
+      "From there, layer in seasonal or occasion pieces: a pendant that matches your mood, a cuff you save for evenings. The foundation stays constant while the rest of your stack can change with you.",
+      "Caring for your everyday pieces is simple: keep them away from perfume and lotion, store them flat rather than tangled together, and give them a gentle wipe with a soft cloth after wear to keep the shine consistent.",
+    ],
+  },
+  {
+    slug: "the-it-girl-ritual-cleanse-charge-sterling-silver",
+    date: "Dec 17, 2025",
+    title: "The IT-Girl Ritual: How to Cleanse & Charge Your Sterling Silver",
+    excerpt:
+      "Sunlight, moonlight, sound, and gentle care are simple rituals to refresh your gold, silver, and gemstone pieces between wears.",
+    img: "https://auracojewelry.com/storage/posts/679c8399-2bd3-4597-88e4-2d7f5d9cb8d8.jpeg",
+    body: [
+      "A quick refresh ritual keeps your everyday pieces looking their best and gives you a moment to reset before you put them back on. Think of it as maintenance for your jewelry box, not just your metal.",
+      "Start with a soft, lint-free cloth and gently buff each piece to lift any surface residue from the day. Avoid anything abrasive, a soft polishing cloth is enough for both gold vermeil and sterling silver.",
+      "For pieces with gemstones, a quick rinse in lukewarm water followed by an immediate pat-dry is usually safe, but always check the stone type first since some softer stones prefer a dry cloth only.",
+      "Store your pieces flat and separated, tangled chains are the single biggest cause of scratches and snapped links. A lined jewelry tray or individual pouches will keep your stack ready to wear the next morning.",
+    ],
+  },
+];
+
+export const footerLinks = {
+  shop: [
+    { label: "Catalog", href: "/catalog" },
+    { label: "Cart", href: "/cart" },
+  ],
+  policies: [
+    { label: "Security Policy", href: "/pages/security-policy" },
+    { label: "Privacy Policy", href: "/pages/privacy-policy" },
+    { label: "Return Policy", href: "/pages/return-policy" },
+    { label: "Terms of Service", href: "/pages/terms-of-service" },
+  ],
+};

@@ -24,9 +24,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // One-time read of localStorage on mount. This must run in an effect
+    // (not a lazy useState initializer) because `window` is unavailable
+    // during server rendering, and reading it during render would cause
+    // a hydration mismatch between server and client output.
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSession(JSON.parse(raw));
       } catch {
         window.localStorage.removeItem(STORAGE_KEY);

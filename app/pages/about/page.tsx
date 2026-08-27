@@ -20,7 +20,7 @@ export default function AboutPage() {
             AURA & CO was founded on a simple idea: jewelry you can wear every
             single day should never feel like an occasion piece. We design
             necklaces, bracelets, earrings, and sets that move with your life —
-            from the morning commute to the dinner you didn't plan on staying
+            from the morning commute to the dinner you didn&apos;t plan on staying
             out for — without asking you to take them off in between.
           </p>
           <p className="text-sm text-black/70 leading-relaxed">
@@ -37,13 +37,13 @@ export default function AboutPage() {
             catches on your clothing, a finish that still catches the light.
             Each piece is hand-finished and inspected before it leaves our
             studio, because the small things are what separate jewelry that
-            lasts from jewelry that doesn't.
+            lasts from jewelry that doesn&apos;t.
           </p>
           <p className="text-sm text-black/70 leading-relaxed">
             Above all, we design for real life. Our collections are built
-            around versatility — pieces that pair easily with what's already
+            around versatility — pieces that pair easily with what&apos;s already
             in your jewelry box, layer well with themselves, and look just as
-            at home with a t-shirt as they do with your favorite dress. That's
+            at home with a t-shirt as they do with your favorite dress. That&apos;s
             the everyday-wearable philosophy behind everything we make.
           </p>
         </div>

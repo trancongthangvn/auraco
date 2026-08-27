@@ -19,15 +19,20 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  // Close the mobile nav drawer whenever the route changes. Adjusting state
+  // during render (rather than in an effect) avoids an extra render pass —
+  // see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setMobileNavOpen(false);
+  }
+
   useEffect(() => {
     if (ready && !session) {
       router.replace("/admin/login");
     }
   }, [ready, session, router]);
-
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [pathname]);
 
   if (!ready || !session) {
     return (

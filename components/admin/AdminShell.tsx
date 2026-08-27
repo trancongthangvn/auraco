@@ -10,6 +10,7 @@ const NAV = [
   { href: "/admin", label: "Tổng quan", roles: ["admin", "staff"] },
   { href: "/admin/products", label: "Sản phẩm", roles: ["admin", "staff"] },
   { href: "/admin/orders", label: "Đơn hàng", roles: ["admin", "staff"] },
+  { href: "/admin/posts", label: "Bài viết", roles: ["admin", "staff"] },
   { href: "/admin/accounts", label: "Tài khoản", roles: ["admin"] },
 ];
 

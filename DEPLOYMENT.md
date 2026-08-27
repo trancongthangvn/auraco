@@ -3,50 +3,86 @@
 ## Infrastructure
 
 - **Proxmox host**: `pve1`, internal network, reachable at `10.5.100.10` (root SSH).
-- **Container**: LXC `118` named `auraco`, storage backend `local-lvm` (see gotcha below on why not to use the `PVE1` dir storage).
-  - **Staging**: nginx serves port `8080` from `/var/www/auraco-staging` — every change goes here first.
-  - **Production**: nginx serves port `80` from `/var/www/auraco` — only touched after explicit user confirmation ("chốt").
-  - Production is exposed publicly at **https://aura.maxmin.vn** via a Cloudflare Tunnel (`cloudflared` systemd service) pointed at container 118 port 80.
-- **GitHub repo**: `trancongthangvn/auraco` (this replaced an earlier repo name; remote origin has no embedded token).
-- **Reference architecture container**: LXC `114` (`vaithaihoa`, a different live business site) — used as a read-only architecture reference when adding a real backend to this project. Its stack: Express (raw `pg`, no ORM) + PostgreSQL + JWT auth (bcrypt + jsonwebtoken) + multer/sharp uploads, run under PM2 as 3 processes (web / preview / api), with Next.js `rewrites()` proxying `/api/*` and `/uploads/*` to the Express API. It has no PayPal/Cash App/Zelle code (only COD/bank-transfer) — those had to be designed from scratch for this project.
+- **Container**: LXC `118` named `auraco`, storage backend `local-lvm`.
+  - **Node.js 22**, **PostgreSQL 15** (database `auraco`, role `auraco_app` — owns all 17 tables), **PM2** (global) are installed on the container.
+  - **Staging**: source at `/var/www/auraco-app-staging` — nginx port `8080` reverse-proxies to `aura-web-staging` (Next.js `next start`, port `3101`); its own Express API is `aura-api-staging` (port `4001`).
+  - **Production**: source at `/var/www/auraco-app` — nginx port `80` reverse-proxies to `aura-web` (port `3100`); its Express API is `aura-api` (port `4000`). Publicly exposed at **https://aura.maxmin.vn** via a Cloudflare Tunnel pointed at container 118 port 80.
+  - Staging and production currently **share one Postgres database** (`auraco`) — this is a demo/personal project, not yet worth splitting. Revisit if real customer data ever needs isolating from test data.
+  - All 4 processes run under **PM2** via `/var/www/ecosystem.config.js` (also committed to the repo root as `ecosystem.config.js`), started with `pm2 start ecosystem.config.js --only <names>` and persisted with `pm2 save`.
+- **GitHub repo**: `trancongthangvn/auraco` (remote origin has no embedded token; commit author configured **locally** as `ALODEV <hello.alodev@gmail.com>` — do not commit as "Claude").
+- **Reference architecture container**: LXC `114` (`vaithaihoa`, a different live business site) — read-only architecture reference used when designing the real backend. Its stack: Express (raw `pg`, no ORM) + PostgreSQL + JWT auth (bcrypt + jsonwebtoken) + multer/sharp uploads, PM2, Next.js `rewrites()` proxying `/api/*`/`/uploads/*` to the Express API. No PayPal/Cash App/Zelle code there (only COD/bank-transfer) — those were designed from scratch for AURA & CO.
 
 ## Standing deploy rule
 
-**Always deploy to staging first. Only promote to production after the user explicitly confirms ("chốt", "ổn rồi", "đẩy lên production luôn").** Never skip straight to production, even for small fixes.
+**Always deploy to staging first. Only promote to production after the user explicitly confirms ("chốt", "ổn rồi", "đẩy lên production luôn").** Never skip straight to production, even for small fixes — a critical bug (see gotcha #5 below) was only caught because staging was checked first.
 
-## Deploy pipeline (static export, current state)
+## Architecture
+
+Real backend, not static export. Two independent layers per environment:
+
+1. **Express API** (`server/`) — raw `pg`, JWT auth (`jsonwebtoken` + `bcryptjs`), file uploads (`multer` + `sharp`), one route file per resource domain under `server/routes/`. Reads `server/.env` (`DATABASE_URL`, `JWT_SECRET`, `PORT`, `CORS_ORIGINS`) via `dotenv`.
+2. **Next.js app** (`app/`, `components/`, `lib/`) — `next start` (no `output: "export"` anymore). `next.config.ts` has a `rewrites()` that proxies `/api/*` and `/uploads/*` to the Express API's `API_URL` (read from `.env.local` at the Next.js project root, e.g. `API_URL=http://localhost:4000`). Browser code uses `lib/api.ts`'s `apiFetch()` (relative paths, relies on the rewrite). Server Components use `lib/server-api.ts`'s `serverApiFetch()` (calls `API_URL` directly, since SSR has no browser origin to be "same-origin" relative to).
+
+## Deploy pipeline (real backend, current state)
 
 ```bash
-# 1. Build
-cd /Users/Shared/CODE/aura-co-jewelry && npm run build   # outputs to ./out (output: "export")
+# 1. Build & verify locally first
+cd /Users/Shared/CODE/aura-co-jewelry
+npx eslint . && npx tsc --noEmit && npm run build   # must all be clean
 
-# 2. Package
-tar -czf /tmp/auraco-build.tar.gz -C out .
+# 2. Ship source (NOT node_modules/.next/out/.env*) to the host, then into the container
+rsync -avz --exclude 'node_modules' --exclude '.next' --exclude 'out' --exclude '.git' \
+  --exclude 'server/node_modules' --exclude 'server/uploads' --exclude '*.env' \
+  -e "ssh root@10.5.100.10" . root@10.5.100.10:/tmp/auraco-src/
+ssh root@10.5.100.10 "cd /tmp/auraco-src && tar -czf /tmp/auraco-src.tar.gz . && rm -rf /tmp/auraco-src"
+ssh root@10.5.100.10 "pct push 118 /tmp/auraco-src.tar.gz /tmp/auraco-src.tar.gz && \
+  pct exec 118 -- bash -c 'tar -xzf /tmp/auraco-src.tar.gz -C /var/www/auraco-app-staging && rm /tmp/auraco-src.tar.gz' && \
+  rm /tmp/auraco-src.tar.gz"
 
-# 3. Ship to the Proxmox host, then into the container
-scp /tmp/auraco-build.tar.gz root@10.5.100.10:/tmp/auraco-build.tar.gz
-ssh root@10.5.100.10 "pct push 118 /tmp/auraco-build.tar.gz /tmp/auraco-build.tar.gz"
+# 3. Install deps + BUILD IN PLACE on the container (do not rebuild locally and copy .next — see gotcha #5)
+ssh root@10.5.100.10 "pct exec 118 -- bash -c 'cd /var/www/auraco-app-staging && npm ci && npm run build'"
+ssh root@10.5.100.10 "pct exec 118 -- bash -c 'cd /var/www/auraco-app-staging/server && npm ci'"
 
-# 4. Extract into STAGING first
-ssh root@10.5.100.10 "pct exec 118 -- bash -c 'rm -rf /var/www/auraco-staging/* && tar -xzf /tmp/auraco-build.tar.gz -C /var/www/auraco-staging'"
+# 4. Restart the STAGING PM2 processes
+ssh root@10.5.100.10 "pct exec 118 -- pm2 restart aura-web-staging aura-api-staging"
 
-# 5. Verify staging (curl + browser), get user confirmation
+# 5. Verify staging (curl + browser incl. mobile viewport + console errors), get user confirmation
 
-# 6. Only then promote to production
-ssh root@10.5.100.10 "pct exec 118 -- bash -c 'rm -rf /var/www/auraco/* && cp -a /var/www/auraco-staging/. /var/www/auraco/'"
+# 6. Only on explicit confirmation, promote to production:
+#    copy the STAGING SOURCE (not the built .next) into production, preserving production's own
+#    server/.env and .env.local (different ports!), then REBUILD IN PLACE for production too:
+ssh root@10.5.100.10 "pct exec 118 -- bash -c '
+  cp /var/www/auraco-app/server/.env /tmp/prod-server.env.bak &&
+  cp /var/www/auraco-app/.env.local /tmp/prod-nextapp.env.local.bak &&
+  rm -rf /var/www/auraco-app/* &&
+  cp -a /var/www/auraco-app-staging/. /var/www/auraco-app/ &&
+  cp /tmp/prod-server.env.bak /var/www/auraco-app/server/.env &&
+  cp /tmp/prod-nextapp.env.local.bak /var/www/auraco-app/.env.local &&
+  rm /tmp/prod-server.env.bak /tmp/prod-nextapp.env.local.bak &&
+  cd /var/www/auraco-app && npm run build
+'"
+ssh root@10.5.100.10 "pct exec 118 -- pm2 restart aura-api aura-web"
+
+# 7. Verify production (curl both LAN IP and https://aura.maxmin.vn, browser check, mobile viewport)
 ```
 
-## Gotchas learned the hard way
+## Environment files (never committed — see `.gitignore`)
 
-1. **Never author nginx (or any multi-line remote config) via nested SSH heredocs.** A command like `ssh root@... "pct exec 118 -- bash -c 'cat > file <<EOF ... $var ... EOF'"` gets `$var` stripped by the *local* shell before it ever reaches the remote heredoc — this silently corrupted a `try_files` directive into serving the homepage for every route. Always write the config to a local file first (Write tool), then `scp`/`pct push` it in verbatim.
-2. **LXC storage backend matters.** The `PVE1` storage was a `dir` type backed by NTFS (`ntfs3` driver); `pct create --rootfs PVE1:20` hung forever inside `mkfs.ext4`. Use `local-lvm` (thin-pool) instead.
-3. **Static export (`output: "export"`) has real limits**: no server actions, no API routes, no `next/image` optimization (set `images.unoptimized: true`), and `app/robots.ts`/`app/sitemap.ts` need `export const dynamic = "force-static"` to build at all. All "admin" CRUD in the current static build is fake/local-state-only (resets on refresh) — see the "real backend migration" section below.
-4. Git commit author for this repo is configured **locally** (not globally) to `ALODEV <hello.alodev@gmail.com>` — do not commit as "Claude".
+Each environment needs its own pair, written directly on the container (never via git):
 
-## Real backend migration (in progress)
+- `server/.env`: `DATABASE_URL=postgres://auraco_app:<password>@localhost:5432/auraco`, `JWT_SECRET=<random>`, `PORT=4000` (prod) / `4001` (staging), `CORS_ORIGINS=http://10.5.100.118:8080,https://aura.maxmin.vn`.
+- `.env.local` (Next.js project root): `API_URL=http://localhost:4000` (prod) / `http://localhost:4001` (staging).
+- `server/.env.example` **is** committed (placeholder values only) — documents the required variable names.
 
-The static-export admin is UI-only (no persistence). A migration to a real backend is underway, modeled on CT114's architecture:
-- PostgreSQL database (schema covers: admin_users, products, product_attributes, collections, orders, order_items, discount_codes, inquiries, press_mentions, product_reviews, payment_method_settings, payment_transactions, homepage_content, site_settings, posts).
-- Express API server under `server/` (raw `pg`, JWT auth via `jsonwebtoken`/`bcryptjs`, uploads via `multer`+`sharp`), separate PM2 process from the Next.js frontend.
-- Payment methods: Cash App and Zelle as a **manual confirmation** flow (customer sees a QR + pays externally + uploads proof; admin marks paid) — same shape as CT114's bank-transfer flow. PayPal/Apple Pay require the user's own PayPal Business API credentials (Claude cannot create or hold financial credentials) and are deferred.
-- Once the backend is live, `next.config.ts` will drop `output: "export"` and add `rewrites()` proxying `/api/*` and `/uploads/*` to the Express process, matching CT114's pattern.
+## Hard-learned gotchas
+
+1. **Never author nginx or any multi-line remote config file through a nested SSH heredoc** (`ssh ... "pct exec ... bash -c 'cat > f <<EOF ... EOF'"`) — the outer local shell strips `$variables` before the remote heredoc ever sees them. Always `Write` the config locally, then `scp`/`pct push` it in verbatim.
+2. If creating a new LXC ever comes up again: use `local-lvm` storage, not any NTFS-backed `dir` storage (`mkfs.ext4` hangs forever on NTFS-backed images).
+3. Fresh Debian containers may have **no UTF-8 locale generated**, which makes a freshly-`apt install`ed PostgreSQL default new databases to `SQL_ASCII` encoding — silently corrupts Vietnamese text. Always: `apt-get install locales`, uncomment `en_US.UTF-8 UTF-8` in `/etc/locale.gen`, `locale-gen`, then explicitly `CREATE DATABASE ... ENCODING 'UTF8' TEMPLATE template0 LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8'` — never rely on the cluster default.
+4. **Postgres NUMERIC columns come back as JS strings** via `node-postgres` (`pg`), not numbers (SMALLINT/INTEGER columns are fine, they come back as real numbers). Any frontend code calling `.toFixed()` on a value straight from the API must `Number(...)` it first. This caused a full checkout-page crash in production (fixed in commit `275f90b`) — grep for `.toFixed(` after touching any price/money field and confirm the value was actually converted upstream (check `lib/catalog-mappers.ts`'s `toFullProduct` for the established pattern).
+5. **Next.js bakes `rewrites()` destinations into the build output at `next build` time** — copying an already-built `.next` folder from one environment to another (e.g. staging → production) carries over the OLD environment's `API_URL`, even after you fix `.env.local` in the new location. Symptom: the app *looks* fine and serves 200s, but every `/api/*` call silently reaches the wrong backend process. Always `npm run build` **in place**, after `.env.local` is already correct for that environment — never just `cp -a` a prebuilt app between environments with different `API_URL`/`PORT` values. (Verify by comparing `curl` uptime from `/api/health` hit directly on the target port vs. hit through the Next.js rewrite — they should match.)
+6. Git commit author for this repo is configured **locally** (not globally) to `ALODEV <hello.alodev@gmail.com>` — never commit as "Claude".
+
+## Payment methods
+
+Card/PayPal are structurally supported by the schema but not wired to a real gateway. Cash App and Zelle use a **manual confirmation** flow: customer sees a QR + admin-configured detail text, pays externally, uploads a proof-of-payment image (`POST /api/orders/:id/payment-proof`), and an admin reviews/marks the transaction paid in `/admin/payments`. Real PayPal/Apple Pay integration requires the user's own PayPal Business API credentials (Claude cannot create or hold financial credentials) and is deferred.

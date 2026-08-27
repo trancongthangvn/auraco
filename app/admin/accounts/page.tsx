@@ -57,9 +57,10 @@ export default function AdminAccountsPage() {
       </div>
       <p className="text-xs text-black/40 mt-4">
         Theo phạm vi hợp đồng, hệ thống có đúng 1 tài khoản Quản trị viên
-        thật (đăng nhập bằng email và mật khẩu cố định). Tài khoản Nhân viên
-        ở đây chỉ để minh họa cơ chế phân quyền, chưa có chức năng tạo thêm
-        tài khoản mới trong bản này.
+        thật (đăng nhập bằng email và mật khẩu cố định). Cơ chế phân quyền
+        Quản trị viên / Nhân viên đã được xây dựng sẵn trong hệ thống và sẽ
+        tự động áp dụng khi có tài khoản Nhân viên thứ hai; bản này chưa có
+        chức năng tạo thêm tài khoản mới.
       </p>
     </AdminShell>
   );

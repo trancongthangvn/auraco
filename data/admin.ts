@@ -26,9 +26,11 @@ export type AdminAccount = {
   role: Role;
 };
 
-// Single real admin account (1/1), matching the signed scope: exactly one
-// fixed administrator login. A second fixed staff login is kept only to make
-// the role-based permission feature (contract item 16) demonstrable.
+// Exactly one real admin account (1/1), per scope. The role-based permission
+// system (contract item 16 — Quản trị viên vs Nhân viên) stays fully wired in
+// the code (see AdminShell nav filtering and the /admin/accounts page gate);
+// it activates automatically the moment a second account with role "staff"
+// is added here.
 export const adminAccounts: AdminAccount[] = [
   {
     id: "u1",
@@ -36,13 +38,6 @@ export const adminAccounts: AdminAccount[] = [
     email: "admin@auraco.vn",
     password: "AuraCo@2026",
     role: "admin",
-  },
-  {
-    id: "u2",
-    name: "Nhân viên bán hàng",
-    email: "staff@auraco.vn",
-    password: "AuraCoStaff@2026",
-    role: "staff",
   },
 ];
 

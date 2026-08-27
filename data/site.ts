@@ -3,19 +3,19 @@ export const heroSlides = [
     label: "TRENDING NOW",
     title: "HARNESS HIGH-FREQUENCY ENERGY. MANIFEST PROSPERITY.",
     href: "/catalog/TRENDING-NOW",
-    img: "https://auracojewelry.com/storage/settings/banner-slides/c950bcae-d034-4c14-acc1-7398e4768966.webp",
+    img: "/images/settings/banner-slides/c950bcae-d034-4c14-acc1-7398e4768966.webp",
   },
   {
     label: "BEACH VIBE",
     title: "TIMELESS GOLD AND SILVER. UNDERSTATED LUXURY.",
     href: "/catalog/BEACH-VIBE",
-    img: "https://auracojewelry.com/storage/settings/banner-slides/fbdd39e1-7f29-4a4f-9ace-620a90d3b392.webp",
+    img: "/images/settings/banner-slides/fbdd39e1-7f29-4a4f-9ace-620a90d3b392.webp",
   },
   {
     label: "NEW ARRIVALS",
     title: "EFFORTLESS GOLD AND SILVER. EVERYDAY MINIMALIST STYLE.",
     href: "/catalog/NEW-ARRIVALS",
-    img: "https://auracojewelry.com/storage/settings/banner-slides/a11d91e2-35fe-4d01-8734-bf22cce547dc.webp",
+    img: "/images/settings/banner-slides/a11d91e2-35fe-4d01-8734-bf22cce547dc.webp",
   },
 ];
 
@@ -38,32 +38,32 @@ export const collections = [
   {
     name: "QUIET LUXURY",
     href: "/catalog/QUIET-LUXURY",
-    img: "https://auracojewelry.com/storage/categories/597c968f-fa9f-4a50-92ee-db3e62e50530.webp",
+    img: "/images/categories/0252ce6c-e81a-411b-a900-0fa53d2c6853.webp",
   },
   {
     name: "MINIMALIST",
     href: "/catalog/MINIMALIST",
-    img: "https://auracojewelry.com/storage/categories/5499695d-e818-4273-8398-93ea00c50d4d.webp",
+    img: "/images/categories/c6549a06-5d56-4623-a5a6-8d97426fad97.webp",
   },
   {
     name: "STATEMENT",
     href: "/catalog/STATEMENT",
-    img: "https://auracojewelry.com/storage/categories/5e108e94-1253-4768-8e26-79f45e3f5e48.webp",
+    img: "/images/categories/b6a65600-7a6c-47de-b2c0-01ee293d3d90.webp",
   },
   {
     name: "TRENDING NOW",
     href: "/catalog/TRENDING-NOW",
-    img: "https://auracojewelry.com/storage/categories/554e8a22-ade8-455b-9ba7-de3fd5edf3f4.webp",
+    img: "/images/categories/b0c45f9f-9292-4d2d-992a-03cb88818199.webp",
   },
   {
     name: "BEACH VIBE",
     href: "/catalog/BEACH-VIBE",
-    img: "https://auracojewelry.com/storage/categories/0d38ab5d-2d10-4318-9621-5c680680c077.webp",
+    img: "/images/categories/e64da900-489a-4701-b0c3-aaf1d7d7e590.webp",
   },
   {
     name: "BEST SELLERS",
     href: "/product",
-    img: "https://auracojewelry.com/storage/categories/fc518167-d54d-46fe-892f-cb403d55414e.webp",
+    img: "/images/categories/bcdc23ff-1f19-44e0-be10-06d1aaedbe20.webp",
   },
 ];
 
@@ -83,7 +83,7 @@ export const beachVibeProducts: Product[] = [
     material: "18k Gold Vermeil, Mother of Pearl",
     price: "$130.00 USD",
     rating: 1,
-    img: "https://auracojewelry.com/storage/products/thumbnails/01937a3b-cd91-477a-a68f-ab079668d02c.webp",
+    img: "/images/products/thumbnails/01937a3b-cd91-477a-a68f-ab079668d02c.webp",
   },
   {
     name: "Evermere Heart Necklace",
@@ -91,7 +91,7 @@ export const beachVibeProducts: Product[] = [
     material: "18ct Gold Vermeil",
     price: "$130.00 USD",
     rating: 4,
-    img: "https://auracojewelry.com/storage/products/thumbnails/1fb8c789-ece5-4cdb-9022-0a20ee3a1261.webp",
+    img: "/images/products/thumbnails/1fb8c789-ece5-4cdb-9022-0a20ee3a1261.webp",
   },
   {
     name: "Audrey Diamond Hoops",
@@ -99,7 +99,7 @@ export const beachVibeProducts: Product[] = [
     material: "18k Gold Vermeil, Cubic Zirconia",
     price: "$100.00 USD",
     rating: 0,
-    img: "https://auracojewelry.com/storage/products/variants/822cc99c-8e65-45f6-bb68-9ea8962cefb3.webp",
+    img: "/images/products/variants/822cc99c-8e65-45f6-bb68-9ea8962cefb3.webp",
   },
   {
     name: "The Radiant Flow Tennis Bracelet",
@@ -107,7 +107,7 @@ export const beachVibeProducts: Product[] = [
     material: "Sterling Silver, Cubic Zirconia",
     price: "$100.00 USD",
     rating: 2,
-    img: "https://auracojewelry.com/storage/products/thumbnails/99c4a20e-a5e9-418d-a729-d13e457846f5.webp",
+    img: "/images/products/thumbnails/99c4a20e-a5e9-418d-a729-d13e457846f5.webp",
   },
   {
     name: "Layered Opal Necklace",
@@ -115,7 +115,7 @@ export const beachVibeProducts: Product[] = [
     material: "18k Gold Vermeil, Opal",
     price: "$130.00 USD",
     rating: 5,
-    img: "https://auracojewelry.com/storage/products/thumbnails/97fce6ae-f0bd-419d-a95d-97e5a0825815.webp",
+    img: "/images/products/thumbnails/97fce6ae-f0bd-419d-a95d-97e5a0825815.webp",
   },
   {
     name: "Celeste Pavé Hoops",
@@ -123,7 +123,7 @@ export const beachVibeProducts: Product[] = [
     material: "18k Gold Vermeil, Cubic Zirconia",
     price: "$100.00 USD",
     rating: 0,
-    img: "https://auracojewelry.com/storage/products/thumbnails/4ab16aa0-17a6-4bb9-bd7b-36b887fda492.webp",
+    img: "/images/products/thumbnails/4ab16aa0-17a6-4bb9-bd7b-36b887fda492.webp",
   },
 ];
 
@@ -134,7 +134,7 @@ export const newArrivalProducts: Product[] = [
     material: "18k Gold Vermeil, Pearl",
     price: "$100.00 USD",
     rating: 0,
-    img: "https://auracojewelry.com/storage/products/thumbnails/40c7b319-e147-4a6e-bd81-561396aff76d.webp",
+    img: "/images/products/thumbnails/40c7b319-e147-4a6e-bd81-561396aff76d.webp",
   },
   {
     name: "The Timeless Green Stone Locket Necklace",
@@ -142,7 +142,7 @@ export const newArrivalProducts: Product[] = [
     material: "18k Gold Vermeil, Green Stone",
     price: "$100.00 USD",
     rating: 0,
-    img: "https://auracojewelry.com/storage/products/thumbnails/315fb859-2ccd-4bcb-9a3a-e038c1d344a0.webp",
+    img: "/images/products/thumbnails/315fb859-2ccd-4bcb-9a3a-e038c1d344a0.webp",
   },
   {
     name: "The Emerald Tide Station Bracelet",
@@ -150,7 +150,7 @@ export const newArrivalProducts: Product[] = [
     material: "18k Gold Vermeil, Emerald",
     price: "$130.00 USD",
     rating: 0,
-    img: "https://auracojewelry.com/storage/products/thumbnails/1b26c5c9-612d-4ee9-91d9-f04477e03206.webp",
+    img: "/images/products/thumbnails/1b26c5c9-612d-4ee9-91d9-f04477e03206.webp",
   },
   {
     name: "The Solstice Pyramid Stone Hoops",
@@ -158,7 +158,7 @@ export const newArrivalProducts: Product[] = [
     material: "18k Gold Vermeil, Cubic Zirconia",
     price: "$100.00 USD",
     rating: 0,
-    img: "https://auracojewelry.com/storage/products/thumbnails/1bd7f070-d6ec-45c5-b38f-5fecb8bdf720.webp",
+    img: "/images/products/thumbnails/1bd7f070-d6ec-45c5-b38f-5fecb8bdf720.webp",
   },
   {
     name: "Heritage Triple Ridge Huggies",
@@ -166,7 +166,7 @@ export const newArrivalProducts: Product[] = [
     material: "18k Gold Vermeil",
     price: "$100.00 USD",
     rating: 0,
-    img: "https://auracojewelry.com/storage/products/thumbnails/9a4dd914-84d1-4f4e-8bd5-dee639858232.webp",
+    img: "/images/products/thumbnails/9a4dd914-84d1-4f4e-8bd5-dee639858232.webp",
   },
   {
     name: "Dot Chain Necklace",
@@ -174,7 +174,7 @@ export const newArrivalProducts: Product[] = [
     material: "Sterling Silver",
     price: "$100.00 USD",
     rating: 0,
-    img: "https://auracojewelry.com/storage/products/thumbnails/4bdc27f4-f778-4cdd-ba40-b69666f9ebea.webp",
+    img: "/images/products/thumbnails/4bdc27f4-f778-4cdd-ba40-b69666f9ebea.webp",
   },
 ];
 
@@ -237,7 +237,7 @@ export const journalPosts = [
       "Styling Gold & Silver: The Ultimate IT-Girl Guide to Necklaces, Bracelets & Earrings",
     excerpt:
       "Discover how to mix and layer gold and silver necklaces, bracelets, and earrings. Learn the art of balancing high-shine metals and statement pieces for an effortless, modern stack.",
-    img: "https://auracojewelry.com/storage/posts/cdaafa23-ef64-445a-8808-61f1bd018c7c.jpeg",
+    img: "/images/posts/dc8e9ad8-ec1e-42c1-9d1d-a7eb2a8e3c06.png",
     body: [
       "Mixing metals used to be a styling taboo. Not anymore. The modern jewelry stack is built on contrast: warm 18k gold vermeil paired with cool sterling silver, worn together without apology.",
       "Start with your necklaces. Layer a short choker-length chain closest to the neck, a mid-length pendant piece in the middle, and a longer chain as your anchor layer. Keep at least one piece in each metal tone so the eye has somewhere to land.",
@@ -253,7 +253,7 @@ export const journalPosts = [
       "The IT-Girl Guide to Gold & Silver Jewelry: Protection, Energy & Everyday Stacks",
     excerpt:
       "Precious gold and silver metals combined with mindful stones have long been worn for abundance and modern protection. Here is your chic guide to styling, layering, and caring for your daily stack.",
-    img: "https://auracojewelry.com/storage/posts/4eb6771c-4c27-4fcd-b6a7-0a2f9be11b90.jpeg",
+    img: "/images/posts/4eb6771c-4c27-4fcd-b6a7-0a2f9be11b90.jpeg",
     body: [
       "Gold and silver have been worn as everyday armor for centuries, long before they were simply an accessory. Today that same instinct shows up as the pieces we reach for without thinking: the necklace we never take off, the hoops we default to every morning.",
       "Building a daily stack starts with your foundation pieces, the ones that stay on through the shower, the gym, and the nights out. Choose tarnish-resistant 18k gold vermeil or solid sterling silver for anything you plan to wear continuously.",
@@ -267,7 +267,7 @@ export const journalPosts = [
     title: "The IT-Girl Ritual: How to Cleanse & Charge Your Sterling Silver",
     excerpt:
       "Sunlight, moonlight, sound, and gentle care are simple rituals to refresh your gold, silver, and gemstone pieces between wears.",
-    img: "https://auracojewelry.com/storage/posts/679c8399-2bd3-4597-88e4-2d7f5d9cb8d8.jpeg",
+    img: "/images/posts/92815f94-0f76-4b00-b587-dee1d32aebbb.png",
     body: [
       "A quick refresh ritual keeps your everyday pieces looking their best and gives you a moment to reset before you put them back on. Think of it as maintenance for your jewelry box, not just your metal.",
       "Start with a soft, lint-free cloth and gently buff each piece to lift any surface residue from the day. Avoid anything abrasive, a soft polishing cloth is enough for both gold vermeil and sterling silver.",

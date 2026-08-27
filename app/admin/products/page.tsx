@@ -33,8 +33,8 @@ export default function AdminProductsPage() {
         </span>
       </div>
 
-      <div className="bg-white border border-black/10">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-black/10 overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="text-left text-black/50 border-b border-black/10">
               <th className="py-3 px-4 font-normal">Ảnh</th>

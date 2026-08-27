@@ -36,7 +36,8 @@ export default function AdminDashboardPage() {
         <h2 className="text-sm font-medium mb-4 uppercase tracking-wide">
           Đơn hàng gần đây
         </h2>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
           <thead>
             <tr className="text-left text-black/50 border-b border-black/10">
               <th className="py-2 font-normal">Mã đơn</th>
@@ -58,6 +59,7 @@ export default function AdminDashboardPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </AdminShell>
   );

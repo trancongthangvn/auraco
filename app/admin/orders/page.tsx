@@ -16,8 +16,8 @@ export default function AdminOrdersPage() {
   return (
     <AdminShell>
       <h1 className="font-serif-display text-2xl mb-6">Đơn hàng</h1>
-      <div className="bg-white border border-black/10">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-black/10 overflow-x-auto">
+        <table className="w-full text-sm min-w-[520px]">
           <thead>
             <tr className="text-left text-black/50 border-b border-black/10">
               <th className="py-3 px-4 font-normal">Mã đơn</th>

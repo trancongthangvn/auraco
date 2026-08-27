@@ -33,8 +33,8 @@ export default function AdminAccountsPage() {
         <h1 className="font-serif-display text-2xl">Tài khoản quản trị</h1>
       </div>
 
-      <div className="bg-white border border-black/10">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-black/10 overflow-x-auto">
+        <table className="w-full text-sm min-w-[400px]">
           <thead>
             <tr className="text-left text-black/50 border-b border-black/10">
               <th className="py-3 px-4 font-normal">Tên</th>

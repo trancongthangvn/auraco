@@ -5,7 +5,7 @@ export default function ITGirlEdit() {
     <section className="mx-auto max-w-[1400px] px-6 py-16 grid gap-8 lg:grid-cols-2 items-center">
       <div className="relative aspect-[4/3] overflow-hidden">
         <Image
-          src="https://auracojewelry.com/storage/pages/64e5ed6e-0491-4f3d-a678-b315945972da.png"
+          src="/images/pages/64e5ed6e-0491-4f3d-a678-b315945972da.png"
           alt="The IT-Girl Edit"
           fill
           sizes="(min-width: 1024px) 50vw, 100vw"

@@ -18,11 +18,11 @@ export type FullProduct = {
 
 const img = {
   evermere1:
-    "https://auracojewelry.com/storage/products/variants/bd3b81ed-962e-4f82-8391-69052b5aefaf.webp",
+    "/images/products/variants/bd3b81ed-962e-4f82-8391-69052b5aefaf.webp",
   evermere2:
-    "https://auracojewelry.com/storage/products/variants/4b5a8c78-7c53-4cf9-b63a-22b0a5ce90ca.webp",
+    "/images/products/variants/4b5a8c78-7c53-4cf9-b63a-22b0a5ce90ca.webp",
   evermereThumb:
-    "https://auracojewelry.com/storage/products/thumbnails/1fb8c789-ece5-4cdb-9022-0a20ee3a1261.webp",
+    "/images/products/thumbnails/1fb8c789-ece5-4cdb-9022-0a20ee3a1261.webp",
 };
 
 export const products: FullProduct[] = [
@@ -55,7 +55,7 @@ export const products: FullProduct[] = [
     rating: 5,
     reviewCount: 1,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/01937a3b-cd91-477a-a68f-ab079668d02c.webp",
+      "/images/products/thumbnails/01937a3b-cd91-477a-a68f-ab079668d02c.webp",
     ],
     description:
       "A quiet-luxury classic reimagined — the clover motif in lustrous mother of pearl set in 18k gold vermeil, designed to be worn every day or layered for a fuller stack.",
@@ -76,7 +76,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/variants/822cc99c-8e65-45f6-bb68-9ea8962cefb3.webp",
+      "/images/products/variants/822cc99c-8e65-45f6-bb68-9ea8962cefb3.webp",
     ],
     description:
       "Sculptural hoops finished with a row of pavé cubic zirconia for everyday sparkle that catches the light from every angle.",
@@ -97,7 +97,7 @@ export const products: FullProduct[] = [
     rating: 3.5,
     reviewCount: 2,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/99c4a20e-a5e9-418d-a729-d13e457846f5.webp",
+      "/images/products/thumbnails/99c4a20e-a5e9-418d-a729-d13e457846f5.webp",
     ],
     description:
       "A continuous line of brilliant-cut cubic zirconia set in sterling silver, engineered for a fluid, comfortable drape on the wrist.",
@@ -118,7 +118,7 @@ export const products: FullProduct[] = [
     rating: 5,
     reviewCount: 5,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/97fce6ae-f0bd-419d-a95d-97e5a0825815.webp",
+      "/images/products/thumbnails/97fce6ae-f0bd-419d-a95d-97e5a0825815.webp",
     ],
     description:
       "Two delicate chains suspend a shimmering opal pendant, designed to be worn together for effortless dimension or separated across your daily stack.",
@@ -139,7 +139,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/4ab16aa0-17a6-4bb9-bd7b-36b887fda492.webp",
+      "/images/products/thumbnails/4ab16aa0-17a6-4bb9-bd7b-36b887fda492.webp",
     ],
     description:
       "Petite huggie hoops fully paved in cubic zirconia for a soft, constant sparkle that works from desk to dinner.",
@@ -160,7 +160,7 @@ export const products: FullProduct[] = [
     rating: 5,
     reviewCount: 5,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/40c7b319-e147-4a6e-bd81-561396aff76d.webp",
+      "/images/products/thumbnails/40c7b319-e147-4a6e-bd81-561396aff76d.webp",
     ],
     description:
       "A modern take on the classic pearl pendant, framed in a sculptural square setting for a piece that feels both timeless and current.",
@@ -181,7 +181,7 @@ export const products: FullProduct[] = [
     rating: 5,
     reviewCount: 5,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/315fb859-2ccd-4bcb-9a3a-e038c1d344a0.webp",
+      "/images/products/thumbnails/315fb859-2ccd-4bcb-9a3a-e038c1d344a0.webp",
     ],
     description:
       "A polished green onyx stone set in a locket-style frame, bringing a grounded pop of color to a minimalist gold chain.",
@@ -202,7 +202,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/1b26c5c9-612d-4ee9-91d9-f04477e03206.webp",
+      "/images/products/thumbnails/1b26c5c9-612d-4ee9-91d9-f04477e03206.webp",
     ],
     description:
       "Emerald-hued stones stationed along a fine gold chain for a wash of color that layers beautifully with metal-only pieces.",
@@ -223,7 +223,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/1bd7f070-d6ec-45c5-b38f-5fecb8bdf720.webp",
+      "/images/products/thumbnails/1bd7f070-d6ec-45c5-b38f-5fecb8bdf720.webp",
     ],
     description:
       "Geometric pyramid-cut stones set along a sleek hoop silhouette for a sculptural, architectural finish.",
@@ -244,7 +244,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/9a4dd914-84d1-4f4e-8bd5-dee639858232.webp",
+      "/images/products/thumbnails/9a4dd914-84d1-4f4e-8bd5-dee639858232.webp",
     ],
     description:
       "Textured ridge detailing wraps this huggie hoop for tactile dimension without any added stones.",
@@ -265,7 +265,7 @@ export const products: FullProduct[] = [
     rating: 5,
     reviewCount: 5,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/4bdc27f4-f778-4cdd-ba40-b69666f9ebea.webp",
+      "/images/products/thumbnails/4bdc27f4-f778-4cdd-ba40-b69666f9ebea.webp",
     ],
     description:
       "A dainty beaded dot chain in polished sterling silver — the effortless everyday layer that pairs with anything.",
@@ -286,7 +286,7 @@ export const products: FullProduct[] = [
     rating: 5,
     reviewCount: 1,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/2d77357a-1dd5-497f-bad9-f7ab3a705160.webp",
+      "/images/products/thumbnails/2d77357a-1dd5-497f-bad9-f7ab3a705160.webp",
     ],
     description:
       "A sculptural knot motif finished with a hint of sparkle, designed as a refined centerpiece for any wrist stack.",
@@ -308,7 +308,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/29aa2f37-f00a-4c54-acb1-68756d52bca8.webp",
+      "/images/products/thumbnails/29aa2f37-f00a-4c54-acb1-68756d52bca8.webp",
     ],
     description:
       "Organic flowing lines inspired by nautilus shell curves, cast in solid gold vermeil for a bold everyday statement.",
@@ -329,7 +329,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/5d968490-ef8c-4947-815a-454fc1e7cf12.webp",
+      "/images/products/thumbnails/5d968490-ef8c-4947-815a-454fc1e7cf12.webp",
     ],
     description:
       "A minimalist open cuff with a smooth polished finish, easy to slide on and stack with beaded bracelets.",
@@ -350,7 +350,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/variants/59a639d5-c3c8-4017-8f99-74e8892c5c74.webp",
+      "/images/products/variants/59a639d5-c3c8-4017-8f99-74e8892c5c74.webp",
     ],
     description:
       "Sculpted drop earrings with a soft curved silhouette, designed to catch the light with subtle movement.",
@@ -371,7 +371,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/bfc1fdee-7f68-4e3c-9a32-1e702a1997ad.webp",
+      "/images/products/thumbnails/bfc1fdee-7f68-4e3c-9a32-1e702a1997ad.webp",
     ],
     description:
       "Classic medium-size hoops with a high-polish finish — the versatile everyday hoop that never goes out of style.",
@@ -392,7 +392,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/0c3b4a9e-e0e2-44f2-a317-a41b13b466a1.webp",
+      "/images/products/thumbnails/0c3b4a9e-e0e2-44f2-a317-a41b13b466a1.webp",
     ],
     description:
       "A classic tennis bracelet in warm rose gold vermeil, lined with brilliant-cut cubic zirconia for timeless sparkle.",
@@ -413,7 +413,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/c32cc10f-dac0-4713-bc12-03a92da51f09.webp",
+      "/images/products/thumbnails/c32cc10f-dac0-4713-bc12-03a92da51f09.webp",
     ],
     description:
       "A bold curb-link chain designed to be worn solo as a statement or stacked as the foundation of a layered look.",
@@ -434,7 +434,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/07a5584a-621c-4d67-9e7a-e2a9fb013de8.webp",
+      "/images/products/thumbnails/07a5584a-621c-4d67-9e7a-e2a9fb013de8.webp",
     ],
     description:
       "A matching necklace and earring set featuring the signature clover motif, ready to wear straight out of the box.",
@@ -455,7 +455,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/06c5fd3b-7a0a-4ea7-8cff-5b3fe3adac6b.webp",
+      "/images/products/thumbnails/06c5fd3b-7a0a-4ea7-8cff-5b3fe3adac6b.webp",
     ],
     description:
       "A pared-back heart pendant paired with matching studs, designed for the minimalist who still wants a touch of romance.",
@@ -476,7 +476,7 @@ export const products: FullProduct[] = [
     rating: 0,
     reviewCount: 0,
     images: [
-      "https://auracojewelry.com/storage/products/thumbnails/2290a561-7879-45f6-aefa-8265ba21ba02.webp",
+      "/images/products/thumbnails/2290a561-7879-45f6-aefa-8265ba21ba02.webp",
     ],
     description:
       "A coordinated set of pavé pieces designed to be worn together for a polished, put-together sparkle from morning to night.",

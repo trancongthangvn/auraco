@@ -14,7 +14,7 @@ export default function LoginForm() {
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        setMessage("This is a UI demo — no account system is connected yet.");
+        setMessage("This is a UI demo. No account system is connected yet.");
       }}
       className="mx-auto max-w-[560px] px-6 py-16 space-y-5"
     >

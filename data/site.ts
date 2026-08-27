@@ -241,7 +241,7 @@ export const journalPosts = [
     body: [
       "Mixing metals used to be a styling taboo. Not anymore. The modern jewelry stack is built on contrast: warm 18k gold vermeil paired with cool sterling silver, worn together without apology.",
       "Start with your necklaces. Layer a short choker-length chain closest to the neck, a mid-length pendant piece in the middle, and a longer chain as your anchor layer. Keep at least one piece in each metal tone so the eye has somewhere to land.",
-      "For bracelets, the same rule applies but on a smaller scale. A slim bangle, a beaded chain, and one statement cuff is usually enough — more than four pieces starts to look cluttered rather than curated.",
+      "For bracelets, the same rule applies but on a smaller scale. A slim bangle, a beaded chain, and one statement cuff is usually enough. More than four pieces starts to look cluttered rather than curated.",
       "Earrings are where you can have the most fun. A mismatched pair, one gold hoop and one silver stud, reads as intentional when the rest of your stack is balanced. If in doubt, keep your earrings simple and let your necklace layers carry the statement.",
       "The golden rule of any mixed-metal stack: repeat each tone at least twice across your look. One gold piece on its own can look like an accident. Two gold pieces, deliberately placed, look like a decision.",
     ],

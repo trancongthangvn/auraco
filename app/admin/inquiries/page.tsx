@@ -51,7 +51,7 @@ export default function AdminInquiriesPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm truncate">
                     {i.subject}
-                    <span className="text-black/40"> — {i.name}</span>
+                    <span className="text-black/40"> ({i.name})</span>
                   </p>
                   <p className="text-xs text-black/40">{i.date}</p>
                 </div>

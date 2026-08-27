@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAdminAuth } from "./AdminAuthContext";
@@ -9,8 +10,11 @@ import {
   Package,
   Layers,
   ShoppingCart,
+  CreditCard,
+  Star,
   Tag,
   MessageSquare,
+  Award,
   Newspaper,
   Layout,
   Globe,
@@ -35,8 +39,11 @@ const NAV: NavItem[] = [
   { href: "/admin/products", label: "Sản phẩm", icon: Package, roles: ["admin", "staff"] },
   { href: "/admin/collections", label: "Collections", icon: Layers, roles: ["admin", "staff"] },
   { href: "/admin/orders", label: "Đơn hàng", icon: ShoppingCart, roles: ["admin", "staff"] },
+  { href: "/admin/payments", label: "Thanh toán", icon: CreditCard, roles: ["admin"] },
+  { href: "/admin/reviews", label: "Đánh giá sản phẩm", icon: Star, roles: ["admin", "staff"] },
   { href: "/admin/discount-codes", label: "Khuyến mãi", icon: Tag, roles: ["admin", "staff"] },
   { href: "/admin/inquiries", label: "Yêu cầu liên hệ", icon: MessageSquare, roles: ["admin", "staff"] },
+  { href: "/admin/certificates", label: "Báo chí nhắc đến", icon: Award, roles: ["admin", "staff"] },
   { href: "/admin/posts", label: "Bài viết", icon: Newspaper, roles: ["admin", "staff"] },
   { href: "/admin/homepage", label: "Trang chủ", icon: Layout, roles: ["admin", "staff"] },
   { href: "/admin/cai-dat-web", label: "Cài đặt web", icon: Globe, roles: ["admin"] },
@@ -88,8 +95,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:flex`}
       >
         <div className="h-14 flex items-center px-5 border-b border-white/10 shrink-0">
-          <Link href="/admin" className="font-serif-display text-lg tracking-wide">
-            AURA & CO
+          <Link href="/admin" aria-label="AURA & CO" className="flex items-center">
+            <Image
+              src="/images/brand/logo-badge.png"
+              alt="AURA & CO"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded"
+            />
           </Link>
           <span className="ml-auto text-[10px] font-medium text-white/50 bg-white/10 px-1.5 py-0.5 rounded">
             Admin

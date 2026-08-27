@@ -17,7 +17,7 @@ export default function TermsOfServicePage() {
         },
         {
           heading: "Intellectual Property",
-          body: "All content on this site — including images, text, and designs — is the property of AURA & CO and may not be reproduced without permission.",
+          body: "All content on this site, including images, text, and designs, is the property of AURA & CO and may not be reproduced without permission.",
         },
         {
           heading: "Limitation of Liability",

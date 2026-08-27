@@ -52,11 +52,14 @@ export default function CheckoutClient() {
       {/* Minimal checkout top bar */}
       <header className="border-b border-black/5">
         <div className="mx-auto max-w-[1400px] flex items-center justify-between px-6 py-4 gap-4">
-          <Link
-            href="/"
-            className="font-serif-display text-2xl tracking-[0.15em] shrink-0"
-          >
-            AURA & CO
+          <Link href="/" aria-label="AURA & CO" className="shrink-0">
+            <Image
+              src="/images/brand/logo-badge.png"
+              alt="AURA & CO"
+              width={44}
+              height={44}
+              className="h-10 w-10 sm:h-11 sm:w-11"
+            />
           </Link>
           <span className="hidden sm:inline-flex items-center gap-1.5 text-sm">
             <GlobeIcon size={16} />
@@ -88,7 +91,7 @@ export default function CheckoutClient() {
             </button>
             {showExpressDemo && (
               <p className="mt-3 border border-black/10 bg-black/5 px-4 py-3 text-xs text-black/70">
-                This is a UI demo — no payment was processed.
+                This is a UI demo. No payment was processed.
               </p>
             )}
           </section>
@@ -201,7 +204,7 @@ export default function CheckoutClient() {
           <section className="mb-8">
             <h2 className="font-serif-display text-xl mb-2">Payment</h2>
             <p className="mb-4 border border-gold bg-[#a67c3d]/10 px-4 py-3 text-sm text-[#2b261f]">
-              Demo checkout — no real payment is processed.
+              Demo checkout. No real payment is processed.
             </p>
 
             <div className="border border-black/20">
@@ -285,7 +288,7 @@ export default function CheckoutClient() {
 
           {paidDemo && (
             <p className="mt-4 border border-black/10 bg-black/5 px-4 py-3 text-sm text-black/70">
-              This is a UI demo — no payment was processed and no order was
+              This is a UI demo. No payment was processed and no order was
               placed.
             </p>
           )}

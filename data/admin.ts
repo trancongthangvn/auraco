@@ -124,7 +124,7 @@ export type AdminAccount = {
 };
 
 // Exactly one real admin account (1/1), per scope. The role-based permission
-// system (contract item 16 — Quản trị viên vs Nhân viên) stays fully wired in
+// system (contract item 16: Quản trị viên vs Nhân viên) stays fully wired in
 // the code (see AdminShell nav filtering and the /admin/accounts page gate);
 // it activates automatically the moment a second account with role "staff"
 // is added here.
@@ -244,4 +244,120 @@ export const inquiries: Inquiry[] = [
     date: "22/08/2026",
     resolved: true,
   },
+];
+
+export type PressMention = {
+  id: string;
+  name: string;
+  sort: number;
+};
+
+export const pressMentions: PressMention[] = [
+  { id: "p1", name: "VOGUE", sort: 0 },
+  { id: "p2", name: "ELLE", sort: 1 },
+  { id: "p3", name: "HARPER'S BAZAAR", sort: 2 },
+  { id: "p4", name: "MARIE CLAIRE", sort: 3 },
+  { id: "p5", name: "REFINERY29", sort: 4 },
+];
+
+export type ReviewStatus = "Chờ duyệt" | "Đã duyệt" | "Từ chối";
+
+export type ProductReview = {
+  id: string;
+  productName: string;
+  customer: string;
+  rating: number;
+  comment: string;
+  date: string;
+  status: ReviewStatus;
+};
+
+export const productReviews: ProductReview[] = [
+  {
+    id: "r1",
+    productName: "Evermere Heart Necklace",
+    customer: "Grace",
+    rating: 5,
+    comment:
+      "Beautiful piece and great quality! Shipping took a little longer than expected, but overall very happy.",
+    date: "04/08/2026",
+    status: "Đã duyệt",
+  },
+  {
+    id: "r2",
+    productName: "Pure Alhambra",
+    customer: "Julia James",
+    rating: 4,
+    comment:
+      "Beautiful minimalist piece with a lovely shine. I only wish the chain was a tiny bit longer.",
+    date: "02/08/2026",
+    status: "Đã duyệt",
+  },
+  {
+    id: "r3",
+    productName: "Audrey Diamond Hoops",
+    customer: "Minh Thư",
+    rating: 2,
+    comment:
+      "Đeo được 2 tuần thì bị xỉn màu, hơi thất vọng so với giá tiền.",
+    date: "20/08/2026",
+    status: "Chờ duyệt",
+  },
+  {
+    id: "r4",
+    productName: "Layered Opal Necklace",
+    customer: "Abbie Bennett",
+    rating: 5,
+    comment: "Even prettier in person! The polished finish gives it such an elegant look.",
+    date: "26/07/2026",
+    status: "Chờ duyệt",
+  },
+  {
+    id: "r5",
+    productName: "Dot Chain Necklace",
+    customer: "Anonymous Spam",
+    rating: 1,
+    comment: "Check out my website for cheap jewelry supplies! www.spam-link.example",
+    date: "18/08/2026",
+    status: "Từ chối",
+  },
+];
+
+export type PaymentMethodKey =
+  | "card"
+  | "paypal"
+  | "applePay"
+  | "cashapp"
+  | "zelle";
+
+export type PaymentMethodSetting = {
+  key: PaymentMethodKey;
+  label: string;
+  enabled: boolean;
+  detail: string;
+};
+
+export const paymentMethodSettings: PaymentMethodSetting[] = [
+  { key: "card", label: "Thẻ tín dụng / ghi nợ", enabled: true, detail: "Xử lý qua cổng PayPal Advanced Card Payments" },
+  { key: "paypal", label: "PayPal", enabled: true, detail: "merchant@auraco.example" },
+  { key: "applePay", label: "Apple Pay", enabled: false, detail: "Yêu cầu xác thực domain với PayPal" },
+  { key: "cashapp", label: "Cash App", enabled: true, detail: "$AuraCoShop" },
+  { key: "zelle", label: "Zelle", enabled: true, detail: "payments@auraco.example" },
+];
+
+export type PaymentTransaction = {
+  id: string;
+  orderId: string;
+  method: string;
+  amount: string;
+  status: "Chờ xử lý" | "Đã thanh toán" | "Thất bại" | "Đã hủy";
+  date: string;
+};
+
+export const paymentTransactions: PaymentTransaction[] = [
+  { id: "t1", orderId: "AC-1042", method: "Cash App", amount: "$230.00", status: "Chờ xử lý", date: "24/08/2026 11:01" },
+  { id: "t2", orderId: "AC-1041", method: "PayPal", amount: "$130.00", status: "Đã thanh toán", date: "23/08/2026 17:35" },
+  { id: "t3", orderId: "AC-1040", method: "Card", amount: "$100.00", status: "Đã thanh toán", date: "22/08/2026 09:12" },
+  { id: "t4", orderId: "AC-1039", method: "Zelle", amount: "$260.00", status: "Đã hủy", date: "21/08/2026 15:47" },
+  { id: "t5", orderId: "AC-1038", method: "Cash App", amount: "$130.00", status: "Đã thanh toán", date: "20/08/2026 16:57" },
 ];

@@ -22,7 +22,7 @@ export default function RegisterForm() {
           return;
         }
         setError("");
-        setMessage("This is a UI demo — no account system is connected yet.");
+        setMessage("This is a UI demo. No account system is connected yet.");
       }}
       className="mx-auto max-w-[560px] px-6 py-16 space-y-5"
     >

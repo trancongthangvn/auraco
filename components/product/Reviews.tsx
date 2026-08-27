@@ -34,7 +34,7 @@ export default function Reviews({ product }: { product: FullProduct }) {
       <section className="mx-auto max-w-[1400px] px-6 py-16 border-t border-black/10">
         <h2 className="font-serif-display text-2xl mb-4">Customer Reviews</h2>
         <p className="text-sm text-black/50">
-          No reviews yet — be the first to review {product.name}.
+          No reviews yet. Be the first to review {product.name}.
         </p>
       </section>
     );

@@ -1,0 +1,12 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1200" fill="#a5522d" />
+  <text
+    x="600"
+    y="640"
+    text-anchor="middle"
+    font-family="'Cormorant Garamond', Georgia, 'Times New Roman', serif"
+    font-size="128"
+    letter-spacing="14"
+    fill="#ffffff"
+  ><tspan>AURA</tspan><tspan font-style="italic" font-size="112" letter-spacing="6" dx="30" dy="4">&amp;</tspan><tspan dx="34">CO</tspan></text>
+</svg>

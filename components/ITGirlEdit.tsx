@@ -20,7 +20,7 @@ export default function ITGirlEdit() {
           Redefine your everyday sparkle with pieces curated for the modern
           trendsetter. Blending effortless streetwear cool with high-shine
           sterling silver sophistication, this collection is designed for the
-          girl who sets the standard—not follows it. From coffee runs to VIP
+          girl who sets the standard instead of following it. From coffee runs to VIP
           nights out, make every look unforgettable.
         </p>
       </div>

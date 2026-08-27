@@ -90,7 +90,13 @@ export default async function ProductPage({
               items={[
                 {
                   title: "Details",
-                  content: `Material: ${product.material}\n\nEvery piece is finished by hand and inspected for quality before it ships.`,
+                  content:
+                    (product.attributes && product.attributes.length > 0
+                      ? product.attributes
+                          .map((a) => `${a.name}: ${a.value}`)
+                          .join("\n")
+                      : `Material: ${product.material}`) +
+                    "\n\nEvery piece is finished by hand and inspected for quality before it ships.",
                 },
                 {
                   title: "Delivery & Returns",

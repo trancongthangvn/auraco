@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { footerLinks, ourStoryLinks } from "@/data/site";
 import { ArrowRightIcon } from "@/components/icons";
@@ -10,7 +11,16 @@ export default function Footer() {
 
   return (
     <footer className="bg-[#2b261f] text-white/80">
-      <div className="mx-auto max-w-[1400px] px-6 py-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto max-w-[1400px] px-6 pt-14">
+        <Image
+          src="/images/brand/logo-badge.png"
+          alt="AURA & CO"
+          width={40}
+          height={40}
+          className="h-10 w-10 rounded"
+        />
+      </div>
+      <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <h3 className="text-white text-sm tracking-[0.15em] mb-4">
             SIGN UP FOR 10% OFF

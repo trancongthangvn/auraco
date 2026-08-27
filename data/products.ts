@@ -1,5 +1,7 @@
 export type Category = "Necklaces" | "Bracelets" | "Earrings" | "Signature Sets";
 
+export type ProductAttribute = { name: string; value: string };
+
 export type FullProduct = {
   slug: string;
   name: string;
@@ -14,6 +16,7 @@ export type FullProduct = {
   description: string;
   features: string[];
   stock: number;
+  attributes?: ProductAttribute[];
 };
 
 const img = {
@@ -37,13 +40,21 @@ export const products: FullProduct[] = [
     reviewCount: 4,
     images: [img.evermere1, img.evermere2, img.evermereThumb],
     description:
-      "Designed to celebrate an everlasting bond of love, this romantic intertwining necklace brings a sense of heartfelt elegance into your everyday jewelry rotation. Wear it solo as a meaningful centerpiece or layer it with longer chains to build your signature neckline stack.\n\nThis is a cherished piece you'll reach for every single day — the Evermere Heart Necklace is inspired by endless devotion, featuring a harmonious fusion of the infinity loop and a delicate heart motif finished in flawless 18k gold.",
+      "Designed to celebrate an everlasting bond of love, this romantic intertwining necklace brings a sense of heartfelt elegance into your everyday jewelry rotation. Wear it solo as a meaningful centerpiece or layer it with longer chains to build your signature neckline stack.\n\nThis is a cherished piece you'll reach for every single day. The Evermere Heart Necklace is inspired by endless devotion, featuring a harmonious fusion of the infinity loop and a delicate heart motif finished in flawless 18k gold.",
     features: [
       "A harmonious intertwining of the infinity symbol and heart motif for a deeply romantic touch",
       "Smooth, polished metallic curves designed to gracefully catch the light with every movement",
-      "A meaningful statement pendant that seamlessly elevates any curated neckline",
+      "A meaningful statement pendant that pairs easily with any everyday neckline",
     ],
     stock: 9,
+    attributes: [
+      { name: "Material", value: "18ct Gold Vermeil over Sterling Silver" },
+      { name: "Plating thickness", value: "2.5 micron" },
+      { name: "Chain length", value: "16 in + 2 in extender" },
+      { name: "Closure", value: "Lobster clasp" },
+      { name: "Hypoallergenic", value: "Yes, nickel and lead free" },
+      { name: "Water resistant", value: "Yes, avoid prolonged submersion" },
+    ],
   },
   {
     slug: "Pure-Alhambra",
@@ -58,13 +69,19 @@ export const products: FullProduct[] = [
       "/images/products/thumbnails/01937a3b-cd91-477a-a68f-ab079668d02c.webp",
     ],
     description:
-      "A quiet-luxury classic reimagined — the clover motif in lustrous mother of pearl set in 18k gold vermeil, designed to be worn every day or layered for a fuller stack.",
+      "A quiet-luxury classic reimagined: the clover motif in lustrous mother of pearl set in 18k gold vermeil, designed to be worn every day or layered for a fuller stack.",
     features: [
       "Iconic four-leaf clover silhouette in genuine mother of pearl",
       "18k gold vermeil setting resists tarnish with everyday wear",
       "Adjustable chain length for a versatile fit",
     ],
     stock: 14,
+    attributes: [
+      { name: "Material", value: "18k Gold Vermeil, Mother of Pearl" },
+      { name: "Pendant size", value: "15mm clover motif" },
+      { name: "Chain length", value: "17 in, adjustable to 15 in" },
+      { name: "Closure", value: "Spring ring clasp" },
+    ],
   },
   {
     slug: "Audrey-Diamond-Hoops",
@@ -86,6 +103,12 @@ export const products: FullProduct[] = [
       "Secure hinged closure",
     ],
     stock: 20,
+    attributes: [
+      { name: "Material", value: "18k Gold Vermeil, Cubic Zirconia" },
+      { name: "Hoop diameter", value: "20mm" },
+      { name: "Closure", value: "Hinged snap-back" },
+      { name: "Hypoallergenic", value: "Yes, nickel and lead free" },
+    ],
   },
   {
     slug: "The-Radiant-Flow-Tennis-Bracelet",
@@ -268,7 +291,7 @@ export const products: FullProduct[] = [
       "/images/products/thumbnails/4bdc27f4-f778-4cdd-ba40-b69666f9ebea.webp",
     ],
     description:
-      "A dainty beaded dot chain in polished sterling silver — the effortless everyday layer that pairs with anything.",
+      "A dainty beaded dot chain in polished sterling silver, the effortless everyday layer that pairs with anything.",
     features: [
       "Delicate beaded dot-chain design",
       "Polished sterling silver",
@@ -374,7 +397,7 @@ export const products: FullProduct[] = [
       "/images/products/thumbnails/bfc1fdee-7f68-4e3c-9a32-1e702a1997ad.webp",
     ],
     description:
-      "Classic medium-size hoops with a high-polish finish — the versatile everyday hoop that never goes out of style.",
+      "Classic medium-size hoops with a high-polish finish, the versatile everyday hoop that never goes out of style.",
     features: [
       "Classic medium hoop silhouette",
       "High-polish mirror finish",

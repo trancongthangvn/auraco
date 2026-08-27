@@ -6,8 +6,11 @@ import {
   Package,
   Layers,
   ShoppingCart,
+  CreditCard,
+  Star,
   Tag,
   MessageSquare,
+  Award,
   Newspaper,
   Layout,
   Globe,
@@ -47,6 +50,24 @@ const GUIDES: Record<string, GuideMeta> = {
     icon: ShoppingCart,
     guide:
       "Xem danh sách đơn hàng, cập nhật trạng thái xử lý. Bấm Xem để mở chi tiết đơn: sản phẩm, địa chỉ giao hàng, thanh toán.",
+  },
+  "/admin/payments": {
+    title: "Thanh toán",
+    icon: CreditCard,
+    guide:
+      "Bật/tắt các phương thức thanh toán (Thẻ, PayPal, Cash App, Zelle...) và xem lịch sử giao dịch theo từng đơn hàng.",
+  },
+  "/admin/reviews": {
+    title: "Đánh giá sản phẩm",
+    icon: Star,
+    guide:
+      "Duyệt, từ chối hoặc xóa đánh giá khách hàng gửi cho từng sản phẩm trước khi hiển thị công khai trên website.",
+  },
+  "/admin/certificates": {
+    title: "Báo chí nhắc đến",
+    icon: Award,
+    guide:
+      "Quản lý danh sách logo báo chí/truyền thông hiển thị ở mục \"As Seen In\" trên trang chủ.",
   },
   "/admin/discount-codes": {
     title: "Khuyến mãi",

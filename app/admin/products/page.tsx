@@ -5,12 +5,31 @@ import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
-import { products as initialProducts, type FullProduct } from "@/data/products";
+import {
+  products as initialProducts,
+  type FullProduct,
+  type ProductAttribute,
+} from "@/data/products";
 
 export default function AdminProductsPage() {
   const { session } = useAdminAuth();
   const [products, setProducts] = useState<FullProduct[]>(initialProducts);
   const [editing, setEditing] = useState<FullProduct | null>(null);
+  const [editAttributes, setEditAttributes] = useState<ProductAttribute[]>([]);
+
+  const updateAttribute = (
+    index: number,
+    field: keyof ProductAttribute,
+    value: string
+  ) => {
+    setEditAttributes((list) =>
+      list.map((a, i) => (i === index ? { ...a, [field]: value } : a))
+    );
+  };
+
+  const removeAttribute = (index: number) => {
+    setEditAttributes((list) => list.filter((_, i) => i !== index));
+  };
 
   const isAdmin = session?.role === "admin";
 
@@ -70,7 +89,10 @@ export default function AdminProductsPage() {
                 </td>
                 <td className="py-2 px-4 text-right space-x-3">
                   <button
-                    onClick={() => setEditing(p)}
+                    onClick={() => {
+                      setEditing(p);
+                      setEditAttributes(p.attributes ?? []);
+                    }}
                     className="text-xs underline"
                   >
                     Sửa
@@ -93,8 +115,8 @@ export default function AdminProductsPage() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
-          <div className="bg-white p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
+          <div className="bg-white p-6 w-full max-w-lg my-auto">
             <h2 className="text-lg font-medium mb-4">Sửa sản phẩm</h2>
             <label className="block text-xs uppercase tracking-wide mb-2">
               Tên sản phẩm
@@ -111,6 +133,54 @@ export default function AdminProductsPage() {
               type="number"
               className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
             />
+
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs uppercase tracking-wide">
+                Thuộc tính sản phẩm
+              </label>
+              <button
+                onClick={() =>
+                  setEditAttributes((list) => [...list, { name: "", value: "" }])
+                }
+                className="text-xs underline"
+              >
+                + Thêm thuộc tính
+              </button>
+            </div>
+            <p className="text-xs text-black/40 mb-3">
+              Cặp tên/giá trị tự do, ví dụ: Chất liệu, Kích thước, Trọng lượng,
+              Kiểu khóa...
+            </p>
+            <div className="space-y-2 mb-6">
+              {editAttributes.length === 0 && (
+                <p className="text-xs text-black/30 italic">
+                  Chưa có thuộc tính nào.
+                </p>
+              )}
+              {editAttributes.map((attr, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    value={attr.name}
+                    onChange={(e) => updateAttribute(i, "name", e.target.value)}
+                    placeholder="Tên (VD: Chất liệu)"
+                    className="w-1/3 border border-black/20 px-2 py-1.5 text-xs"
+                  />
+                  <input
+                    value={attr.value}
+                    onChange={(e) => updateAttribute(i, "value", e.target.value)}
+                    placeholder="Giá trị (VD: 18k Gold Vermeil)"
+                    className="flex-1 border border-black/20 px-2 py-1.5 text-xs"
+                  />
+                  <button
+                    onClick={() => removeAttribute(i)}
+                    className="text-xs text-red-700 shrink-0"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              ))}
+            </div>
+
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setEditing(null)}
@@ -119,7 +189,16 @@ export default function AdminProductsPage() {
                 Hủy
               </button>
               <button
-                onClick={() => setEditing(null)}
+                onClick={() => {
+                  setProducts((list) =>
+                    list.map((p) =>
+                      p.slug === editing.slug
+                        ? { ...p, attributes: editAttributes }
+                        : p
+                    )
+                  );
+                  setEditing(null);
+                }}
                 className="text-sm px-4 py-2 bg-[#2b261f] text-white"
               >
                 Lưu thay đổi

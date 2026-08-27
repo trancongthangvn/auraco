@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Lock } from "lucide-react";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 
 export default function AdminLoginPage() {
@@ -29,10 +29,13 @@ export default function AdminLoginPage() {
         }}
         className="w-full max-w-sm bg-white border border-black/10 p-8"
       >
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#2b261f]/5 text-[#2b261f]">
-          <Lock size={20} strokeWidth={2} />
-        </div>
-        <h1 className="font-serif-display text-2xl mb-1 text-center">AURA & CO</h1>
+        <Image
+          src="/images/brand/logo-badge.png"
+          alt="AURA & CO"
+          width={56}
+          height={56}
+          className="h-14 w-14 rounded-xl mx-auto mb-4"
+        />
         <p className="text-xs text-center text-black/50 mb-6 tracking-wide uppercase">
           Đăng nhập trang quản trị
         </p>

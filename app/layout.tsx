@@ -29,13 +29,13 @@ export const metadata: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     url: SITE_URL,
-    images: ["/images/settings/banner-slides/c950bcae-d034-4c14-acc1-7398e4768966.webp"],
+    images: ["/images/brand/opengraph-image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ["/images/settings/banner-slides/c950bcae-d034-4c14-acc1-7398e4768966.webp"],
+    images: ["/images/brand/opengraph-image.png"],
   },
 };
 

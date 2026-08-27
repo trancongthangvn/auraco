@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { navLinks, ourStoryLinks } from "@/data/site";
 import {
@@ -43,9 +44,17 @@ export default function Header() {
 
         <Link
           href="/"
-          className="font-serif-display text-lg sm:text-xl lg:text-2xl tracking-[0.1em] sm:tracking-[0.15em] shrink-0 mx-auto lg:mx-0 whitespace-nowrap"
+          aria-label="AURA & CO"
+          className="shrink-0 mx-auto lg:mx-0"
         >
-          AURA & CO
+          <Image
+            src="/images/brand/logo-badge.png"
+            alt="AURA & CO"
+            width={48}
+            height={48}
+            className="h-10 w-10 sm:h-12 sm:w-12"
+            priority
+          />
         </Link>
 
         <nav className="hidden lg:flex items-center gap-8 text-sm tracking-wide uppercase">

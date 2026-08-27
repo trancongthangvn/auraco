@@ -108,7 +108,9 @@ export default function CheckoutClient() {
     (async () => {
       try {
         const data = await apiFetch<CheckoutItem[]>("/api/products");
-        setItems(data.slice(0, 2));
+        setItems(
+          data.slice(0, 2).map((p) => ({ ...p, price: Number(p.price) }))
+        );
       } catch (err) {
         setItemsError(
           err instanceof ApiError ? err.message : "Failed to load your bag"

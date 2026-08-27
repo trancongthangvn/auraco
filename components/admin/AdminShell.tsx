@@ -9,8 +9,10 @@ import { MenuIcon, CloseIcon } from "@/components/icons";
 const NAV = [
   { href: "/admin", label: "Tổng quan", roles: ["admin", "staff"] },
   { href: "/admin/products", label: "Sản phẩm", roles: ["admin", "staff"] },
+  { href: "/admin/collections", label: "Collections", roles: ["admin", "staff"] },
   { href: "/admin/orders", label: "Đơn hàng", roles: ["admin", "staff"] },
   { href: "/admin/posts", label: "Bài viết", roles: ["admin", "staff"] },
+  { href: "/admin/homepage", label: "Trang chủ", roles: ["admin", "staff"] },
   { href: "/admin/accounts", label: "Tài khoản", roles: ["admin"] },
 ];
 
@@ -68,7 +70,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             key={item.href}
             href={item.href}
             className={`block px-6 py-3 text-sm ${
-              pathname === item.href
+              pathname === item.href ||
+              (item.href !== "/admin" && pathname.startsWith(item.href + "/"))
                 ? "bg-white/10 text-white"
                 : "text-white/70 hover:text-white hover:bg-white/5"
             }`}

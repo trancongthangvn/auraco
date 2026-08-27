@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import { mockOrders, type OrderStatus } from "@/data/admin";
 
@@ -17,7 +18,7 @@ export default function AdminOrdersPage() {
     <AdminShell>
       <h1 className="font-serif-display text-2xl mb-6">Đơn hàng</h1>
       <div className="bg-white border border-black/10 overflow-x-auto">
-        <table className="w-full text-sm min-w-[520px]">
+        <table className="w-full text-sm min-w-[620px]">
           <thead>
             <tr className="text-left text-black/50 border-b border-black/10">
               <th className="py-3 px-4 font-normal">Mã đơn</th>
@@ -25,6 +26,7 @@ export default function AdminOrdersPage() {
               <th className="py-3 px-4 font-normal">Ngày đặt</th>
               <th className="py-3 px-4 font-normal text-right">Giá trị</th>
               <th className="py-3 px-4 font-normal text-right">Trạng thái</th>
+              <th className="py-3 px-4 font-normal text-right">Chi tiết</th>
             </tr>
           </thead>
           <tbody>
@@ -48,6 +50,14 @@ export default function AdminOrdersPage() {
                       </option>
                     ))}
                   </select>
+                </td>
+                <td className="py-2 px-4 text-right">
+                  <Link
+                    href={`/admin/orders/${o.id}`}
+                    className="text-xs underline hover:text-gold"
+                  >
+                    Xem
+                  </Link>
                 </td>
               </tr>
             ))}

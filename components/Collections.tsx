@@ -1,8 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
-import { collections } from "@/data/site";
 
-export default function Collections() {
+export type CollectionTile = {
+  name: string;
+  href: string;
+  img: string;
+};
+
+export default function Collections({
+  collections,
+}: {
+  collections: CollectionTile[];
+}) {
   return (
     <section className="mx-auto max-w-[1400px] px-6 py-16">
       <h2 className="font-serif-display text-3xl text-center mb-10">

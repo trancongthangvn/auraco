@@ -1,28 +1,129 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
-import { discountCodes as initialCodes, type DiscountCode } from "@/data/admin";
+import { apiFetch, ApiError } from "@/lib/api";
+
+type DiscountCode = {
+  id: number;
+  code: string;
+  type: "percent" | "fixed";
+  value: number;
+  minOrder: number;
+  usageLimit: number;
+  used: number;
+  startDate: string;
+  endDate: string;
+  active: boolean;
+};
 
 export default function AdminDiscountCodesPage() {
   const { session } = useAdminAuth();
-  const [codes, setCodes] = useState<DiscountCode[]>(initialCodes);
+  const [codes, setCodes] = useState<DiscountCode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<DiscountCode | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const editCodeRef = useRef<HTMLInputElement | null>(null);
+  const editValueRef = useRef<HTMLInputElement | null>(null);
+  const createCodeRef = useRef<HTMLInputElement | null>(null);
+  const createValueRef = useRef<HTMLInputElement | null>(null);
+
   const isAdmin = session?.role === "admin";
 
-  const toggleActive = (id: string) => {
-    setCodes((list) =>
-      list.map((c) => (c.id === id ? { ...c, active: !c.active } : c))
-    );
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<DiscountCode[]>("/api/discount-codes/admin/discount-codes")
+      .then((data) => {
+        if (!cancelled) setCodes(data);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? err.message : "Không thể tải mã khuyến mãi");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggleActive = async (id: number) => {
+    try {
+      const updated = await apiFetch<DiscountCode>(
+        `/api/discount-codes/admin/discount-codes/${id}/toggle`,
+        { method: "PUT" }
+      );
+      setCodes((list) => list.map((c) => (c.id === id ? updated : c)));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể cập nhật trạng thái");
+    }
   };
 
-  const remove = (id: string) => {
+  const remove = async (id: number) => {
     if (!isAdmin) return;
-    setCodes((list) => list.filter((c) => c.id !== id));
+    try {
+      await apiFetch(`/api/discount-codes/admin/discount-codes/${id}`, {
+        method: "DELETE",
+      });
+      setCodes((list) => list.filter((c) => c.id !== id));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể xóa mã");
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const code = editCodeRef.current?.value ?? editing.code;
+    const value = Number(editValueRef.current?.value ?? editing.value);
+    try {
+      const updated = await apiFetch<DiscountCode>(
+        `/api/discount-codes/admin/discount-codes/${editing.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ code, value }),
+        }
+      );
+      setCodes((list) => list.map((c) => (c.id === editing.id ? updated : c)));
+      setEditing(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể lưu thay đổi");
+    }
+  };
+
+  const saveCreate = async () => {
+    const code = createCodeRef.current?.value ?? "";
+    const value = Number(createValueRef.current?.value ?? 0);
+    const today = new Date();
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + 30);
+    try {
+      const created = await apiFetch<DiscountCode>(
+        "/api/discount-codes/admin/discount-codes",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            code,
+            type: "percent",
+            value,
+            minOrder: 0,
+            usageLimit: 0,
+            startDate: today.toISOString().slice(0, 10),
+            endDate: endDate.toISOString().slice(0, 10),
+            active: true,
+          }),
+        }
+      );
+      setCodes((list) => [created, ...list]);
+      setCreating(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể tạo mã");
+    }
   };
 
   return (
@@ -39,6 +140,13 @@ export default function AdminDiscountCodesPage() {
         </button>
       </PageHeader>
 
+      {error && (
+        <div className="text-sm text-red-700 mb-4">{error}</div>
+      )}
+
+      {loading ? (
+        <div className="text-sm text-black/50">Đang tải...</div>
+      ) : (
       <div className="bg-white border border-black/10 overflow-x-auto">
         <table className="w-full text-sm min-w-[720px]">
           <thead>
@@ -100,6 +208,7 @@ export default function AdminDiscountCodesPage() {
           </tbody>
         </table>
       </div>
+      )}
 
       {editing && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
@@ -107,6 +216,7 @@ export default function AdminDiscountCodesPage() {
             <h2 className="text-lg font-medium mb-4">Sửa mã khuyến mãi</h2>
             <label className="block text-xs uppercase tracking-wide mb-2">Mã</label>
             <input
+              ref={editCodeRef}
               defaultValue={editing.code}
               className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
             />
@@ -114,6 +224,7 @@ export default function AdminDiscountCodesPage() {
               Giá trị giảm
             </label>
             <input
+              ref={editValueRef}
               defaultValue={editing.value}
               type="number"
               className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
@@ -126,7 +237,7 @@ export default function AdminDiscountCodesPage() {
                 Hủy
               </button>
               <button
-                onClick={() => setEditing(null)}
+                onClick={saveEdit}
                 className="text-sm px-4 py-2 bg-[#2b261f] text-white"
               >
                 Lưu thay đổi
@@ -142,6 +253,7 @@ export default function AdminDiscountCodesPage() {
             <h2 className="text-lg font-medium mb-4">Thêm mã khuyến mãi</h2>
             <label className="block text-xs uppercase tracking-wide mb-2">Mã</label>
             <input
+              ref={createCodeRef}
               placeholder="VD: AURA15"
               className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
             />
@@ -149,6 +261,7 @@ export default function AdminDiscountCodesPage() {
               Giá trị giảm (%)
             </label>
             <input
+              ref={createValueRef}
               type="number"
               className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
             />
@@ -160,7 +273,7 @@ export default function AdminDiscountCodesPage() {
                 Hủy
               </button>
               <button
-                onClick={() => setCreating(false)}
+                onClick={saveCreate}
                 className="text-sm px-4 py-2 bg-[#2b261f] text-white"
               >
                 Tạo mã

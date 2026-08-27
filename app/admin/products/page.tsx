@@ -1,25 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
-import {
-  products as initialProducts,
-  type FullProduct,
-  type ProductAttribute,
-} from "@/data/products";
+import { apiFetch, ApiError } from "@/lib/api";
+
+type AdminProduct = {
+  id: number;
+  slug: string;
+  name: string;
+  category: string;
+  material: string;
+  price: number;
+  compare_at_price: number | null;
+  rating: number;
+  review_count: number;
+  images: string[];
+  description: string;
+  features: string[];
+  stock: number;
+  active: boolean;
+  attributes?: AdminAttribute[];
+  collections?: string[];
+};
+
+type AdminAttribute = { id?: number; name: string; value: string };
 
 export default function AdminProductsPage() {
   const { session } = useAdminAuth();
-  const [products, setProducts] = useState<FullProduct[]>(initialProducts);
-  const [editing, setEditing] = useState<FullProduct | null>(null);
-  const [editAttributes, setEditAttributes] = useState<ProductAttribute[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [editing, setEditing] = useState<AdminProduct | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editAttributes, setEditAttributes] = useState<AdminAttribute[]>([]);
+  const [originalAttributes, setOriginalAttributes] = useState<AdminAttribute[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  const isAdmin = session?.role === "admin";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await apiFetch<AdminProduct[]>("/api/products/admin/products");
+        if (!cancelled) setProducts(data);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? err.message : "Không thể tải danh sách sản phẩm");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const updateAttribute = (
     index: number,
-    field: keyof ProductAttribute,
+    field: keyof AdminAttribute,
     value: string
   ) => {
     setEditAttributes((list) =>
@@ -31,26 +79,142 @@ export default function AdminProductsPage() {
     setEditAttributes((list) => list.filter((_, i) => i !== index));
   };
 
-  const isAdmin = session?.role === "admin";
-
-  const toggleVisible = (slug: string) => {
-    setProducts((list) =>
-      list.map((p) => (p.slug === slug ? { ...p, stock: p.stock > 0 ? 0 : 10 } : p))
-    );
+  const openEdit = async (p: AdminProduct) => {
+    setEditing(p);
+    setEditName(p.name);
+    setEditPrice(String(p.price));
+    setModalError(null);
+    setEditAttributes(p.attributes ?? []);
+    setOriginalAttributes(p.attributes ?? []);
+    try {
+      const attrs = await apiFetch<AdminAttribute[]>(
+        `/api/products/admin/products/${p.slug}/attributes`
+      );
+      setEditAttributes(attrs);
+      setOriginalAttributes(attrs);
+    } catch {
+      // fall back to the attributes already attached to the product row
+    }
   };
 
-  const remove = (slug: string) => {
+  const toggleVisible = async (p: AdminProduct) => {
+    try {
+      const updated = await apiFetch<AdminProduct>(
+        `/api/products/admin/products/${p.slug}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ active: !p.active }),
+        }
+      );
+      setProducts((list) =>
+        list.map((item) => (item.slug === p.slug ? { ...item, ...updated } : item))
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể cập nhật trạng thái");
+    }
+  };
+
+  const remove = async (slug: string) => {
     if (!isAdmin) return;
-    setProducts((list) => list.filter((p) => p.slug !== slug));
+    try {
+      await apiFetch(`/api/products/admin/products/${slug}`, { method: "DELETE" });
+      setProducts((list) => list.filter((p) => p.slug !== slug));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể xóa sản phẩm");
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSaving(true);
+    setModalError(null);
+    try {
+      const parsedPrice = Number(editPrice);
+      const updated = await apiFetch<AdminProduct>(
+        `/api/products/admin/products/${editing.slug}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            name: editName,
+            price: Number.isFinite(parsedPrice) ? parsedPrice : editing.price,
+          }),
+        }
+      );
+
+      const originalById = new Map(
+        originalAttributes.filter((a) => a.id !== undefined).map((a) => [a.id, a])
+      );
+      const remainingIds = new Set(
+        editAttributes.filter((a) => a.id !== undefined).map((a) => a.id)
+      );
+
+      const savedAttributes: AdminAttribute[] = [];
+
+      for (const attr of editAttributes) {
+        if (attr.id === undefined) {
+          if (!attr.name.trim() || !attr.value.trim()) continue;
+          const created = await apiFetch<AdminAttribute>(
+            `/api/products/admin/products/${editing.slug}/attributes`,
+            {
+              method: "POST",
+              body: JSON.stringify({ name: attr.name, value: attr.value }),
+            }
+          );
+          savedAttributes.push(created);
+        } else {
+          const original = originalById.get(attr.id);
+          if (original && original.name === attr.name && original.value === attr.value) {
+            savedAttributes.push(attr);
+            continue;
+          }
+          const result = await apiFetch<AdminAttribute>(
+            `/api/products/admin/products/${editing.slug}/attributes/${attr.id}`,
+            {
+              method: "PUT",
+              body: JSON.stringify({ name: attr.name, value: attr.value }),
+            }
+          );
+          savedAttributes.push(result);
+        }
+      }
+
+      for (const original of originalAttributes) {
+        if (original.id !== undefined && !remainingIds.has(original.id)) {
+          await apiFetch(
+            `/api/products/admin/products/${editing.slug}/attributes/${original.id}`,
+            { method: "DELETE" }
+          );
+        }
+      }
+
+      setProducts((list) =>
+        list.map((p) =>
+          p.slug === editing.slug
+            ? { ...p, ...updated, attributes: savedAttributes }
+            : p
+        )
+      );
+      setEditing(null);
+    } catch (err) {
+      setModalError(err instanceof ApiError ? err.message : "Không thể lưu thay đổi");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <AdminShell>
       <PageHeader>
         <span className="text-xs text-black/50">
-          {products.length} sản phẩm, thay đổi chỉ lưu tạm trong phiên demo
+          {loading ? "Đang tải..." : `${products.length} sản phẩm`}
         </span>
       </PageHeader>
+
+      {error && (
+        <div className="mb-4 text-xs text-red-700 border border-red-700/30 bg-red-50 px-3 py-2">
+          {error}
+        </div>
+      )}
 
       <div className="bg-white border border-black/10 overflow-x-auto">
         <table className="w-full text-sm min-w-[640px]">
@@ -65,34 +229,47 @@ export default function AdminProductsPage() {
             </tr>
           </thead>
           <tbody>
+            {loading && (
+              <tr>
+                <td colSpan={6} className="py-6 px-4 text-center text-black/40">
+                  Đang tải...
+                </td>
+              </tr>
+            )}
+            {!loading && products.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-6 px-4 text-center text-black/40">
+                  Chưa có sản phẩm nào.
+                </td>
+              </tr>
+            )}
             {products.map((p) => (
               <tr key={p.slug} className="border-b border-black/5">
                 <td className="py-2 px-4">
                   <div className="relative h-10 w-10 bg-[#f5f2ee]">
-                    <Image src={p.images[0]} alt={p.name} fill sizes="40px" className="object-cover" />
+                    {p.images?.[0] && (
+                      <Image src={p.images[0]} alt={p.name} fill sizes="40px" className="object-cover" />
+                    )}
                   </div>
                 </td>
                 <td className="py-2 px-4">{p.name}</td>
                 <td className="py-2 px-4">{p.category}</td>
-                <td className="py-2 px-4 text-right">${p.price.toFixed(2)}</td>
+                <td className="py-2 px-4 text-right">${Number(p.price).toFixed(2)}</td>
                 <td className="py-2 px-4 text-center">
                   <button
-                    onClick={() => toggleVisible(p.slug)}
+                    onClick={() => toggleVisible(p)}
                     className={`text-xs px-2 py-1 border ${
-                      p.stock > 0
+                      p.active
                         ? "border-green-700 text-green-700"
                         : "border-black/30 text-black/40"
                     }`}
                   >
-                    {p.stock > 0 ? "Đang hiển thị" : "Đã ẩn"}
+                    {p.active ? "Đang hiển thị" : "Đã ẩn"}
                   </button>
                 </td>
                 <td className="py-2 px-4 text-right space-x-3">
                   <button
-                    onClick={() => {
-                      setEditing(p);
-                      setEditAttributes(p.attributes ?? []);
-                    }}
+                    onClick={() => openEdit(p)}
                     className="text-xs underline"
                   >
                     Sửa
@@ -118,18 +295,27 @@ export default function AdminProductsPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
           <div className="bg-white p-6 w-full max-w-lg my-auto">
             <h2 className="text-lg font-medium mb-4">Sửa sản phẩm</h2>
+
+            {modalError && (
+              <div className="mb-4 text-xs text-red-700 border border-red-700/30 bg-red-50 px-3 py-2">
+                {modalError}
+              </div>
+            )}
+
             <label className="block text-xs uppercase tracking-wide mb-2">
               Tên sản phẩm
             </label>
             <input
-              defaultValue={editing.name}
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
               className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
             />
             <label className="block text-xs uppercase tracking-wide mb-2">
               Giá (USD)
             </label>
             <input
-              defaultValue={editing.price}
+              value={editPrice}
+              onChange={(e) => setEditPrice(e.target.value)}
               type="number"
               className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
             />
@@ -158,7 +344,7 @@ export default function AdminProductsPage() {
                 </p>
               )}
               {editAttributes.map((attr, i) => (
-                <div key={i} className="flex gap-2">
+                <div key={attr.id ?? `new-${i}`} className="flex gap-2">
                   <input
                     value={attr.name}
                     onChange={(e) => updateAttribute(i, "name", e.target.value)}
@@ -184,24 +370,17 @@ export default function AdminProductsPage() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setEditing(null)}
+                disabled={saving}
                 className="text-sm px-4 py-2 border border-black/20"
               >
                 Hủy
               </button>
               <button
-                onClick={() => {
-                  setProducts((list) =>
-                    list.map((p) =>
-                      p.slug === editing.slug
-                        ? { ...p, attributes: editAttributes }
-                        : p
-                    )
-                  );
-                  setEditing(null);
-                }}
-                className="text-sm px-4 py-2 bg-[#2b261f] text-white"
+                onClick={saveEdit}
+                disabled={saving}
+                className="text-sm px-4 py-2 bg-[#2b261f] text-white disabled:opacity-50"
               >
-                Lưu thay đổi
+                {saving ? "Đang lưu..." : "Lưu thay đổi"}
               </button>
             </div>
           </div>

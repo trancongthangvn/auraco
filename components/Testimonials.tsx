@@ -1,6 +1,15 @@
-import { testimonials } from "@/data/site";
+export type Testimonial = {
+  initials: string;
+  name: string;
+  date: string;
+  quote: string;
+};
 
-export default function Testimonials() {
+export default function Testimonials({
+  testimonials,
+}: {
+  testimonials: Testimonial[];
+}) {
   return (
     <section className="bg-[#f7f4f0] py-16">
       <div className="mx-auto max-w-[1400px] px-6">

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Separate CommonJS Node.js backend, has its own conventions/tooling.
+    "server/**",
   ]),
 ]);
 

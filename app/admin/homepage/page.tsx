@@ -1,20 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
+import { apiFetch, ApiError } from "@/lib/api";
 import {
-  heroSlides as initialHeroSlides,
-  testimonials as initialTestimonials,
   beachVibeProducts as initialBeachVibe,
   newArrivalProducts as initialNewArrivals,
 } from "@/data/site";
 
-type HeroSlide = (typeof initialHeroSlides)[number];
-type Testimonial = (typeof initialTestimonials)[number];
+// API shapes (server/routes/content.js GET/PUT /api/content(/admin)/homepage)
+type HeroSlide = {
+  id?: number;
+  label: string;
+  title: string;
+  href: string;
+  image_url: string;
+  sort_order?: number;
+  active?: boolean;
+};
+
+type Testimonial = {
+  id?: number;
+  initials: string;
+  name: string;
+  quote: string;
+  quote_date?: string | null;
+  sort_order?: number;
+  active?: boolean;
+};
+
 type FeaturedProduct = (typeof initialBeachVibe)[number];
+
+type HomepageData = {
+  heroSlides: HeroSlide[];
+  testimonials: Testimonial[];
+  featuredProducts?: unknown[];
+};
 
 const TABS = ["Hero banner", "Sản phẩm nổi bật", "Đánh giá khách hàng"] as const;
 type Tab = (typeof TABS)[number];
@@ -24,25 +48,106 @@ export default function AdminHomepagePage() {
   const isAdmin = session?.role === "admin";
   const [tab, setTab] = useState<Tab>("Hero banner");
 
-  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(initialHeroSlides);
-  const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
+  const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
+  const [slideForm, setSlideForm] = useState({ label: "", title: "" });
+  const [savingSlide, setSavingSlide] = useState(false);
+
+  // NOTE: content.js's /api/content/homepage endpoint only returns a flat
+  // "featuredProducts" list (top active products by rating), it does not
+  // model separate curated "Beach Vibe" / "New Arrivals" collections and
+  // there is no admin endpoint to edit such a selection. This tab is left
+  // as a local-only UI demo (not persisted) per the task instructions.
   const [beachVibe, setBeachVibe] = useState<FeaturedProduct[]>(initialBeachVibe);
   const [newArrivals, setNewArrivals] = useState<FeaturedProduct[]>(initialNewArrivals);
 
-  const [testimonials, setTestimonials] = useState<Testimonial[]>(initialTestimonials);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
+  const [testimonialForm, setTestimonialForm] = useState({ name: "", quote: "" });
   const [creatingTestimonial, setCreatingTestimonial] = useState(false);
+  const [newTestimonialForm, setNewTestimonialForm] = useState({
+    initials: "",
+    name: "",
+    quote: "",
+  });
+  const [savingTestimonial, setSavingTestimonial] = useState(false);
 
-  const removeSlide = (label: string) => {
-    if (!isAdmin) return;
-    setHeroSlides((list) => list.filter((s) => s.label !== label));
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<HomepageData>("/api/content/homepage")
+      .then((data) => {
+        if (cancelled) return;
+        setHeroSlides(data.heroSlides || []);
+        setTestimonials(data.testimonials || []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof ApiError ? err.message : "Không thể tải dữ liệu trang chủ");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const saveHeroSlides = async (next: HeroSlide[]) => {
+    const data = await apiFetch<{ heroSlides: HeroSlide[] }>(
+      "/api/content/admin/homepage",
+      {
+        method: "PUT",
+        body: JSON.stringify({ heroSlides: next }),
+      }
+    );
+    setHeroSlides(data.heroSlides);
   };
 
-  const removeFeatured = (
-    section: "beach" | "new",
-    name: string
-  ) => {
+  const saveTestimonials = async (next: Testimonial[]) => {
+    const data = await apiFetch<{ testimonials: Testimonial[] }>(
+      "/api/content/admin/homepage",
+      {
+        method: "PUT",
+        body: JSON.stringify({ testimonials: next }),
+      }
+    );
+    setTestimonials(data.testimonials);
+  };
+
+  const removeSlide = async (slide: HeroSlide) => {
+    if (!isAdmin) return;
+    try {
+      await saveHeroSlides(heroSlides.filter((s) => s !== slide));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể xóa banner");
+    }
+  };
+
+  const openEditSlide = (slide: HeroSlide) => {
+    setEditingSlide(slide);
+    setSlideForm({ label: slide.label, title: slide.title });
+  };
+
+  const submitEditSlide = async () => {
+    if (!editingSlide) return;
+    setSavingSlide(true);
+    try {
+      const next = heroSlides.map((s) =>
+        s === editingSlide ? { ...s, label: slideForm.label, title: slideForm.title } : s
+      );
+      await saveHeroSlides(next);
+      setEditingSlide(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể lưu banner");
+    } finally {
+      setSavingSlide(false);
+    }
+  };
+
+  const removeFeatured = (section: "beach" | "new", name: string) => {
     if (!isAdmin) return;
     if (section === "beach") {
       setBeachVibe((list) => list.filter((p) => p.name !== name));
@@ -51,16 +156,68 @@ export default function AdminHomepagePage() {
     }
   };
 
-  const removeTestimonial = (name: string, date: string) => {
+  const removeTestimonial = async (t: Testimonial) => {
     if (!isAdmin) return;
-    setTestimonials((list) =>
-      list.filter((t) => !(t.name === name && t.date === date))
-    );
+    try {
+      await saveTestimonials(testimonials.filter((x) => x !== t));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể xóa đánh giá");
+    }
+  };
+
+  const openEditTestimonial = (t: Testimonial) => {
+    setEditingTestimonial(t);
+    setTestimonialForm({ name: t.name, quote: t.quote });
+  };
+
+  const submitEditTestimonial = async () => {
+    if (!editingTestimonial) return;
+    setSavingTestimonial(true);
+    try {
+      const next = testimonials.map((t) =>
+        t === editingTestimonial
+          ? { ...t, name: testimonialForm.name, quote: testimonialForm.quote }
+          : t
+      );
+      await saveTestimonials(next);
+      setEditingTestimonial(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể lưu đánh giá");
+    } finally {
+      setSavingTestimonial(false);
+    }
+  };
+
+  const submitNewTestimonial = async () => {
+    setSavingTestimonial(true);
+    try {
+      const next = [
+        ...testimonials,
+        {
+          initials: newTestimonialForm.initials || newTestimonialForm.name.slice(0, 2).toUpperCase(),
+          name: newTestimonialForm.name,
+          quote: newTestimonialForm.quote,
+        },
+      ];
+      await saveTestimonials(next);
+      setCreatingTestimonial(false);
+      setNewTestimonialForm({ initials: "", name: "", quote: "" });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể thêm đánh giá");
+    } finally {
+      setSavingTestimonial(false);
+    }
   };
 
   return (
     <AdminShell>
       <PageHeader />
+
+      {error && (
+        <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 px-4 py-2">
+          {error}
+        </div>
+      )}
 
       <div className="flex gap-1 border-b border-black/10 mb-6 overflow-x-auto">
         {TABS.map((t) => (
@@ -78,178 +235,194 @@ export default function AdminHomepagePage() {
         ))}
       </div>
 
-      {tab === "Hero banner" && (
-        <div className="bg-white border border-black/10 overflow-x-auto">
-          <table className="w-full text-sm min-w-[600px]">
-            <thead>
-              <tr className="text-left text-black/50 border-b border-black/10">
-                <th className="py-3 px-4 font-normal">Ảnh</th>
-                <th className="py-3 px-4 font-normal">Nhãn</th>
-                <th className="py-3 px-4 font-normal">Tiêu đề</th>
-                <th className="py-3 px-4 font-normal text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {heroSlides.map((s) => (
-                <tr key={s.label} className="border-b border-black/5">
-                  <td className="py-2 px-4">
-                    <div className="relative h-10 w-16 bg-[#f5f2ee]">
-                      <Image
-                        src={s.img}
-                        alt={s.label}
-                        fill
-                        sizes="64px"
-                        className="object-cover"
-                      />
-                    </div>
-                  </td>
-                  <td className="py-2 px-4">{s.label}</td>
-                  <td className="py-2 px-4 max-w-[280px] truncate">
-                    {s.title}
-                  </td>
-                  <td className="py-2 px-4 text-right space-x-3 whitespace-nowrap">
-                    <button
-                      onClick={() => setEditingSlide(s)}
-                      className="text-xs underline"
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      onClick={() => removeSlide(s.label)}
-                      disabled={!isAdmin}
-                      title={!isAdmin ? "Chỉ Quản trị viên được xóa" : ""}
-                      className={`text-xs underline ${
-                        isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
-                      }`}
-                    >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {tab === "Sản phẩm nổi bật" && (
-        <div className="space-y-8">
-          <div>
-            <h2 className="text-sm font-medium uppercase tracking-wide mb-3">
-              Beach Vibe
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {beachVibe.map((p) => (
-                <div key={p.name} className="bg-white border border-black/10 p-2">
-                  <div className="relative aspect-square bg-[#f5f2ee] mb-2">
-                    <Image
-                      src={p.img}
-                      alt={p.name}
-                      fill
-                      sizes="120px"
-                      className="object-cover"
-                    />
-                  </div>
-                  <p className="text-xs truncate mb-1">{p.name}</p>
-                  <button
-                    onClick={() => removeFeatured("beach", p.name)}
-                    disabled={!isAdmin}
-                    className={`text-xs underline ${
-                      isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
-                    }`}
-                  >
-                    Gỡ khỏi mục này
-                  </button>
-                </div>
-              ))}
+      {loading ? (
+        <div className="text-sm text-black/50">Đang tải...</div>
+      ) : (
+        <>
+          {tab === "Hero banner" && (
+            <div className="bg-white border border-black/10 overflow-x-auto">
+              <table className="w-full text-sm min-w-[600px]">
+                <thead>
+                  <tr className="text-left text-black/50 border-b border-black/10">
+                    <th className="py-3 px-4 font-normal">Ảnh</th>
+                    <th className="py-3 px-4 font-normal">Nhãn</th>
+                    <th className="py-3 px-4 font-normal">Tiêu đề</th>
+                    <th className="py-3 px-4 font-normal text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {heroSlides.map((s) => (
+                    <tr key={s.id ?? s.label} className="border-b border-black/5">
+                      <td className="py-2 px-4">
+                        <div className="relative h-10 w-16 bg-[#f5f2ee]">
+                          <Image
+                            src={s.image_url}
+                            alt={s.label}
+                            fill
+                            sizes="64px"
+                            className="object-cover"
+                          />
+                        </div>
+                      </td>
+                      <td className="py-2 px-4">{s.label}</td>
+                      <td className="py-2 px-4 max-w-[280px] truncate">
+                        {s.title}
+                      </td>
+                      <td className="py-2 px-4 text-right space-x-3 whitespace-nowrap">
+                        <button
+                          onClick={() => openEditSlide(s)}
+                          className="text-xs underline"
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          onClick={() => removeSlide(s)}
+                          disabled={!isAdmin}
+                          title={!isAdmin ? "Chỉ Quản trị viên được xóa" : ""}
+                          className={`text-xs underline ${
+                            isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
+                          }`}
+                        >
+                          Xóa
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
+          )}
 
-          <div>
-            <h2 className="text-sm font-medium uppercase tracking-wide mb-3">
-              New Arrivals
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {newArrivals.map((p) => (
-                <div key={p.name} className="bg-white border border-black/10 p-2">
-                  <div className="relative aspect-square bg-[#f5f2ee] mb-2">
-                    <Image
-                      src={p.img}
-                      alt={p.name}
-                      fill
-                      sizes="120px"
-                      className="object-cover"
-                    />
-                  </div>
-                  <p className="text-xs truncate mb-1">{p.name}</p>
-                  <button
-                    onClick={() => removeFeatured("new", p.name)}
-                    disabled={!isAdmin}
-                    className={`text-xs underline ${
-                      isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
-                    }`}
-                  >
-                    Gỡ khỏi mục này
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === "Đánh giá khách hàng" && (
-        <div>
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => setCreatingTestimonial(true)}
-              className="text-sm border border-[#2b261f] px-4 py-2 hover:bg-[#2b261f] hover:text-white transition-colors"
-            >
-              + Thêm đánh giá
-            </button>
-          </div>
-          <div className="bg-white border border-black/10 overflow-x-auto">
-            <table className="w-full text-sm min-w-[560px]">
-              <thead>
-                <tr className="text-left text-black/50 border-b border-black/10">
-                  <th className="py-3 px-4 font-normal">Khách hàng</th>
-                  <th className="py-3 px-4 font-normal">Ngày</th>
-                  <th className="py-3 px-4 font-normal">Nội dung</th>
-                  <th className="py-3 px-4 font-normal text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {testimonials.map((t) => (
-                  <tr key={t.name + t.date} className="border-b border-black/5">
-                    <td className="py-2 px-4 whitespace-nowrap">{t.name}</td>
-                    <td className="py-2 px-4 whitespace-nowrap">{t.date}</td>
-                    <td className="py-2 px-4 max-w-[280px] truncate text-black/60">
-                      {t.quote}
-                    </td>
-                    <td className="py-2 px-4 text-right space-x-3 whitespace-nowrap">
+          {tab === "Sản phẩm nổi bật" && (
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-sm font-medium uppercase tracking-wide mb-3">
+                  Beach Vibe
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {beachVibe.map((p) => (
+                    <div key={p.name} className="bg-white border border-black/10 p-2">
+                      <div className="relative aspect-square bg-[#f5f2ee] mb-2">
+                        <Image
+                          src={p.img}
+                          alt={p.name}
+                          fill
+                          sizes="120px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <p className="text-xs truncate mb-1">{p.name}</p>
                       <button
-                        onClick={() => setEditingTestimonial(t)}
-                        className="text-xs underline"
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        onClick={() => removeTestimonial(t.name, t.date)}
+                        onClick={() => removeFeatured("beach", p.name)}
                         disabled={!isAdmin}
-                        title={!isAdmin ? "Chỉ Quản trị viên được xóa" : ""}
                         className={`text-xs underline ${
                           isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
                         }`}
                       >
-                        Xóa
+                        Gỡ khỏi mục này
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-sm font-medium uppercase tracking-wide mb-3">
+                  New Arrivals
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {newArrivals.map((p) => (
+                    <div key={p.name} className="bg-white border border-black/10 p-2">
+                      <div className="relative aspect-square bg-[#f5f2ee] mb-2">
+                        <Image
+                          src={p.img}
+                          alt={p.name}
+                          fill
+                          sizes="120px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <p className="text-xs truncate mb-1">{p.name}</p>
+                      <button
+                        onClick={() => removeFeatured("new", p.name)}
+                        disabled={!isAdmin}
+                        className={`text-xs underline ${
+                          isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
+                        }`}
+                      >
+                        Gỡ khỏi mục này
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-black/40">
+                Mục này chỉ minh họa giao diện — API trang chủ hiện chưa hỗ trợ
+                quản lý danh sách sản phẩm nổi bật theo từng nhóm, nên thay đổi
+                ở đây chưa ghi ngược lại vào nội dung thật.
+              </p>
+            </div>
+          )}
+
+          {tab === "Đánh giá khách hàng" && (
+            <div>
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => setCreatingTestimonial(true)}
+                  disabled={!isAdmin}
+                  className="text-sm border border-[#2b261f] px-4 py-2 hover:bg-[#2b261f] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  + Thêm đánh giá
+                </button>
+              </div>
+              <div className="bg-white border border-black/10 overflow-x-auto">
+                <table className="w-full text-sm min-w-[560px]">
+                  <thead>
+                    <tr className="text-left text-black/50 border-b border-black/10">
+                      <th className="py-3 px-4 font-normal">Khách hàng</th>
+                      <th className="py-3 px-4 font-normal">Ngày</th>
+                      <th className="py-3 px-4 font-normal">Nội dung</th>
+                      <th className="py-3 px-4 font-normal text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {testimonials.map((t) => (
+                      <tr key={t.id ?? t.name + t.quote_date} className="border-b border-black/5">
+                        <td className="py-2 px-4 whitespace-nowrap">{t.name}</td>
+                        <td className="py-2 px-4 whitespace-nowrap">
+                          {t.quote_date
+                            ? new Date(t.quote_date).toLocaleDateString("vi-VN")
+                            : ""}
+                        </td>
+                        <td className="py-2 px-4 max-w-[280px] truncate text-black/60">
+                          {t.quote}
+                        </td>
+                        <td className="py-2 px-4 text-right space-x-3 whitespace-nowrap">
+                          <button
+                            onClick={() => openEditTestimonial(t)}
+                            className="text-xs underline"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            onClick={() => removeTestimonial(t)}
+                            disabled={!isAdmin}
+                            title={!isAdmin ? "Chỉ Quản trị viên được xóa" : ""}
+                            className={`text-xs underline ${
+                              isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
+                            }`}
+                          >
+                            Xóa
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {editingSlide && (
@@ -260,14 +433,16 @@ export default function AdminHomepagePage() {
               Nhãn
             </label>
             <input
-              defaultValue={editingSlide.label}
+              value={slideForm.label}
+              onChange={(e) => setSlideForm((f) => ({ ...f, label: e.target.value }))}
               className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
             />
             <label className="block text-xs uppercase tracking-wide mb-2">
               Tiêu đề
             </label>
             <textarea
-              defaultValue={editingSlide.title}
+              value={slideForm.title}
+              onChange={(e) => setSlideForm((f) => ({ ...f, title: e.target.value }))}
               rows={3}
               className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
             />
@@ -279,10 +454,11 @@ export default function AdminHomepagePage() {
                 Hủy
               </button>
               <button
-                onClick={() => setEditingSlide(null)}
-                className="text-sm px-4 py-2 bg-[#2b261f] text-white"
+                onClick={submitEditSlide}
+                disabled={savingSlide}
+                className="text-sm px-4 py-2 bg-[#2b261f] text-white disabled:opacity-50"
               >
-                Lưu thay đổi
+                {savingSlide ? "Đang lưu..." : "Lưu thay đổi"}
               </button>
             </div>
           </div>
@@ -297,14 +473,16 @@ export default function AdminHomepagePage() {
               Tên khách hàng
             </label>
             <input
-              defaultValue={editingTestimonial.name}
+              value={testimonialForm.name}
+              onChange={(e) => setTestimonialForm((f) => ({ ...f, name: e.target.value }))}
               className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
             />
             <label className="block text-xs uppercase tracking-wide mb-2">
               Nội dung đánh giá
             </label>
             <textarea
-              defaultValue={editingTestimonial.quote}
+              value={testimonialForm.quote}
+              onChange={(e) => setTestimonialForm((f) => ({ ...f, quote: e.target.value }))}
               rows={4}
               className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
             />
@@ -316,10 +494,11 @@ export default function AdminHomepagePage() {
                 Hủy
               </button>
               <button
-                onClick={() => setEditingTestimonial(null)}
-                className="text-sm px-4 py-2 bg-[#2b261f] text-white"
+                onClick={submitEditTestimonial}
+                disabled={savingTestimonial}
+                className="text-sm px-4 py-2 bg-[#2b261f] text-white disabled:opacity-50"
               >
-                Lưu thay đổi
+                {savingTestimonial ? "Đang lưu..." : "Lưu thay đổi"}
               </button>
             </div>
           </div>
@@ -333,11 +512,21 @@ export default function AdminHomepagePage() {
             <label className="block text-xs uppercase tracking-wide mb-2">
               Tên khách hàng
             </label>
-            <input className="w-full border border-black/20 px-3 py-2 text-sm mb-4" />
+            <input
+              value={newTestimonialForm.name}
+              onChange={(e) =>
+                setNewTestimonialForm((f) => ({ ...f, name: e.target.value }))
+              }
+              className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
+            />
             <label className="block text-xs uppercase tracking-wide mb-2">
               Nội dung đánh giá
             </label>
             <textarea
+              value={newTestimonialForm.quote}
+              onChange={(e) =>
+                setNewTestimonialForm((f) => ({ ...f, quote: e.target.value }))
+              }
               rows={4}
               className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
             />
@@ -349,20 +538,16 @@ export default function AdminHomepagePage() {
                 Hủy
               </button>
               <button
-                onClick={() => setCreatingTestimonial(false)}
-                className="text-sm px-4 py-2 bg-[#2b261f] text-white"
+                onClick={submitNewTestimonial}
+                disabled={savingTestimonial}
+                className="text-sm px-4 py-2 bg-[#2b261f] text-white disabled:opacity-50"
               >
-                Thêm
+                {savingTestimonial ? "Đang lưu..." : "Thêm"}
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <p className="text-xs text-black/40 mt-6">
-        Thêm/sửa/xóa ở đây chỉ minh họa giao diện, chưa ghi ngược lại vào nội
-        dung thật của trang chủ.
-      </p>
     </AdminShell>
   );
 }

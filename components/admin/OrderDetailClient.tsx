@@ -1,23 +1,96 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
-import { mockOrders, type OrderStatus } from "@/data/admin";
+import { apiFetch, ApiError } from "@/lib/api";
+import type { OrderStatus } from "@/data/admin";
 import { ChevronLeftIcon } from "@/components/icons";
 
 const STATUSES: OrderStatus[] = ["Đang xử lý", "Đã giao", "Đã hủy"];
 
-export default function OrderDetailClient({ id }: { id: string }) {
-  const order = mockOrders.find((o) => o.id === id);
-  const [status, setStatus] = useState<OrderStatus | null>(order?.status ?? null);
+type OrderItem = {
+  id: number;
+  product_id: number;
+  name: string;
+  material: string;
+  price: string;
+  qty: number;
+  image_url: string | null;
+};
 
-  if (!order || !status) {
+type OrderDetail = {
+  id: number;
+  order_code: string;
+  customer_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
+  subtotal: string;
+  shipping_fee: string;
+  discount_amount: string;
+  total: string;
+  status: OrderStatus;
+  payment_method: string;
+  created_at: string;
+  items: OrderItem[];
+};
+
+export default function OrderDetailClient({ id }: { id: string }) {
+  const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<OrderDetail>(`/api/orders/${id}`)
+      .then((data) => {
+        if (!cancelled) setOrder(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof ApiError ? err.message : "Đã có lỗi xảy ra");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const updateStatus = async (status: OrderStatus) => {
+    if (!order) return;
+    const previous = order;
+    setOrder({ ...order, status });
+    try {
+      await apiFetch(`/api/admin/orders/${order.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      });
+    } catch (err) {
+      setOrder(previous);
+      setError(err instanceof ApiError ? err.message : "Không thể cập nhật trạng thái");
+    }
+  };
+
+  if (loading) {
     return (
       <AdminShell>
-        <p className="text-sm text-black/50">Không tìm thấy đơn hàng {id}.</p>
+        <p className="text-sm text-black/50">Đang tải...</p>
+      </AdminShell>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <AdminShell>
+        <p className="text-sm text-black/50">
+          {error || `Không tìm thấy đơn hàng ${id}.`}
+        </p>
         <Link
           href="/admin/orders"
           className="inline-flex items-center gap-1.5 text-sm underline mt-4"
@@ -28,8 +101,9 @@ export default function OrderDetailClient({ id }: { id: string }) {
     );
   }
 
-  const subtotal = order.items.reduce((sum, it) => sum + it.price * it.qty, 0);
-  const total = subtotal + order.shippingFee;
+  const subtotal = parseFloat(order.subtotal);
+  const shippingFee = parseFloat(order.shipping_fee);
+  const total = parseFloat(order.total);
 
   return (
     <AdminShell>
@@ -41,10 +115,10 @@ export default function OrderDetailClient({ id }: { id: string }) {
       </Link>
 
       <PageHeader>
-        <span className="text-sm text-black/50">Mã đơn {order.id}</span>
+        <span className="text-sm text-black/50">Mã đơn {order.order_code}</span>
         <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as OrderStatus)}
+          value={order.status}
+          onChange={(e) => updateStatus(e.target.value as OrderStatus)}
           className="text-sm border border-black/20 px-3 py-2"
         >
           {STATUSES.map((s) => (
@@ -62,16 +136,18 @@ export default function OrderDetailClient({ id }: { id: string }) {
               Sản phẩm
             </h2>
             <div className="space-y-4">
-              {order.items.map((item, i) => (
-                <div key={i} className="flex items-center gap-4">
+              {order.items.map((item) => (
+                <div key={item.id} className="flex items-center gap-4">
                   <div className="relative h-14 w-14 shrink-0 bg-[#f5f2ee]">
-                    <Image
-                      src={item.img}
-                      alt={item.name}
-                      fill
-                      sizes="56px"
-                      className="object-cover"
-                    />
+                    {item.image_url && (
+                      <Image
+                        src={item.image_url}
+                        alt={item.name}
+                        fill
+                        sizes="56px"
+                        className="object-cover"
+                      />
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm">{item.name}</p>
@@ -79,7 +155,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                   </div>
                   <p className="text-sm text-black/50">x{item.qty}</p>
                   <p className="text-sm w-20 text-right">
-                    ${(item.price * item.qty).toFixed(2)}
+                    ${(parseFloat(item.price) * item.qty).toFixed(2)}
                   </p>
                 </div>
               ))}
@@ -93,9 +169,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
               <div className="flex justify-between text-black/60">
                 <span>Vận chuyển</span>
                 <span>
-                  {order.shippingFee === 0
-                    ? "Miễn phí"
-                    : `$${order.shippingFee.toFixed(2)}`}
+                  {shippingFee === 0 ? "Miễn phí" : `$${shippingFee.toFixed(2)}`}
                 </span>
               </div>
               <div className="flex justify-between text-base pt-2 border-t border-black/10">
@@ -111,7 +185,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
             <h2 className="text-sm font-medium uppercase tracking-wide mb-3">
               Khách hàng
             </h2>
-            <p className="text-sm">{order.customer}</p>
+            <p className="text-sm">{order.customer_name}</p>
             <p className="text-sm text-black/60">{order.email}</p>
             <p className="text-sm text-black/60">{order.phone}</p>
           </div>
@@ -130,17 +204,14 @@ export default function OrderDetailClient({ id }: { id: string }) {
               Thanh toán
             </h2>
             <p className="text-sm text-black/70">
-              Phương thức: {order.paymentMethod}
+              Phương thức: {order.payment_method}
             </p>
-            <p className="text-sm text-black/70">Ngày đặt: {order.date}</p>
+            <p className="text-sm text-black/70">
+              Ngày đặt: {new Date(order.created_at).toLocaleDateString("vi-VN")}
+            </p>
           </div>
         </div>
       </div>
-
-      <p className="text-xs text-black/40 mt-6">
-        Dữ liệu đơn hàng minh họa, thay đổi trạng thái chỉ lưu tạm trong phiên
-        demo.
-      </p>
     </AdminShell>
   );
 }

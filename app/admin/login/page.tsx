@@ -16,10 +16,10 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f7f4f0] px-6">
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           setLoading(true);
-          const ok = login(username, password);
+          const ok = await login(username, password);
           if (ok) {
             router.replace("/admin");
           } else {

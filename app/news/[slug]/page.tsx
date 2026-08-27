@@ -4,11 +4,17 @@ import { notFound } from "next/navigation";
 import Announcement from "@/components/Announcement";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { journalPosts } from "@/data/site";
+import { serverApiFetch, ServerApiError } from "@/lib/server-api";
 
-export function generateStaticParams() {
-  return journalPosts.map((post) => ({ slug: post.slug }));
-}
+type PostDetail = {
+  id: number;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  body: string[];
+  image_url: string | null;
+  published_at: string;
+};
 
 export default async function NewsArticlePage({
   params,
@@ -16,10 +22,15 @@ export default async function NewsArticlePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = journalPosts.find((p) => p.slug === slug);
 
-  if (!post) {
-    notFound();
+  let post: PostDetail;
+  try {
+    post = await serverApiFetch<PostDetail>(`/api/content/posts/${slug}`);
+  } catch (err) {
+    if (err instanceof ServerApiError && err.status === 404) {
+      notFound();
+    }
+    throw err;
   }
 
   return (
@@ -30,10 +41,12 @@ export default async function NewsArticlePage({
         <div className="mx-auto max-w-[800px] px-6 py-16">
           <p className="text-xs tracking-wide text-gold mb-3">NEWS</p>
           <h1 className="font-serif-display text-4xl mb-3">{post.title}</h1>
-          <p className="text-xs text-black/50 mb-8">{post.date}</p>
+          <p className="text-xs text-black/50 mb-8">
+            {new Date(post.published_at).toLocaleDateString()}
+          </p>
           <div className="relative aspect-[16/9] overflow-hidden mb-10">
             <Image
-              src={post.img}
+              src={post.image_url || ""}
               alt={post.title}
               fill
               sizes="100vw"

@@ -5,19 +5,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { FullProduct } from "@/data/products";
-import { collectionFilters } from "@/data/products";
+import { collectionFilters as fallbackCollectionFilters } from "@/data/products";
 import { StarRating } from "@/components/icons";
+
+export type CollectionFilter = { label: string; value: string };
 
 export default function CatalogClient({
   products,
   initialCollection = "ALL",
   heading,
   subheading,
+  collectionFilters = fallbackCollectionFilters,
 }: {
   products: FullProduct[];
   initialCollection?: string;
   heading: string;
   subheading?: string;
+  collectionFilters?: CollectionFilter[];
 }) {
   const searchParams = useSearchParams();
   const brand = searchParams.get("brand")?.replace(/-/g, " ");

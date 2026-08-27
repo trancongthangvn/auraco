@@ -7,11 +7,52 @@ import AddToBag from "@/components/product/AddToBag";
 import Accordion from "@/components/product/Accordion";
 import Reviews from "@/components/product/Reviews";
 import ProductCarousel from "@/components/ProductCarousel";
-import { getProductBySlug, getRelatedProducts, products } from "@/data/products";
+import type { FullProduct } from "@/data/products";
+import type { Product as CarouselProduct } from "@/data/site";
+import { serverApiFetch, ServerApiError } from "@/lib/server-api";
 import { StarRating, SparkleIcon } from "@/components/icons";
+import { toFullProduct, type ApiProduct } from "@/lib/catalog-mappers";
 
-export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
+async function fetchProduct(slug: string): Promise<FullProduct | null> {
+  try {
+    const api = await serverApiFetch<ApiProduct>(
+      `/api/products/${encodeURIComponent(slug)}`
+    );
+    return toFullProduct(api);
+  } catch (err) {
+    if (err instanceof ServerApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+async function fetchRelated(product: FullProduct): Promise<CarouselProduct[]> {
+  const firstCollection = product.collections[0];
+
+  let list: ApiProduct[] = [];
+  try {
+    if (firstCollection) {
+      list = await serverApiFetch<ApiProduct[]>(
+        `/api/products?collection=${encodeURIComponent(firstCollection)}`
+      );
+    } else {
+      const all = await serverApiFetch<ApiProduct[]>("/api/products");
+      list = all.filter((p) => p.category === product.category);
+    }
+  } catch {
+    list = [];
+  }
+
+  return list
+    .filter((p) => p.slug !== product.slug)
+    .slice(0, 8)
+    .map((p) => ({
+      name: p.name,
+      href: `/product/${p.slug}`,
+      material: p.material,
+      price: `$${Number(p.price).toFixed(2)} USD`,
+      rating: Math.round(Number(p.rating)),
+      img: p.images[0],
+    }));
 }
 
 export async function generateMetadata({
@@ -20,7 +61,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await fetchProduct(slug);
   return { title: product ? `${product.name} | AURA & CO` : "AURA & CO" };
 }
 
@@ -30,17 +71,10 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await fetchProduct(slug);
   if (!product) notFound();
 
-  const related = getRelatedProducts(product).map((p) => ({
-    name: p.name,
-    href: `/product/${p.slug}`,
-    material: p.material,
-    price: `$${p.price.toFixed(2)} USD`,
-    rating: Math.round(p.rating),
-    img: p.images[0],
-  }));
+  const related = await fetchRelated(product);
 
   return (
     <>

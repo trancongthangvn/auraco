@@ -1,0 +1,550 @@
+const express = require('express');
+const { pool, query } = require('../db');
+const { authMiddleware, requireAdmin } = require('../middleware/auth');
+
+const router = express.Router();
+
+// ============================================================================
+// This router is mounted at /api/content (see server/index.js). All routes
+// below are therefore reachable at /api/content/<path>, including the
+// "admin-only" ones — there is no separate /api/admin mount available to
+// this file, so admin sub-resources live under /api/content/admin/... .
+//
+// Endpoints implemented in this file:
+//   GET    /api/content/homepage              (public)
+//   PUT    /api/content/admin/homepage         (admin)
+//   GET    /api/content/site-settings          (public, safe subset)
+//   GET    /api/content/admin/site-settings     (admin, full row)
+//   PUT    /api/content/admin/site-settings     (admin, full row)
+//   GET    /api/content/posts                  (public, published only)
+//   GET    /api/content/posts/:slug            (public, published only)
+//   POST   /api/content/admin/posts             (admin)
+//   PUT    /api/content/admin/posts/:id          (admin)
+//   DELETE /api/content/admin/posts/:id          (admin)
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------------------
+
+function isNonEmptyString(v) {
+  return typeof v === 'string' && v.trim().length > 0;
+}
+
+function isFiniteNumber(v) {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+function isBoolean(v) {
+  return typeof v === 'boolean';
+}
+
+// Public-safe subset of site_settings. Everything else (including the raw
+// `extra` blob, in case future ad hoc settings stored there are internal)
+// is only exposed via the admin endpoints.
+//
+// ASSUMPTION: the schema's site_settings table only has columns for
+// store_name/contact_email/contact_phone/free_shipping_threshold/
+// trust_badges/footer_links/extra. The task also asks for SEO title/
+// description, checkout tax percent, and a WhatsApp number, none of which
+// have dedicated columns — those are stored as keys inside the `extra`
+// JSONB column (seo_title, seo_description, tax_percent, whatsapp_number,
+// shipping_fee) and merged/read from there. `shipping_fee` (a flat
+// checkout shipping cost) is likewise kept in `extra` since the schema
+// only defines `free_shipping_threshold` as a real column.
+function toPublicSiteSettings(row) {
+  const extra = row.extra || {};
+  return {
+    storeName: row.store_name,
+    contactEmail: row.contact_email,
+    contactPhone: row.contact_phone,
+    freeShippingThreshold: row.free_shipping_threshold,
+    trustBadges: row.trust_badges,
+    footerLinks: row.footer_links,
+    seoTitle: extra.seo_title ?? null,
+    seoDescription: extra.seo_description ?? null,
+    whatsappNumber: extra.whatsapp_number ?? null,
+    shippingFee: extra.shipping_fee ?? null,
+    taxPercent: extra.tax_percent ?? null,
+  };
+}
+
+function toAdminSiteSettings(row) {
+  return {
+    storeName: row.store_name,
+    contactEmail: row.contact_email,
+    contactPhone: row.contact_phone,
+    freeShippingThreshold: row.free_shipping_threshold,
+    trustBadges: row.trust_badges,
+    footerLinks: row.footer_links,
+    extra: row.extra,
+    updatedAt: row.updated_at,
+  };
+}
+
+// ============================================================================
+// GET /homepage — public
+// hero slides + testimonials + a small set of "featured" product refs.
+//
+// ASSUMPTION: the schema has no explicit "featured" flag/collection on
+// products, so featured refs are the top active products by rating/
+// review_count (a reasonable stand-in for a homepage "best sellers" rail).
+// ============================================================================
+router.get('/homepage', async (req, res) => {
+  try {
+    const [heroResult, testimonialResult, featuredResult] = await Promise.all([
+      query(
+        `SELECT id, label, title, href, image_url, sort_order
+         FROM hero_slides
+         WHERE active = TRUE
+         ORDER BY sort_order ASC, id ASC`
+      ),
+      query(
+        `SELECT id, initials, name, quote, quote_date, sort_order
+         FROM testimonials
+         WHERE active = TRUE
+         ORDER BY sort_order ASC, id ASC`
+      ),
+      query(
+        `SELECT id, slug, name, category, material, price, compare_at_price,
+                rating, review_count, images
+         FROM products
+         WHERE active = TRUE
+         ORDER BY rating DESC, review_count DESC, id ASC
+         LIMIT 8`
+      ),
+    ]);
+
+    res.json({
+      data: {
+        heroSlides: heroResult.rows,
+        testimonials: testimonialResult.rows,
+        featuredProducts: featuredResult.rows,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load homepage content' });
+  }
+});
+
+// ============================================================================
+// PUT /admin/homepage — admin only
+// Whole-collection replace of hero slides and/or testimonials (both are
+// small, admin-curated, ordered lists — replace-on-save is simpler and less
+// error-prone than diffing individual rows for this use case).
+//
+// Body: { heroSlides?: [{ label, title, href, image_url, sortOrder?, active? }],
+//         testimonials?: [{ initials, name, quote, quoteDate?, sortOrder?, active? }] }
+// At least one of heroSlides/testimonials must be provided.
+// ============================================================================
+router.put('/admin/homepage', authMiddleware, requireAdmin, async (req, res) => {
+  const { heroSlides, testimonials } = req.body || {};
+
+  if (heroSlides === undefined && testimonials === undefined) {
+    return res.status(400).json({ error: 'Provide heroSlides and/or testimonials' });
+  }
+
+  if (heroSlides !== undefined) {
+    if (!Array.isArray(heroSlides)) {
+      return res.status(400).json({ error: 'heroSlides must be an array' });
+    }
+    for (const [i, slide] of heroSlides.entries()) {
+      if (
+        !isNonEmptyString(slide.label) ||
+        !isNonEmptyString(slide.title) ||
+        !isNonEmptyString(slide.href) ||
+        !isNonEmptyString(slide.image_url ?? slide.imageUrl)
+      ) {
+        return res.status(400).json({
+          error: `heroSlides[${i}] requires non-empty label, title, href, image_url`,
+        });
+      }
+    }
+  }
+
+  if (testimonials !== undefined) {
+    if (!Array.isArray(testimonials)) {
+      return res.status(400).json({ error: 'testimonials must be an array' });
+    }
+    for (const [i, t] of testimonials.entries()) {
+      if (!isNonEmptyString(t.initials) || !isNonEmptyString(t.name) || !isNonEmptyString(t.quote)) {
+        return res.status(400).json({
+          error: `testimonials[${i}] requires non-empty initials, name, quote`,
+        });
+      }
+    }
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    if (heroSlides !== undefined) {
+      await client.query('DELETE FROM hero_slides');
+      let i = 0;
+      for (const slide of heroSlides) {
+        await client.query(
+          `INSERT INTO hero_slides (label, title, href, image_url, sort_order, active)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            slide.label,
+            slide.title,
+            slide.href,
+            slide.image_url ?? slide.imageUrl,
+            isFiniteNumber(slide.sortOrder ?? slide.sort_order) ? (slide.sortOrder ?? slide.sort_order) : i,
+            isBoolean(slide.active) ? slide.active : true,
+          ]
+        );
+        i += 1;
+      }
+    }
+
+    if (testimonials !== undefined) {
+      await client.query('DELETE FROM testimonials');
+      let i = 0;
+      for (const t of testimonials) {
+        await client.query(
+          `INSERT INTO testimonials (initials, name, quote, quote_date, sort_order, active)
+           VALUES ($1, $2, $3, COALESCE($4, CURRENT_DATE), $5, $6)`,
+          [
+            t.initials,
+            t.name,
+            t.quote,
+            t.quoteDate ?? t.quote_date ?? null,
+            isFiniteNumber(t.sortOrder ?? t.sort_order) ? (t.sortOrder ?? t.sort_order) : i,
+            isBoolean(t.active) ? t.active : true,
+          ]
+        );
+        i += 1;
+      }
+    }
+
+    await client.query('COMMIT');
+
+    const [heroResult, testimonialResult] = await Promise.all([
+      query('SELECT id, label, title, href, image_url, sort_order, active FROM hero_slides ORDER BY sort_order ASC, id ASC'),
+      query('SELECT id, initials, name, quote, quote_date, sort_order, active FROM testimonials ORDER BY sort_order ASC, id ASC'),
+    ]);
+
+    res.json({ data: { heroSlides: heroResult.rows, testimonials: testimonialResult.rows } });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update homepage content' });
+  } finally {
+    client.release();
+  }
+});
+
+// ============================================================================
+// GET /site-settings — public (safe subset only)
+// ============================================================================
+router.get('/site-settings', async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM site_settings WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Site settings not configured' });
+    }
+    res.json({ data: toPublicSiteSettings(result.rows[0]) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load site settings' });
+  }
+});
+
+// ============================================================================
+// GET /admin/site-settings — admin only, full row
+// ============================================================================
+router.get('/admin/site-settings', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM site_settings WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Site settings not configured' });
+    }
+    res.json({ data: toAdminSiteSettings(result.rows[0]) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load site settings' });
+  }
+});
+
+// ============================================================================
+// PUT /admin/site-settings — admin only, partial update
+//
+// Accepts any of the real columns (storeName, contactEmail, contactPhone,
+// freeShippingThreshold, trustBadges, footerLinks) plus the convenience
+// extra-JSONB-backed fields (seoTitle, seoDescription, whatsappNumber,
+// shippingFee, taxPercent) — those are merged into the `extra` JSONB column
+// rather than replacing it wholesale.
+// ============================================================================
+router.put('/admin/site-settings', authMiddleware, requireAdmin, async (req, res) => {
+  const body = req.body || {};
+  const sets = [];
+  const values = [];
+  let idx = 1;
+
+  if (body.storeName !== undefined) {
+    if (!isNonEmptyString(body.storeName)) {
+      return res.status(400).json({ error: 'storeName must be a non-empty string' });
+    }
+    sets.push(`store_name = $${idx++}`);
+    values.push(body.storeName);
+  }
+  if (body.contactEmail !== undefined) {
+    sets.push(`contact_email = $${idx++}`);
+    values.push(body.contactEmail);
+  }
+  if (body.contactPhone !== undefined) {
+    sets.push(`contact_phone = $${idx++}`);
+    values.push(body.contactPhone);
+  }
+  if (body.freeShippingThreshold !== undefined) {
+    if (!isFiniteNumber(body.freeShippingThreshold) || body.freeShippingThreshold < 0) {
+      return res.status(400).json({ error: 'freeShippingThreshold must be a non-negative number' });
+    }
+    sets.push(`free_shipping_threshold = $${idx++}`);
+    values.push(body.freeShippingThreshold);
+  }
+  if (body.trustBadges !== undefined) {
+    if (!Array.isArray(body.trustBadges)) {
+      return res.status(400).json({ error: 'trustBadges must be an array' });
+    }
+    sets.push(`trust_badges = $${idx++}::jsonb`);
+    values.push(JSON.stringify(body.trustBadges));
+  }
+  if (body.footerLinks !== undefined) {
+    if (typeof body.footerLinks !== 'object' || body.footerLinks === null || Array.isArray(body.footerLinks)) {
+      return res.status(400).json({ error: 'footerLinks must be an object' });
+    }
+    sets.push(`footer_links = $${idx++}::jsonb`);
+    values.push(JSON.stringify(body.footerLinks));
+  }
+
+  const extraPatch = {};
+  if (body.seoTitle !== undefined) extraPatch.seo_title = body.seoTitle;
+  if (body.seoDescription !== undefined) extraPatch.seo_description = body.seoDescription;
+  if (body.whatsappNumber !== undefined) extraPatch.whatsapp_number = body.whatsappNumber;
+  if (body.shippingFee !== undefined) {
+    if (!isFiniteNumber(body.shippingFee) || body.shippingFee < 0) {
+      return res.status(400).json({ error: 'shippingFee must be a non-negative number' });
+    }
+    extraPatch.shipping_fee = body.shippingFee;
+  }
+  if (body.taxPercent !== undefined) {
+    if (!isFiniteNumber(body.taxPercent) || body.taxPercent < 0) {
+      return res.status(400).json({ error: 'taxPercent must be a non-negative number' });
+    }
+    extraPatch.tax_percent = body.taxPercent;
+  }
+  if (Object.keys(extraPatch).length > 0) {
+    sets.push(`extra = extra || $${idx++}::jsonb`);
+    values.push(JSON.stringify(extraPatch));
+  }
+
+  if (sets.length === 0) {
+    return res.status(400).json({ error: 'No valid fields provided' });
+  }
+
+  sets.push('updated_at = now()');
+
+  try {
+    const result = await query(
+      `UPDATE site_settings SET ${sets.join(', ')} WHERE id = 1 RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Site settings not configured' });
+    }
+    res.json({ data: toAdminSiteSettings(result.rows[0]) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update site settings' });
+  }
+});
+
+// ============================================================================
+// GET /posts — public, published only
+// Query params: ?limit=<n> (default 20, max 100)
+// ============================================================================
+router.get('/posts', async (req, res) => {
+  let limit = parseInt(req.query.limit, 10);
+  if (!Number.isFinite(limit) || limit <= 0) limit = 20;
+  if (limit > 100) limit = 100;
+
+  try {
+    const result = await query(
+      `SELECT id, slug, title, excerpt, image_url, published_at
+       FROM posts
+       WHERE published = TRUE
+       ORDER BY published_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+    res.json({ data: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load posts' });
+  }
+});
+
+// ============================================================================
+// GET /posts/:slug — public, published only
+// ============================================================================
+router.get('/posts/:slug', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT id, slug, title, excerpt, body, image_url, published_at
+       FROM posts
+       WHERE slug = $1 AND published = TRUE`,
+      [req.params.slug]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    res.json({ data: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load post' });
+  }
+});
+
+// ============================================================================
+// POST /admin/posts — admin only
+// Body: { slug, title, excerpt?, body?: string[], image_url?, published?, published_at? }
+// ============================================================================
+router.post('/admin/posts', authMiddleware, requireAdmin, async (req, res) => {
+  const { slug, title, excerpt, image_url, imageUrl, published, publishedAt, published_at } = req.body || {};
+  let { body } = req.body || {};
+
+  if (!isNonEmptyString(slug) || !isNonEmptyString(title)) {
+    return res.status(400).json({ error: 'slug and title are required' });
+  }
+  if (body === undefined) body = [];
+  if (!Array.isArray(body) || !body.every((p) => typeof p === 'string')) {
+    return res.status(400).json({ error: 'body must be an array of strings' });
+  }
+
+  try {
+    const result = await query(
+      `INSERT INTO posts (slug, title, excerpt, body, image_url, published, published_at)
+       VALUES ($1, $2, $3, $4::jsonb, $5, COALESCE($6, TRUE), COALESCE($7, now()))
+       RETURNING *`,
+      [
+        slug,
+        title,
+        excerpt ?? null,
+        JSON.stringify(body),
+        image_url ?? imageUrl ?? null,
+        isBoolean(published) ? published : null,
+        publishedAt ?? published_at ?? null,
+      ]
+    );
+    res.status(201).json({ data: result.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(400).json({ error: 'A post with this slug already exists' });
+    }
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create post' });
+  }
+});
+
+// ============================================================================
+// PUT /admin/posts/:id — admin only, partial update
+// ============================================================================
+router.put('/admin/posts/:id', authMiddleware, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: 'Invalid post id' });
+  }
+
+  const body = req.body || {};
+  const sets = [];
+  const values = [];
+  let idx = 1;
+
+  if (body.slug !== undefined) {
+    if (!isNonEmptyString(body.slug)) return res.status(400).json({ error: 'slug must be a non-empty string' });
+    sets.push(`slug = $${idx++}`);
+    values.push(body.slug);
+  }
+  if (body.title !== undefined) {
+    if (!isNonEmptyString(body.title)) return res.status(400).json({ error: 'title must be a non-empty string' });
+    sets.push(`title = $${idx++}`);
+    values.push(body.title);
+  }
+  if (body.excerpt !== undefined) {
+    sets.push(`excerpt = $${idx++}`);
+    values.push(body.excerpt);
+  }
+  if (body.body !== undefined) {
+    if (!Array.isArray(body.body) || !body.body.every((p) => typeof p === 'string')) {
+      return res.status(400).json({ error: 'body must be an array of strings' });
+    }
+    sets.push(`body = $${idx++}::jsonb`);
+    values.push(JSON.stringify(body.body));
+  }
+  const imageUrl = body.image_url ?? body.imageUrl;
+  if (imageUrl !== undefined) {
+    sets.push(`image_url = $${idx++}`);
+    values.push(imageUrl);
+  }
+  if (body.published !== undefined) {
+    if (!isBoolean(body.published)) return res.status(400).json({ error: 'published must be a boolean' });
+    sets.push(`published = $${idx++}`);
+    values.push(body.published);
+  }
+  const publishedAt = body.published_at ?? body.publishedAt;
+  if (publishedAt !== undefined) {
+    sets.push(`published_at = $${idx++}`);
+    values.push(publishedAt);
+  }
+
+  if (sets.length === 0) {
+    return res.status(400).json({ error: 'No valid fields provided' });
+  }
+
+  sets.push('updated_at = now()');
+  values.push(id);
+
+  try {
+    const result = await query(
+      `UPDATE posts SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    res.json({ data: result.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(400).json({ error: 'A post with this slug already exists' });
+    }
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update post' });
+  }
+});
+
+// ============================================================================
+// DELETE /admin/posts/:id — admin only
+// ============================================================================
+router.delete('/admin/posts/:id', authMiddleware, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: 'Invalid post id' });
+  }
+
+  try {
+    const result = await query('DELETE FROM posts WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    res.json({ data: { deleted: true, id } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
+});
+
+module.exports = router;

@@ -3,12 +3,21 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { heroSlides } from "@/data/site";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
-export default function Hero() {
+export type HeroSlide = {
+  label: string;
+  title: string;
+  href: string;
+  img: string;
+};
+
+export default function Hero({ slides }: { slides: HeroSlide[] }) {
   const [index, setIndex] = useState(0);
+  const heroSlides = slides;
   const slide = heroSlides[index];
+
+  if (!slide) return null;
 
   const prev = () =>
     setIndex((i) => (i - 1 + heroSlides.length) % heroSlides.length);

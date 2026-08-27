@@ -7,7 +7,7 @@ import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 export default function AdminLoginPage() {
   const { login } = useAdminAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -16,11 +16,11 @@ export default function AdminLoginPage() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          const ok = login(email, password);
+          const ok = login(username, password);
           if (ok) {
             router.replace("/admin");
           } else {
-            setError("Email hoặc mật khẩu không đúng.");
+            setError("Tên đăng nhập hoặc mật khẩu không đúng.");
           }
         }}
         className="w-full max-w-sm bg-white border border-black/10 p-8"
@@ -31,12 +31,13 @@ export default function AdminLoginPage() {
         </p>
 
         <label className="block text-xs uppercase tracking-wide mb-2">
-          Email quản trị
+          Tên đăng nhập
         </label>
         <input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="admin@auraco.vn"
+          autoComplete="username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="admin"
           className="w-full border border-black/20 px-4 py-3 text-sm mb-4"
         />
 
@@ -45,6 +46,7 @@ export default function AdminLoginPage() {
         </label>
         <input
           type="password"
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"

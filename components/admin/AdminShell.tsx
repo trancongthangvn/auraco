@@ -77,7 +77,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         ))}
       </nav>
       <div className="px-6 py-4 border-t border-white/10 text-xs text-white/50">
-        Đăng nhập: {session.email}
+        Đăng nhập: {session.username}
         <div className="uppercase tracking-wide text-white/40 mt-0.5">
           {session.role === "admin" ? "Quản trị viên" : "Nhân viên"}
         </div>

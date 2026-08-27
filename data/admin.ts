@@ -21,7 +21,7 @@ export type Role = "admin" | "staff";
 export type AdminAccount = {
   id: string;
   name: string;
-  email: string;
+  username: string;
   password: string;
   role: Role;
 };
@@ -35,7 +35,7 @@ export const adminAccounts: AdminAccount[] = [
   {
     id: "u1",
     name: "Chủ shop",
-    email: "admin@auraco.vn",
+    username: "admin",
     password: "AuraCo@2026",
     role: "admin",
   },
@@ -44,6 +44,6 @@ export const adminAccounts: AdminAccount[] = [
 export const mockAccounts = adminAccounts.map((a) => ({
   id: a.id,
   name: a.name,
-  email: a.email,
+  username: a.username,
   role: a.role,
 }));

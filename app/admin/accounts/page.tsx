@@ -38,7 +38,7 @@ export default function AdminAccountsPage() {
           <thead>
             <tr className="text-left text-black/50 border-b border-black/10">
               <th className="py-3 px-4 font-normal">Tên</th>
-              <th className="py-3 px-4 font-normal">Email</th>
+              <th className="py-3 px-4 font-normal">Tên đăng nhập</th>
               <th className="py-3 px-4 font-normal">Vai trò</th>
             </tr>
           </thead>
@@ -46,7 +46,7 @@ export default function AdminAccountsPage() {
             {mockAccounts.map((a) => (
               <tr key={a.id} className="border-b border-black/5">
                 <td className="py-2 px-4">{a.name}</td>
-                <td className="py-2 px-4">{a.email}</td>
+                <td className="py-2 px-4">{a.username}</td>
                 <td className="py-2 px-4">
                   {a.role === "admin" ? "Quản trị viên" : "Nhân viên"}
                 </td>
@@ -57,7 +57,7 @@ export default function AdminAccountsPage() {
       </div>
       <p className="text-xs text-black/40 mt-4">
         Theo phạm vi hợp đồng, hệ thống có đúng 1 tài khoản Quản trị viên
-        thật (đăng nhập bằng email và mật khẩu cố định). Cơ chế phân quyền
+        thật (đăng nhập bằng tên đăng nhập và mật khẩu cố định). Cơ chế phân quyền
         Quản trị viên / Nhân viên đã được xây dựng sẵn trong hệ thống và sẽ
         tự động áp dụng khi có tài khoản Nhân viên thứ hai; bản này chưa có
         chức năng tạo thêm tài khoản mới.

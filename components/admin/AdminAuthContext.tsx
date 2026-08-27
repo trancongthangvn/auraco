@@ -3,12 +3,12 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { adminAccounts, type Role } from "@/data/admin";
 
-type Session = { name: string; email: string; role: Role } | null;
+type Session = { name: string; username: string; role: Role } | null;
 
 const AdminAuthContext = createContext<{
   session: Session;
   ready: boolean;
-  login: (email: string, password: string) => boolean;
+  login: (username: string, password: string) => boolean;
   logout: () => void;
 }>({
   session: null,
@@ -40,12 +40,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     setReady(true);
   }, []);
 
-  const login = (email: string, password: string) => {
+  const login = (username: string, password: string) => {
     const match = adminAccounts.find(
-      (a) => a.email.toLowerCase() === email.trim().toLowerCase() && a.password === password
+      (a) =>
+        a.username.toLowerCase() === username.trim().toLowerCase() &&
+        a.password === password
     );
     if (!match) return false;
-    const next = { name: match.name, email: match.email, role: match.role };
+    const next = { name: match.name, username: match.username, role: match.role };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     setSession(next);
     return true;

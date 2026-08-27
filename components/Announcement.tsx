@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CloseIcon } from "@/components/icons";
 
 export default function Announcement() {
   const [visible, setVisible] = useState(true);
@@ -14,7 +15,7 @@ export default function Announcement() {
         onClick={() => setVisible(false)}
         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
       >
-        ✕
+        <CloseIcon size={14} />
       </button>
     </div>
   );

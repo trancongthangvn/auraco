@@ -5,6 +5,7 @@ import Announcement from "@/components/Announcement";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/PageHero";
+import { CheckIcon } from "@/components/icons";
 
 export default function ContactPage() {
   const [sent, setSent] = useState(false);
@@ -73,9 +74,15 @@ export default function ContactPage() {
           </div>
           <button
             type="submit"
-            className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors"
+            className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors inline-flex items-center justify-center gap-2"
           >
-            {sent ? "MESSAGE SENT ✓" : "SEND MESSAGE"}
+            {sent ? (
+              <>
+                MESSAGE SENT <CheckIcon size={15} />
+              </>
+            ) : (
+              "SEND MESSAGE"
+            )}
           </button>
         </form>
       </main>

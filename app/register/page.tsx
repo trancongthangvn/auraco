@@ -6,6 +6,7 @@ import Announcement from "@/components/Announcement";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/PageHero";
+import { GoogleIcon } from "@/components/icons";
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
@@ -108,7 +109,7 @@ export default function RegisterPage() {
             }
             className="w-full border border-[#2b261f] px-6 py-3 text-sm tracking-wide hover:bg-[#2b261f] hover:text-white transition-colors flex items-center justify-center gap-2"
           >
-            <span aria-hidden>G</span>
+            <GoogleIcon size={18} />
             Continue with Google
           </button>
 

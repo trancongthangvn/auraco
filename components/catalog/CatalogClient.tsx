@@ -6,11 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { FullProduct } from "@/data/products";
 import { collectionFilters } from "@/data/products";
-
-function Stars({ rating }: { rating: number }) {
-  const full = Math.round(rating);
-  return <span className="text-xs text-gold">{"★".repeat(full) || "☆"}</span>;
-}
+import { StarRating } from "@/components/icons";
 
 export default function CatalogClient({
   products,
@@ -134,7 +130,7 @@ export default function CatalogClient({
                   />
                 </div>
                 <p className="mb-1">
-                  <Stars rating={p.rating} />{" "}
+                  <StarRating rating={p.rating} size={12} />{" "}
                   <span className="text-xs text-black/50">
                     ({p.reviewCount})
                   </span>

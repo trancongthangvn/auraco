@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MinusIcon, PlusIcon } from "@/components/icons";
 
 export default function Accordion({
   items,
@@ -18,7 +19,7 @@ export default function Accordion({
             className="w-full flex items-center justify-between py-4 text-sm tracking-wide"
           >
             {item.title}
-            <span>{open === i ? "−" : "+"}</span>
+            {open === i ? <MinusIcon size={14} /> : <PlusIcon size={14} />}
           </button>
           {open === i && (
             <p className="pb-4 text-sm text-black/60 leading-relaxed whitespace-pre-line">

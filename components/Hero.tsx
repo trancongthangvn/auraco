@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { heroSlides } from "@/data/site";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 export default function Hero() {
   const [index, setIndex] = useState(0);
@@ -43,16 +44,16 @@ export default function Hero() {
       <button
         aria-label="Previous slide"
         onClick={prev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white text-2xl px-2 hover:opacity-70"
+        className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white px-2 hover:opacity-70"
       >
-        ❮
+        <ChevronLeftIcon size={22} />
       </button>
       <button
         aria-label="Next slide"
         onClick={next}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white text-2xl px-2 hover:opacity-70"
+        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white px-2 hover:opacity-70"
       >
-        ❯
+        <ChevronRightIcon size={22} />
       </button>
 
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 flex gap-2">

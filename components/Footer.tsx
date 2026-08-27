@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { footerLinks, ourStoryLinks } from "@/data/site";
+import { ArrowRightIcon } from "@/components/icons";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -27,7 +28,7 @@ export default function Footer() {
               className="bg-transparent flex-1 text-sm placeholder:text-white/40 outline-none"
             />
             <button type="submit" aria-label="Subscribe" className="text-white">
-              →
+              <ArrowRightIcon size={18} />
             </button>
           </form>
           <p className="text-xs text-white/40 mt-3">

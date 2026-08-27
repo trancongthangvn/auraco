@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { navLinks, ourStoryLinks } from "@/data/site";
+import { SearchIcon, UserIcon, BagIcon, GlobeIcon } from "@/components/icons";
 
 export default function Header() {
   const [storyOpen, setStoryOpen] = useState(false);
@@ -65,7 +66,10 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-5 text-sm shrink-0">
-          <span className="hidden sm:inline">🇺🇸 USD</span>
+          <span className="hidden sm:inline-flex items-center gap-1.5">
+            <GlobeIcon size={16} />
+            USD
+          </span>
           {searchOpen ? (
             <form onSubmit={submitSearch} className="flex items-center">
               <input
@@ -83,14 +87,14 @@ export default function Header() {
               onClick={() => setSearchOpen(true)}
               className="hover:text-gold"
             >
-              ⌕
+              <SearchIcon size={18} />
             </button>
           )}
           <Link href="/login" aria-label="Account" className="hover:text-gold">
-            👤
+            <UserIcon size={18} />
           </Link>
           <Link href="/cart" aria-label="Cart" className="hover:text-gold">
-            🛍
+            <BagIcon size={18} />
           </Link>
         </div>
       </div>

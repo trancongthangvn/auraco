@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { journalPosts } from "@/data/site";
+import { ArrowRightIcon } from "@/components/icons";
 
 export default function Journal() {
   return (
@@ -26,8 +27,8 @@ export default function Journal() {
               <p className="text-sm text-black/70 mb-3 leading-relaxed">
                 {post.excerpt}
               </p>
-              <span className="text-xs tracking-wide text-gold">
-                READ MORE →
+              <span className="inline-flex items-center gap-1.5 text-xs tracking-wide text-gold">
+                READ MORE <ArrowRightIcon size={13} />
               </span>
             </Link>
           ))}

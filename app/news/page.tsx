@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/PageHero";
 import { journalPosts } from "@/data/site";
+import { ArrowRightIcon } from "@/components/icons";
 
 export const metadata = { title: "Journal | AURA & CO" };
 
@@ -33,8 +34,8 @@ export default function NewsPage() {
                 <p className="text-sm text-black/70 mb-3 leading-relaxed">
                   {post.excerpt}
                 </p>
-                <span className="text-xs tracking-wide text-gold">
-                  READ MORE →
+                <span className="inline-flex items-center gap-1.5 text-xs tracking-wide text-gold">
+                  READ MORE <ArrowRightIcon size={13} />
                 </span>
               </Link>
             ))}

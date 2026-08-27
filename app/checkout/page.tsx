@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { products } from "@/data/products";
+import { ChevronLeftIcon, PlusIcon, MinusIcon, GlobeIcon } from "@/components/icons";
 
 const countries = [
   "Vietnam",
@@ -52,9 +53,12 @@ export default function CheckoutPage() {
           >
             AURA & CO
           </Link>
-          <span className="hidden sm:inline text-sm">🇺🇸 USD</span>
-          <Link href="/cart" className="text-sm tracking-wide hover:text-gold transition-colors">
-            ← Back to cart
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-sm">
+            <GlobeIcon size={16} />
+            USD
+          </span>
+          <Link href="/cart" className="inline-flex items-center gap-1.5 text-sm tracking-wide hover:text-gold transition-colors">
+            <ChevronLeftIcon size={14} /> Back to cart
           </Link>
         </div>
       </header>
@@ -222,9 +226,10 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={() => setMoreOptionsOpen((v) => !v)}
-                className="w-full text-left px-4 py-3 text-sm tracking-wide hover:bg-black/5 transition-colors"
+                className="w-full flex items-center gap-2 text-left px-4 py-3 text-sm tracking-wide hover:bg-black/5 transition-colors"
               >
-                {moreOptionsOpen ? "− Fewer payment options" : "+ More payment options"}
+                {moreOptionsOpen ? <MinusIcon size={14} /> : <PlusIcon size={14} />}
+                {moreOptionsOpen ? "Fewer payment options" : "More payment options"}
               </button>
 
               {moreOptionsOpen && (

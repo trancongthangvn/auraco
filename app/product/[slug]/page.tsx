@@ -8,6 +8,7 @@ import Accordion from "@/components/product/Accordion";
 import Reviews from "@/components/product/Reviews";
 import ProductCarousel from "@/components/ProductCarousel";
 import { getProductBySlug, getRelatedProducts, products } from "@/data/products";
+import { StarRating, SparkleIcon } from "@/components/icons";
 
 export function generateStaticParams() {
   return products.map((p) => ({ slug: p.slug }));
@@ -62,9 +63,8 @@ export default async function ProductPage({
               {product.name}
             </h1>
             {product.reviewCount > 0 && (
-              <p className="text-sm text-gold mb-6">
-                {"★".repeat(Math.round(product.rating))}
-                {"☆".repeat(5 - Math.round(product.rating))}{" "}
+              <p className="flex items-center gap-2 text-sm mb-6">
+                <StarRating rating={product.rating} size={14} />
                 <span className="text-black/50">
                   {product.rating.toFixed(1)} ({product.reviewCount} reviews)
                 </span>
@@ -78,7 +78,7 @@ export default async function ProductPage({
             <ul className="space-y-2 mb-8">
               {product.features.map((f) => (
                 <li key={f} className="text-sm text-black/70 flex gap-2">
-                  <span className="text-gold">✦</span>
+                  <SparkleIcon size={14} className="text-gold mt-0.5 shrink-0" />
                   {f}
                 </li>
               ))}

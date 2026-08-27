@@ -1,4 +1,5 @@
 import type { FullProduct } from "@/data/products";
+import { StarIcon, StarRating } from "@/components/icons";
 
 const sampleReviews = [
   {
@@ -58,7 +59,9 @@ export default function Reviews({ product }: { product: FullProduct }) {
         <div className="flex-1 space-y-1">
           {breakdown.map((b) => (
             <div key={b.star} className="flex items-center gap-3 text-xs">
-              <span className="w-10">{b.star} ★</span>
+              <span className="w-10 inline-flex items-center gap-1">
+                {b.star} <StarIcon size={11} />
+              </span>
               <div className="flex-1 h-1.5 bg-black/10">
                 <div
                   className="h-full bg-gold"
@@ -76,7 +79,9 @@ export default function Reviews({ product }: { product: FullProduct }) {
       <div className="grid gap-6 sm:grid-cols-2">
         {sampleReviews.slice(0, product.reviewCount).map((r) => (
           <div key={r.name} className="border-t border-black/10 pt-4">
-            <p className="text-gold text-xs mb-1">{"★".repeat(r.rating)}</p>
+            <p className="mb-1">
+              <StarRating rating={r.rating} size={12} />
+            </p>
             <p className="text-sm font-medium">
               {r.name} <span className="text-black/40 font-normal">· {r.date}</span>
             </p>

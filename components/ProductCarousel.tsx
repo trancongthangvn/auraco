@@ -4,6 +4,7 @@ import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/data/site";
+import { ChevronLeftIcon, ChevronRightIcon, StarRating } from "@/components/icons";
 
 export default function ProductCarousel({
   title,
@@ -49,8 +50,9 @@ export default function ProductCarousel({
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               </div>
-              <p className="text-xs text-gold mb-1">
-                {"★".repeat(Math.max(p.rating, 0)) || "☆"}({p.rating})
+              <p className="flex items-center gap-1 mb-1">
+                <StarRating rating={p.rating} size={12} />
+                <span className="text-xs text-black/50">({p.rating})</span>
               </p>
               <h3 className="text-[15px] mb-1">{p.name}</h3>
               <p className="text-xs text-black/50 mb-1">{p.material}</p>
@@ -64,14 +66,14 @@ export default function ProductCarousel({
           onClick={() => scrollBy(-1)}
           className="hidden sm:flex absolute -left-4 top-1/3 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow"
         >
-          ❮
+          <ChevronLeftIcon size={16} />
         </button>
         <button
           aria-label="Next"
           onClick={() => scrollBy(1)}
           className="hidden sm:flex absolute -right-4 top-1/3 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow"
         >
-          ❯
+          <ChevronRightIcon size={16} />
         </button>
       </div>
     </section>

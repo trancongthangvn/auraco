@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { FullProduct } from "@/data/products";
+import { MinusIcon, PlusIcon, CheckIcon } from "@/components/icons";
 
 export default function AddToBag({ product }: { product: FullProduct }) {
   const [qty, setQty] = useState(1);
@@ -27,7 +28,7 @@ export default function AddToBag({ product }: { product: FullProduct }) {
             onClick={() => setQty((q) => Math.max(1, q - 1))}
             className="w-9 h-9 flex items-center justify-center hover:bg-black/5"
           >
-            −
+            <MinusIcon size={14} />
           </button>
           <span className="w-10 text-center text-sm">{qty}</span>
           <button
@@ -35,7 +36,7 @@ export default function AddToBag({ product }: { product: FullProduct }) {
             onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
             className="w-9 h-9 flex items-center justify-center hover:bg-black/5"
           >
-            +
+            <PlusIcon size={14} />
           </button>
         </div>
       </div>
@@ -46,9 +47,15 @@ export default function AddToBag({ product }: { product: FullProduct }) {
             setAdded(true);
             setTimeout(() => setAdded(false), 1800);
           }}
-          className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors"
+          className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors inline-flex items-center justify-center gap-2"
         >
-          {added ? "ADDED ✓" : "ADD TO BAG"}
+          {added ? (
+            <>
+              ADDED <CheckIcon size={15} />
+            </>
+          ) : (
+            "ADD TO BAG"
+          )}
         </button>
         <a
           href="/checkout"

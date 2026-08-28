@@ -1,0 +1,153 @@
+import type { Dictionary } from "./en";
+
+const dictionary = {
+  nav: {
+    necklaces: "Colliers",
+    bracelets: "Bracelets",
+    earrings: "Boucles d'oreilles",
+    signatureSets: "Ensembles signature",
+    collections: "Collections",
+    bestSellers: "Meilleures ventes",
+    ourStory: "Notre histoire",
+    news: "Actualités",
+    about: "À propos",
+    contact: "Contact",
+    account: "Compte",
+    cart: "Panier",
+    search: "Rechercher",
+    searchPlaceholder: "Rechercher des produits...",
+    openMenu: "Ouvrir le menu",
+    closeMenu: "Fermer le menu",
+  },
+  announcement: {
+    signup: "INSCRIVEZ-VOUS POUR 10% DE RÉDUCTION SUR VOTRE PREMIÈRE COMMANDE",
+  },
+  footer: {
+    newsletterHeading: "INSCRIVEZ-VOUS POUR 10% DE RÉDUCTION",
+    emailPlaceholder: "Adresse e-mail",
+    subscribe: "S'abonner",
+    newsletterDisclaimer:
+      "En vous inscrivant, vous acceptez notre politique de sécurité et de confidentialité.",
+    shop: "Boutique",
+    ourStory: "Notre histoire",
+    policies: "Politiques",
+    catalog: "Catalogue",
+    cart: "Panier",
+    securityPolicy: "Politique de sécurité",
+    privacyPolicy: "Politique de confidentialité",
+    returnPolicy: "Politique de retour",
+    termsOfService: "Conditions d'utilisation",
+    copyright: "© 2026 AURA & CO. Tous droits réservés.",
+  },
+  common: {
+    home: "Accueil",
+    readMore: "LIRE PLUS",
+    continueShopping: "CONTINUER LES ACHATS",
+  },
+  cart: {
+    title: "Votre panier",
+    empty:
+      "Votre panier est actuellement vide. Découvrez la collection et ajoutez vos pièces préférées.",
+  },
+  contact: {
+    fullName: "Nom complet",
+    email: "E-mail",
+    phone: "Numéro de téléphone (facultatif)",
+    product: "Produit (facultatif)",
+    message: "Message",
+    send: "ENVOYER LE MESSAGE",
+    sending: "ENVOI...",
+    sent: "MESSAGE ENVOYÉ",
+    defaultSubject: "Demande depuis le site",
+    error: "Impossible d'envoyer votre message. Veuillez réessayer.",
+  },
+  catalog: {
+    heading: "PRODUITS",
+    subheading:
+      "Découvrez nos pièces en vermeil doré et argent sterling, des basiques du quotidien aux créations affirmées.",
+  },
+  news: {
+    title: "Journal",
+    all: "Tout",
+    searchPlaceholder: "Rechercher des articles...",
+    searchButton: "Rechercher",
+    clearFilters: "Effacer les filtres",
+    searchResultsFor: "Résultats de recherche pour",
+    searchResultsCount: "articles",
+    noResultsSearch: "Aucun article correspondant trouvé.",
+    noResults: "Aucun article pour le moment.",
+    viewAll: "Voir tous les articles",
+    prev: "Précédent",
+    next: "Suivant",
+    relatedTitle: "Articles similaires",
+    readMore: "LIRE PLUS",
+    backToJournal: "Retour au journal",
+    views: "vues",
+  },
+  product: {
+    breadcrumbHome: "Accueil",
+    whyLoveIt: "Pourquoi vous allez adorer :",
+    details: "Détails",
+    material: "Matériau",
+    handFinishedNote:
+      "Chaque pièce est finie à la main et inspectée pour sa qualité avant expédition.",
+    deliveryReturns: "Livraison et retours",
+    deliveryReturnsText:
+      "Livraison gratuite pour les commandes de plus de 120 $. Retours faciles sous 30 jours pour les articles non portés dans leur emballage d'origine. Toutes les pièces sont garanties 2 ans.",
+    youMayAlsoLike: "Vous aimerez aussi",
+    quantity: "Quantité",
+    decreaseQuantity: "Diminuer la quantité",
+    increaseQuantity: "Augmenter la quantité",
+    addToBag: "AJOUTER AU PANIER",
+    added: "AJOUTÉ",
+    buyNow: "ACHETER MAINTENANT",
+    inStock: "en stock",
+    reviews: "avis",
+    usdBase: "Prix de base en USD",
+  },
+  auth: {
+    login: {
+      title: "Connexion",
+      subtitle:
+        "Connectez-vous pour consulter vos commandes, vos pièces enregistrées et les détails de votre compte.",
+      email: "E-mail",
+      password: "Mot de passe",
+      rememberMe: "Se souvenir de moi",
+      forgotPassword: "Mot de passe oublié ?",
+      forgotDemoMessage:
+        "La réinitialisation du mot de passe n'est pas disponible dans cette démo.",
+      signIn: "SE CONNECTER",
+      or: "OU",
+      continueWithGoogle: "Continuer avec Google",
+      googleDemoMessage:
+        "La connexion Google n'est pas disponible dans cette démo.",
+      demoMessage:
+        "Ceci est une démo d'interface. Aucun système de compte n'est encore connecté.",
+      noAccount: "Pas encore de compte ?",
+      createOne: "En créer un",
+      demoNotice: "Démo d'interface — aucun vrai système de compte connecté.",
+    },
+    register: {
+      title: "Créer un compte",
+      subtitle:
+        "Rejoignez-nous pour suivre vos commandes, enregistrer vos favoris et passer commande plus rapidement.",
+      fullName: "Nom complet",
+      email: "E-mail",
+      password: "Mot de passe",
+      confirmPassword: "Confirmer le mot de passe",
+      passwordMismatch: "Les mots de passe ne correspondent pas.",
+      createAccount: "CRÉER UN COMPTE",
+      or: "OU",
+      continueWithGoogle: "Continuer avec Google",
+      googleDemoMessage:
+        "La connexion Google n'est pas disponible dans cette démo.",
+      demoMessage:
+        "Ceci est une démo d'interface. Aucun système de compte n'est encore connecté.",
+      haveAccount: "Vous avez déjà un compte ?",
+      signIn: "Se connecter",
+      demoNotice: "Démo d'interface — aucun vrai système de compte connecté.",
+    },
+  },
+} satisfies Dictionary;
+
+export default dictionary;

@@ -3,8 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { GoogleIcon } from "@/components/icons";
+import { useDictionary } from "@/components/i18n/LanguageProvider";
 
 export default function LoginForm() {
+  const dict = useDictionary().auth.login;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -14,34 +16,30 @@ export default function LoginForm() {
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        setMessage("This is a UI demo. No account system is connected yet.");
+        setMessage(dict.demoMessage);
       }}
-      className="mx-auto max-w-[560px] px-6 py-16 space-y-5"
+      className="mx-auto max-w-[560px] px-6 pb-16 space-y-6"
     >
-      <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Email
-        </label>
+      <label className="block text-sm">
+        <span className="block mb-2">{dict.email}</span>
         <input
           required
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-black/20 px-4 py-3 text-sm"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
         />
-      </div>
-      <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Password
-        </label>
+      </label>
+      <label className="block text-sm">
+        <span className="block mb-2">{dict.password}</span>
         <input
           required
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border border-black/20 px-4 py-3 text-sm"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
         />
-      </div>
+      </label>
 
       <div className="flex items-center justify-between text-sm">
         <label className="flex items-center gap-2">
@@ -51,41 +49,37 @@ export default function LoginForm() {
             onChange={(e) => setRemember(e.target.checked)}
             className="border border-black/20"
           />
-          Remember me
+          {dict.rememberMe}
         </label>
         <button
           type="button"
-          onClick={() =>
-            setMessage("Password reset is not available in this demo.")
-          }
+          onClick={() => setMessage(dict.forgotDemoMessage)}
           className="text-black/60 underline hover:text-black"
         >
-          Forgot your password?
+          {dict.forgotPassword}
         </button>
       </div>
 
       <button
         type="submit"
-        className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors"
+        className="w-full rounded-full bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] transition-colors"
       >
-        SIGN IN
+        {dict.signIn}
       </button>
 
       <div className="flex items-center gap-4 text-xs text-black/40 uppercase tracking-wide">
         <div className="flex-1 h-px bg-black/10" />
-        OR
+        {dict.or}
         <div className="flex-1 h-px bg-black/10" />
       </div>
 
       <button
         type="button"
-        onClick={() =>
-          setMessage("Google sign-in is not available in this demo.")
-        }
-        className="w-full border border-[#2b261f] px-6 py-3 text-sm tracking-wide hover:bg-[#2b261f] hover:text-white transition-colors flex items-center justify-center gap-2"
+        onClick={() => setMessage(dict.googleDemoMessage)}
+        className="w-full rounded-full border border-[#2b261f] px-6 py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:text-white transition-colors flex items-center justify-center gap-2"
       >
         <GoogleIcon size={18} />
-        Continue with Google
+        {dict.continueWithGoogle}
       </button>
 
       {message && (
@@ -93,15 +87,13 @@ export default function LoginForm() {
       )}
 
       <p className="text-sm text-center">
-        No account yet?{" "}
+        {dict.noAccount}{" "}
         <Link href="/register" className="underline hover:text-black">
-          Create one
+          {dict.createOne}
         </Link>
       </p>
 
-      <p className="text-xs text-black/40 text-center pt-4">
-        Demo giao diện, chưa kết nối hệ thống tài khoản thật.
-      </p>
+      <p className="text-xs text-black/40 text-center pt-4">{dict.demoNotice}</p>
     </form>
   );
 }

@@ -4,7 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
+import { useRequireAdmin } from "@/components/admin/useRequireAdmin";
 import { apiFetch, ApiError } from "@/lib/api";
+import Button from "@/components/admin/ui/Button";
+import { Input, Label } from "@/components/admin/ui/Field";
+import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
+import Badge from "@/components/admin/ui/Badge";
+import {
+  ModalBackdrop,
+  ModalPanel,
+  ModalHeader,
+  ModalFooter,
+} from "@/components/admin/ui/Modal";
 
 type DiscountCode = {
   id: number;
@@ -21,6 +32,7 @@ type DiscountCode = {
 
 export default function AdminDiscountCodesPage() {
   const { session } = useAdminAuth();
+  useRequireAdmin();
   const [codes, setCodes] = useState<DiscountCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,12 +144,9 @@ export default function AdminDiscountCodesPage() {
         <span className="text-xs text-black/50">
           {codes.length} mã khuyến mãi, thay đổi chỉ lưu tạm trong phiên demo
         </span>
-        <button
-          onClick={() => setCreating(true)}
-          className="text-sm border border-[#2b261f] px-4 py-2 hover:bg-[#2b261f] hover:text-white transition-colors"
-        >
+        <Button variant="primary" onClick={() => setCreating(true)}>
           + Thêm mã
-        </button>
+        </Button>
       </PageHeader>
 
       {error && (
@@ -147,140 +156,111 @@ export default function AdminDiscountCodesPage() {
       {loading ? (
         <div className="text-sm text-black/50">Đang tải...</div>
       ) : (
-      <div className="bg-white border border-black/10 overflow-x-auto">
+      <TableCard>
         <table className="w-full text-sm min-w-[720px]">
           <thead>
-            <tr className="text-left text-black/50 border-b border-black/10">
-              <th className="py-3 px-4 font-normal">Mã</th>
-              <th className="py-3 px-4 font-normal">Giá trị</th>
-              <th className="py-3 px-4 font-normal">Đơn tối thiểu</th>
-              <th className="py-3 px-4 font-normal">Lượt dùng</th>
-              <th className="py-3 px-4 font-normal">Hiệu lực</th>
-              <th className="py-3 px-4 font-normal text-center">Trạng thái</th>
-              <th className="py-3 px-4 font-normal text-right">Thao tác</th>
+            <tr className="border-b border-black/10">
+              <Th>Mã</Th>
+              <Th>Giá trị</Th>
+              <Th>Đơn tối thiểu</Th>
+              <Th>Lượt dùng</Th>
+              <Th>Hiệu lực</Th>
+              <Th align="center">Trạng thái</Th>
+              <Th align="right">Thao tác</Th>
             </tr>
           </thead>
           <tbody>
             {codes.map((c) => (
-              <tr key={c.id} className="border-b border-black/5">
-                <td className="py-2 px-4 font-medium">{c.code}</td>
-                <td className="py-2 px-4">
-                  {c.type === "percent" ? `${c.value}%` : `$${c.value}`}
-                </td>
-                <td className="py-2 px-4">
-                  {c.minOrder > 0 ? `$${c.minOrder}` : "Không giới hạn"}
-                </td>
-                <td className="py-2 px-4 whitespace-nowrap">
+              <tr key={c.id} className={TR_HOVER}>
+                <Td className="font-medium">{c.code}</Td>
+                <Td>{c.type === "percent" ? `${c.value}%` : `$${c.value}`}</Td>
+                <Td>{c.minOrder > 0 ? `$${c.minOrder}` : "Không giới hạn"}</Td>
+                <Td className="whitespace-nowrap">
                   {c.used}/{c.usageLimit}
-                </td>
-                <td className="py-2 px-4 whitespace-nowrap text-black/50">
+                </Td>
+                <Td className="whitespace-nowrap text-black/50">
                   {c.startDate} - {c.endDate}
-                </td>
-                <td className="py-2 px-4 text-center">
+                </Td>
+                <Td align="center">
                   <button
                     onClick={() => toggleActive(c.id)}
-                    className={`text-xs px-2 py-1 border ${
-                      c.active
-                        ? "border-green-700 text-green-700"
-                        : "border-black/30 text-black/40"
-                    }`}
+                    className="transition-transform duration-150 active:scale-95"
                   >
-                    {c.active ? "Đang bật" : "Đã tắt"}
+                    <Badge tone={c.active ? "success" : "neutral"}>
+                      {c.active ? "Đang bật" : "Đã tắt"}
+                    </Badge>
                   </button>
-                </td>
-                <td className="py-2 px-4 text-right space-x-3 whitespace-nowrap">
-                  <button onClick={() => setEditing(c)} className="text-xs underline">
-                    Sửa
-                  </button>
-                  <button
-                    onClick={() => remove(c.id)}
-                    disabled={!isAdmin}
-                    title={!isAdmin ? "Chỉ Quản trị viên được xóa mã" : ""}
-                    className={`text-xs underline ${
-                      isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
-                    }`}
-                  >
-                    Xóa
-                  </button>
-                </td>
+                </Td>
+                <Td align="right" className="whitespace-nowrap">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => setEditing(c)}>
+                      Sửa
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => remove(c.id)}
+                      disabled={!isAdmin}
+                      title={!isAdmin ? "Chỉ Quản trị viên được xóa mã" : ""}
+                    >
+                      Xóa
+                    </Button>
+                  </div>
+                </Td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+        {codes.length === 0 && <EmptyState>Chưa có mã khuyến mãi nào.</EmptyState>}
+      </TableCard>
       )}
 
       {editing && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
-          <div className="bg-white p-6 w-full max-w-md">
-            <h2 className="text-lg font-medium mb-4">Sửa mã khuyến mãi</h2>
-            <label className="block text-xs uppercase tracking-wide mb-2">Mã</label>
-            <input
-              ref={editCodeRef}
-              defaultValue={editing.code}
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
-            />
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Giá trị giảm
-            </label>
-            <input
-              ref={editValueRef}
-              defaultValue={editing.value}
-              type="number"
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
-            />
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setEditing(null)}
-                className="text-sm px-4 py-2 border border-black/20"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={saveEdit}
-                className="text-sm px-4 py-2 bg-[#2b261f] text-white"
-              >
-                Lưu thay đổi
-              </button>
+        <ModalBackdrop onClose={() => setEditing(null)}>
+          <ModalPanel maxWidth="max-w-md">
+            <ModalHeader title="Sửa mã khuyến mãi" onClose={() => setEditing(null)} />
+            <div className="px-6 py-5">
+              <Label>Mã</Label>
+              <Input ref={editCodeRef} defaultValue={editing.code} className="mb-4" />
+              <Label>Giá trị giảm</Label>
+              <Input
+                ref={editValueRef}
+                defaultValue={editing.value}
+                type="number"
+              />
             </div>
-          </div>
-        </div>
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => setEditing(null)}>
+                Hủy
+              </Button>
+              <Button variant="primary" onClick={saveEdit}>
+                Lưu thay đổi
+              </Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalBackdrop>
       )}
 
       {creating && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
-          <div className="bg-white p-6 w-full max-w-md">
-            <h2 className="text-lg font-medium mb-4">Thêm mã khuyến mãi</h2>
-            <label className="block text-xs uppercase tracking-wide mb-2">Mã</label>
-            <input
-              ref={createCodeRef}
-              placeholder="VD: AURA15"
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
-            />
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Giá trị giảm (%)
-            </label>
-            <input
-              ref={createValueRef}
-              type="number"
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
-            />
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setCreating(false)}
-                className="text-sm px-4 py-2 border border-black/20"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={saveCreate}
-                className="text-sm px-4 py-2 bg-[#2b261f] text-white"
-              >
-                Tạo mã
-              </button>
+        <ModalBackdrop onClose={() => setCreating(false)}>
+          <ModalPanel maxWidth="max-w-md">
+            <ModalHeader title="Thêm mã khuyến mãi" onClose={() => setCreating(false)} />
+            <div className="px-6 py-5">
+              <Label>Mã</Label>
+              <Input ref={createCodeRef} placeholder="VD: AURA15" className="mb-4" />
+              <Label>Giá trị giảm (%)</Label>
+              <Input ref={createValueRef} type="number" />
             </div>
-          </div>
-        </div>
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => setCreating(false)}>
+                Hủy
+              </Button>
+              <Button variant="primary" onClick={saveCreate}>
+                Tạo mã
+              </Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalBackdrop>
       )}
 
       <p className="text-xs text-black/40 mt-4">

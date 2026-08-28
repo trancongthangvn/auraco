@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Award,
   Newspaper,
+  FolderTree,
   Layout,
   Globe,
   Users,
@@ -86,6 +87,12 @@ const GUIDES: Record<string, GuideMeta> = {
     icon: Newspaper,
     guide:
       "Viết và quản lý bài Journal: trình soạn thảo có định dạng, chèn ảnh và video trực tiếp vào nội dung.",
+  },
+  "/admin/post-categories": {
+    title: "Danh mục bài viết",
+    icon: FolderTree,
+    guide:
+      "Tạo và sắp xếp các danh mục để phân loại bài Journal. Xóa danh mục không xóa bài viết, chúng chỉ trở thành chưa phân loại.",
   },
   "/admin/homepage": {
     title: "Trang chủ",

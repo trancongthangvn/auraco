@@ -68,9 +68,12 @@ export default async function Reviews({ product }: { product: FullProduct }) {
         </div>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4">
         {reviews.map((r) => (
-          <div key={r.id} className="border-t border-black/10 pt-4">
+          <div
+            key={r.id}
+            className="rounded-2xl border border-gold/35 bg-white px-5 py-4"
+          >
             <p className="mb-1">
               <StarRating rating={r.rating} size={12} />
             </p>

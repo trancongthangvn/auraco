@@ -17,6 +17,98 @@ body {
   font-family: var(--font-serif), Georgia, serif;
 }
 
+/* Scroll-reveal, matching auracojewelry.com's own .reveal-on-scroll timing
+   (measured on the live site: opacity fades in with a 0.5s head-start delay
+   over the 0.55s translateY, so the motion finishes shortly after the fade
+   starts rather than both landing at once). Applied via useRevealOnScroll(). */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(34px);
+  transition: opacity 0.55s 0.5s, transform 0.55s;
+}
+.reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Above-the-fold sections (hero) fade only — no upward slide, matching
+   auracojewelry.com's own hero-specific override of the same class. */
+.reveal-on-scroll--fade-only {
+  transform: none;
+  transition: opacity 0.55s 0.5s;
+}
+.reveal-on-scroll--fade-only.is-visible {
+  transform: none;
+}
+/* Horizontal slide-in pair (image-from-left / copy-from-right), matching
+   auracojewelry.com's home-stories section. */
+.reveal-from-start {
+  opacity: 0;
+  transform: translateX(-3.5rem);
+  transition: opacity 0.55s 0.08s, transform 0.55s 0.08s;
+}
+.reveal-from-end {
+  opacity: 0;
+  transform: translateX(3.5rem);
+  transition: opacity 0.55s 0.22s, transform 0.55s 0.22s;
+}
+.reveal-from-start.is-visible,
+.reveal-from-end.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* "As Seen In" press-logo marquee (.home-section--certificates on the live
+   site). The track contains two identical groups, so translating it by -50%
+   lands the second group exactly where the first started — the loop reads as
+   one continuous strip. Hovering pauses it; the marquee is still an
+   overflow-x scroller so it stays usable when the animation is off. */
+.home-certificates-marquee__track {
+  width: max-content;
+  animation: home-certificates-scroll 40s linear infinite;
+}
+.home-certificates-marquee:hover .home-certificates-marquee__track {
+  animation-play-state: paused;
+}
+
+@keyframes home-certificates-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll,
+  .reveal-from-start,
+  .reveal-from-end {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .home-certificates-marquee__track {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* Rendered article HTML (public journal detail page). Tailwind Typography
+   does not style iframes, so make the editor's YouTube/Vimeo embeds
+   responsive 16:9 here. */
+.article-content iframe {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  margin: 2rem 0;
+}
+
+.article-content img {
+  height: auto;
+}
+
 .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;

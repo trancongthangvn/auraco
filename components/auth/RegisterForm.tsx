@@ -3,8 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { GoogleIcon } from "@/components/icons";
+import { useDictionary } from "@/components/i18n/LanguageProvider";
 
 export default function RegisterForm() {
+  const dict = useDictionary().auth.register;
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,85 +20,75 @@ export default function RegisterForm() {
         e.preventDefault();
         setMessage("");
         if (password !== confirmPassword) {
-          setError("Passwords do not match.");
+          setError(dict.passwordMismatch);
           return;
         }
         setError("");
-        setMessage("This is a UI demo. No account system is connected yet.");
+        setMessage(dict.demoMessage);
       }}
-      className="mx-auto max-w-[560px] px-6 py-16 space-y-5"
+      className="mx-auto max-w-[560px] px-6 pb-16 space-y-6"
     >
-      <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Full name
-        </label>
+      <label className="block text-sm">
+        <span className="block mb-2">{dict.fullName}</span>
         <input
           required
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          className="w-full border border-black/20 px-4 py-3 text-sm"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
         />
-      </div>
-      <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Email
-        </label>
+      </label>
+      <label className="block text-sm">
+        <span className="block mb-2">{dict.email}</span>
         <input
           required
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-black/20 px-4 py-3 text-sm"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
         />
-      </div>
-      <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Password
-        </label>
+      </label>
+      <label className="block text-sm">
+        <span className="block mb-2">{dict.password}</span>
         <input
           required
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border border-black/20 px-4 py-3 text-sm"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
         />
-      </div>
-      <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Confirm password
-        </label>
+      </label>
+      <label className="block text-sm">
+        <span className="block mb-2">{dict.confirmPassword}</span>
         <input
           required
           type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full border border-black/20 px-4 py-3 text-sm"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
         />
         {error && <p className="text-xs text-red-700 mt-2">{error}</p>}
-      </div>
+      </label>
 
       <button
         type="submit"
-        className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors"
+        className="w-full rounded-full bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] transition-colors"
       >
-        CREATE ACCOUNT
+        {dict.createAccount}
       </button>
 
       <div className="flex items-center gap-4 text-xs text-black/40 uppercase tracking-wide">
         <div className="flex-1 h-px bg-black/10" />
-        OR
+        {dict.or}
         <div className="flex-1 h-px bg-black/10" />
       </div>
 
       <button
         type="button"
-        onClick={() =>
-          setMessage("Google sign-in is not available in this demo.")
-        }
-        className="w-full border border-[#2b261f] px-6 py-3 text-sm tracking-wide hover:bg-[#2b261f] hover:text-white transition-colors flex items-center justify-center gap-2"
+        onClick={() => setMessage(dict.googleDemoMessage)}
+        className="w-full rounded-full border border-[#2b261f] px-6 py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:text-white transition-colors flex items-center justify-center gap-2"
       >
         <GoogleIcon size={18} />
-        Continue with Google
+        {dict.continueWithGoogle}
       </button>
 
       {message && (
@@ -104,15 +96,13 @@ export default function RegisterForm() {
       )}
 
       <p className="text-sm text-center">
-        Already have an account?{" "}
+        {dict.haveAccount}{" "}
         <Link href="/login" className="underline hover:text-black">
-          Sign in
+          {dict.signIn}
         </Link>
       </p>
 
-      <p className="text-xs text-black/40 text-center pt-4">
-        Demo giao diện, chưa kết nối hệ thống tài khoản thật.
-      </p>
+      <p className="text-xs text-black/40 text-center pt-4">{dict.demoNotice}</p>
     </form>
   );
 }

@@ -2,10 +2,14 @@ import Link from "next/link";
 import Announcement from "@/components/Announcement";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import LanguageProvider from "@/components/i18n/LanguageProvider";
 
+// Rendered for any URL that matches no route at all, so it sits outside the
+// `(storefront)` route group's layout (and its cookie-driven locale) — wrap
+// with a self-contained default-locale provider so Header/Footer still work.
 export default function NotFound() {
   return (
-    <>
+    <LanguageProvider locale="en">
       <Announcement />
       <Header />
       <main>
@@ -31,6 +35,6 @@ export default function NotFound() {
         </div>
       </main>
       <Footer />
-    </>
+    </LanguageProvider>
   );
 }

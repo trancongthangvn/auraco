@@ -1,11 +1,16 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { journalPosts } from "@/data/site";
 import { ArrowRightIcon } from "@/components/icons";
+import { useRevealOnScroll } from "@/components/useRevealOnScroll";
 
 export default function Journal() {
+  const [revealRef, revealClass] = useRevealOnScroll<HTMLElement>({ fadeOnly: true });
+
   return (
-    <section className="bg-[#f7f4f0] py-16">
+    <section ref={revealRef} className={`bg-[#f7f4f0] py-16 ${revealClass}`}>
       <div className="mx-auto max-w-[1400px] px-6">
         <h2 className="font-serif-display text-3xl text-center mb-10">
           Journal

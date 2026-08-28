@@ -39,6 +39,11 @@ export const metadata: Metadata = {
   },
 };
 
+// Intentionally does NOT read cookies() here — that would force every route
+// under this layout (including /admin, which is Vietnamese-only and doesn't
+// use the dictionary at all) to opt out of static rendering. Locale is read
+// one level down, in `app/(storefront)/layout.tsx`, which only wraps the
+// customer-facing routes that actually need it.
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html

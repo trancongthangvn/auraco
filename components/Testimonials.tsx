@@ -1,3 +1,7 @@
+"use client";
+
+import { useRevealOnScroll } from "@/components/useRevealOnScroll";
+
 export type Testimonial = {
   initials: string;
   name: string;
@@ -10,8 +14,10 @@ export default function Testimonials({
 }: {
   testimonials: Testimonial[];
 }) {
+  const [revealRef, revealClass] = useRevealOnScroll<HTMLElement>();
+
   return (
-    <section className="bg-[#f7f4f0] py-16">
+    <section ref={revealRef} className={`bg-[#f7f4f0] py-16 ${revealClass}`}>
       <div className="mx-auto max-w-[1400px] px-6">
         <h2 className="font-serif-display text-3xl text-center mb-10">
           Feedback

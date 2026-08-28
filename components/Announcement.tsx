@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { CloseIcon } from "@/components/icons";
+import { useDictionary } from "@/components/i18n/LanguageProvider";
 
 export default function Announcement() {
+  const dict = useDictionary();
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
 
   return (
     <div className="relative bg-[#2b261f] text-white text-center text-sm py-2 px-8">
-      <span>SIGN UP FOR 10% OFF YOUR FIRST ORDER</span>
+      <span>{dict.announcement.signup}</span>
       <button
         aria-label="Dismiss announcement"
         onClick={() => setVisible(false)}

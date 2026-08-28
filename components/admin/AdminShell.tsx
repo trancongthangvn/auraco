@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Award,
   Newspaper,
+  FolderTree,
   Layout,
   Globe,
   Users,
@@ -34,18 +35,23 @@ type NavItem = {
   roles: ("admin" | "staff")[];
 };
 
+// Staff is scoped to products + orders only (per contract §16) — every other
+// section is admin-only, both here (nav visibility) and server-side
+// (requireAdmin in server/routes/*.js) and per-page (useRequireAdmin, which
+// closes the direct-URL bypass this nav filter alone doesn't cover).
 const NAV: NavItem[] = [
   { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, roles: ["admin", "staff"] },
   { href: "/admin/products", label: "Sản phẩm", icon: Package, roles: ["admin", "staff"] },
-  { href: "/admin/collections", label: "Collections", icon: Layers, roles: ["admin", "staff"] },
+  { href: "/admin/collections", label: "Collections", icon: Layers, roles: ["admin"] },
   { href: "/admin/orders", label: "Đơn hàng", icon: ShoppingCart, roles: ["admin", "staff"] },
   { href: "/admin/payments", label: "Thanh toán", icon: CreditCard, roles: ["admin"] },
-  { href: "/admin/reviews", label: "Đánh giá sản phẩm", icon: Star, roles: ["admin", "staff"] },
-  { href: "/admin/discount-codes", label: "Khuyến mãi", icon: Tag, roles: ["admin", "staff"] },
-  { href: "/admin/inquiries", label: "Yêu cầu liên hệ", icon: MessageSquare, roles: ["admin", "staff"] },
-  { href: "/admin/certificates", label: "Báo chí nhắc đến", icon: Award, roles: ["admin", "staff"] },
-  { href: "/admin/posts", label: "Bài viết", icon: Newspaper, roles: ["admin", "staff"] },
-  { href: "/admin/homepage", label: "Trang chủ", icon: Layout, roles: ["admin", "staff"] },
+  { href: "/admin/reviews", label: "Đánh giá sản phẩm", icon: Star, roles: ["admin"] },
+  { href: "/admin/discount-codes", label: "Khuyến mãi", icon: Tag, roles: ["admin"] },
+  { href: "/admin/inquiries", label: "Yêu cầu liên hệ", icon: MessageSquare, roles: ["admin"] },
+  { href: "/admin/certificates", label: "Báo chí nhắc đến", icon: Award, roles: ["admin"] },
+  { href: "/admin/posts", label: "Bài viết", icon: Newspaper, roles: ["admin"] },
+  { href: "/admin/post-categories", label: "Danh mục bài viết", icon: FolderTree, roles: ["admin"] },
+  { href: "/admin/homepage", label: "Trang chủ", icon: Layout, roles: ["admin"] },
   { href: "/admin/cai-dat-web", label: "Cài đặt web", icon: Globe, roles: ["admin"] },
   { href: "/admin/accounts", label: "Tài khoản", icon: Users, roles: ["admin"] },
 ];

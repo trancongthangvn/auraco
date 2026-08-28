@@ -1,58 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useState } from "react";
-import { footerLinks, ourStoryLinks } from "@/data/site";
+import { footerLinks } from "@/data/site";
 import { ArrowRightIcon } from "@/components/icons";
+import { useDictionary } from "@/components/i18n/LanguageProvider";
 
 export default function Footer() {
+  const dict = useDictionary();
   const [email, setEmail] = useState("");
 
   return (
-    <footer className="bg-[#2b261f] text-white/80">
-      <div className="mx-auto max-w-[1400px] px-6 pt-14">
-        <Image
-          src="/images/brand/logo-badge.png"
-          alt="AURA & CO"
-          width={40}
-          height={40}
-          className="h-10 w-10 rounded"
-        />
-      </div>
-      <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="bg-white text-ink border-t border-black/5">
+      <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-10 grid gap-10 sm:grid-cols-3">
         <div>
-          <h3 className="text-white text-sm tracking-[0.15em] mb-4">
-            SIGN UP FOR 10% OFF
+          <h3 className="font-serif-display text-[28px] uppercase tracking-[0.01em] mb-4">
+            {dict.footer.newsletterHeading}
           </h3>
           <form
             onSubmit={(e) => e.preventDefault()}
-            className="flex border-b border-white/30 pb-2"
+            className="flex border-b border-black/20 pb-2"
           >
             <input
               type="email"
               required
-              placeholder="Email address"
+              placeholder={dict.footer.emailPlaceholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-transparent flex-1 text-sm placeholder:text-white/40 outline-none"
+              className="bg-transparent flex-1 text-sm placeholder:text-black/40 outline-none"
             />
-            <button type="submit" aria-label="Subscribe" className="text-white">
+            <button type="submit" aria-label={dict.footer.subscribe} className="text-ink">
               <ArrowRightIcon size={18} />
             </button>
           </form>
-          <p className="text-xs text-white/40 mt-3">
-            By signing up, you agree to our Security & Privacy.
+          <p className="text-xs text-black/50 mt-3">
+            {dict.footer.newsletterDisclaimer}
           </p>
         </div>
 
         <div>
-          <h3 className="text-white text-sm tracking-[0.15em] mb-4">SHOP</h3>
-          <ul className="space-y-2 text-sm">
+          <h3 className="text-gold text-xs uppercase tracking-[0.12em] mb-4">
+            {dict.footer.shop}
+          </h3>
+          <ul className="space-y-2 text-xs">
             {footerLinks.shop.map((l) => (
-              <li key={l.label}>
-                <Link href={l.href} className="hover:text-white">
-                  {l.label.toUpperCase()}
+              <li key={l.key}>
+                <Link href={l.href} className="text-black/60 hover:text-ink transition-colors">
+                  {dict.footer[l.key]}
                 </Link>
               </li>
             ))}
@@ -60,29 +54,14 @@ export default function Footer() {
         </div>
 
         <div>
-          <h3 className="text-white text-sm tracking-[0.15em] mb-4">
-            OUR STORY
+          <h3 className="text-gold text-xs uppercase tracking-[0.12em] mb-4">
+            {dict.footer.policies}
           </h3>
-          <ul className="space-y-2 text-sm">
-            {ourStoryLinks.map((l) => (
-              <li key={l.label}>
-                <Link href={l.href} className="hover:text-white">
-                  {l.label.toUpperCase()}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="text-white text-sm tracking-[0.15em] mb-4">
-            POLICIES
-          </h3>
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-2 text-xs">
             {footerLinks.policies.map((l) => (
-              <li key={l.label}>
-                <Link href={l.href} className="hover:text-white">
-                  {l.label.toUpperCase()}
+              <li key={l.key}>
+                <Link href={l.href} className="text-black/60 hover:text-ink transition-colors">
+                  {dict.footer[l.key]}
                 </Link>
               </li>
             ))}
@@ -90,8 +69,8 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-white/10 py-6 text-center text-xs text-white/40">
-        © 2026 AURA & CO. All rights reserved.
+      <div className="mx-auto max-w-[1400px] px-6 pb-8 text-sm text-black/40">
+        {dict.footer.copyright}
       </div>
     </footer>
   );

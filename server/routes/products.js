@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { query } = require('../db');
-const { authMiddleware, requireAdmin } = require('../middleware/auth');
+const { authMiddleware, requireStaffOrAdmin } = require('../middleware/auth');
 const { upload, verifyMagicBytes } = require('../lib/upload');
 
 const router = express.Router();
@@ -67,6 +67,18 @@ function isFiniteNumber(v) {
   return typeof v === 'number' && Number.isFinite(v);
 }
 
+/** `video_url` is optional: a string path/URL, or null to clear it. */
+function isStringOrNull(v) {
+  return v === null || typeof v === 'string';
+}
+
+/** Empty/blank video URLs are stored as NULL so "has a video" stays IS NOT NULL. */
+function normalizeVideoUrl(v) {
+  if (typeof v !== 'string') return null;
+  const trimmed = v.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
 // ----------------------------------------------------------------------------
 // Public: GET /api/products  (list, filter by collection/category)
 // ----------------------------------------------------------------------------
@@ -129,7 +141,7 @@ router.get('/:slug', async (req, res) => {
 // ----------------------------------------------------------------------------
 // Admin: GET /api/products/admin/products (list ALL, including inactive)
 // ----------------------------------------------------------------------------
-router.get('/admin/products', authMiddleware, requireAdmin, async (req, res) => {
+router.get('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   try {
     const result = await query('SELECT * FROM products ORDER BY created_at DESC');
     const products = await attachRelations(result.rows);
@@ -143,7 +155,7 @@ router.get('/admin/products', authMiddleware, requireAdmin, async (req, res) => 
 // ----------------------------------------------------------------------------
 // Admin: POST /api/products/admin/products
 // ----------------------------------------------------------------------------
-router.post('/admin/products', authMiddleware, requireAdmin, async (req, res) => {
+router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   try {
     const {
       slug,
@@ -159,8 +171,12 @@ router.post('/admin/products', authMiddleware, requireAdmin, async (req, res) =>
       features,
       stock,
       active,
+      videoUrl,
+      video_url: videoUrlSnake,
       collections, // array of collection slugs
     } = req.body || {};
+
+    const videoUrlInput = videoUrl !== undefined ? videoUrl : videoUrlSnake;
 
     if (!isNonEmptyString(slug)) return res.status(400).json({ error: 'slug is required' });
     if (!isNonEmptyString(name)) return res.status(400).json({ error: 'name is required' });
@@ -183,12 +199,15 @@ router.post('/admin/products', authMiddleware, requireAdmin, async (req, res) =>
     if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
       return res.status(400).json({ error: 'stock must be a non-negative integer' });
     }
+    if (videoUrlInput !== undefined && !isStringOrNull(videoUrlInput)) {
+      return res.status(400).json({ error: 'videoUrl must be a string or null' });
+    }
 
     const result = await query(
       `INSERT INTO products
          (slug, name, category, material, price, compare_at_price, rating,
-          review_count, images, description, features, stock, active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+          review_count, images, description, features, stock, active, video_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING *`,
       [
         slug.trim(),
@@ -204,6 +223,7 @@ router.post('/admin/products', authMiddleware, requireAdmin, async (req, res) =>
         JSON.stringify(features || []),
         Number.isInteger(stock) ? stock : 0,
         active === undefined ? true : Boolean(active),
+        normalizeVideoUrl(videoUrlInput),
       ]
     );
 
@@ -233,7 +253,7 @@ router.post('/admin/products', authMiddleware, requireAdmin, async (req, res) =>
 // ----------------------------------------------------------------------------
 // Admin: PUT /api/products/admin/products/:slug
 // ----------------------------------------------------------------------------
-router.put('/admin/products/:slug', authMiddleware, requireAdmin, async (req, res) => {
+router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   try {
     const existing = await query('SELECT * FROM products WHERE slug = $1', [req.params.slug]);
     if (existing.rows.length === 0) {
@@ -254,8 +274,12 @@ router.put('/admin/products/:slug', authMiddleware, requireAdmin, async (req, re
       features,
       stock,
       active,
+      videoUrl,
+      video_url: videoUrlSnake,
       collections,
     } = req.body || {};
+
+    const videoUrlInput = videoUrl !== undefined ? videoUrl : videoUrlSnake;
 
     if (category !== undefined && !VALID_CATEGORIES.includes(category)) {
       return res.status(400).json({ error: `category must be one of: ${VALID_CATEGORIES.join(', ')}` });
@@ -275,6 +299,9 @@ router.put('/admin/products/:slug', authMiddleware, requireAdmin, async (req, re
     if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
       return res.status(400).json({ error: 'stock must be a non-negative integer' });
     }
+    if (videoUrlInput !== undefined && !isStringOrNull(videoUrlInput)) {
+      return res.status(400).json({ error: 'videoUrl must be a string or null' });
+    }
 
     const result = await query(
       `UPDATE products SET
@@ -290,8 +317,9 @@ router.put('/admin/products/:slug', authMiddleware, requireAdmin, async (req, re
          features = $10,
          stock = $11,
          active = $12,
+         video_url = $13,
          updated_at = now()
-       WHERE slug = $13
+       WHERE slug = $14
        RETURNING *`,
       [
         name !== undefined ? name : current.name,
@@ -306,6 +334,7 @@ router.put('/admin/products/:slug', authMiddleware, requireAdmin, async (req, re
         features !== undefined ? JSON.stringify(features) : JSON.stringify(current.features),
         stock !== undefined ? stock : current.stock,
         active !== undefined ? Boolean(active) : current.active,
+        videoUrlInput !== undefined ? normalizeVideoUrl(videoUrlInput) : current.video_url,
         req.params.slug,
       ]
     );
@@ -336,7 +365,7 @@ router.put('/admin/products/:slug', authMiddleware, requireAdmin, async (req, re
 // ----------------------------------------------------------------------------
 // Admin: DELETE /api/products/admin/products/:slug
 // ----------------------------------------------------------------------------
-router.delete('/admin/products/:slug', authMiddleware, requireAdmin, async (req, res) => {
+router.delete('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   try {
     const result = await query('DELETE FROM products WHERE slug = $1 RETURNING id', [req.params.slug]);
     if (result.rows.length === 0) {
@@ -356,7 +385,7 @@ router.delete('/admin/products/:slug', authMiddleware, requireAdmin, async (req,
 // PUT   /api/products/admin/products/:slug/attributes/:id     { name?, value?, sortOrder? }
 // DELETE /api/products/admin/products/:slug/attributes/:id
 // ----------------------------------------------------------------------------
-router.get('/admin/products/:slug/attributes', authMiddleware, requireAdmin, async (req, res) => {
+router.get('/admin/products/:slug/attributes', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   try {
     const productResult = await query('SELECT id FROM products WHERE slug = $1', [req.params.slug]);
     if (productResult.rows.length === 0) {
@@ -373,7 +402,7 @@ router.get('/admin/products/:slug/attributes', authMiddleware, requireAdmin, asy
   }
 });
 
-router.post('/admin/products/:slug/attributes', authMiddleware, requireAdmin, async (req, res) => {
+router.post('/admin/products/:slug/attributes', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   try {
     const { name, value, sortOrder } = req.body || {};
     if (!isNonEmptyString(name)) return res.status(400).json({ error: 'name is required' });
@@ -397,7 +426,7 @@ router.post('/admin/products/:slug/attributes', authMiddleware, requireAdmin, as
   }
 });
 
-router.put('/admin/products/:slug/attributes/:id', authMiddleware, requireAdmin, async (req, res) => {
+router.put('/admin/products/:slug/attributes/:id', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   try {
     const { name, value, sortOrder } = req.body || {};
 
@@ -439,7 +468,7 @@ router.put('/admin/products/:slug/attributes/:id', authMiddleware, requireAdmin,
   }
 });
 
-router.delete('/admin/products/:slug/attributes/:id', authMiddleware, requireAdmin, async (req, res) => {
+router.delete('/admin/products/:slug/attributes/:id', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   try {
     const productResult = await query('SELECT id FROM products WHERE slug = $1', [req.params.slug]);
     if (productResult.rows.length === 0) {
@@ -467,11 +496,45 @@ router.delete('/admin/products/:slug/attributes/:id', authMiddleware, requireAdm
 router.post(
   '/admin/products/upload',
   authMiddleware,
-  requireAdmin,
+  requireStaffOrAdmin,
   upload.single('image'),
   (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No image file provided (expected field "image")' });
+    }
+
+    const ok = verifyMagicBytes(req.file.path, req.file.mimetype);
+    if (!ok) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: 'File content does not match declared type' });
+    }
+
+    const publicUrl = `/uploads/${path.basename(req.file.path)}`;
+    res.status(201).json({ data: { url: publicUrl, filename: path.basename(req.file.path) } });
+  }
+);
+
+// ----------------------------------------------------------------------------
+// Admin: video upload for products
+// POST /api/products/admin/products/upload-video  (multipart/form-data, field "video")
+//
+// Same shape as the image upload above; the MIME whitelist in lib/upload.js
+// caps video/mp4 at 50MB and the magic-byte check rejects a file whose bytes
+// do not match the declared type.
+// ----------------------------------------------------------------------------
+router.post(
+  '/admin/products/upload-video',
+  authMiddleware,
+  requireStaffOrAdmin,
+  upload.single('video'),
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No video file provided (expected field "video")' });
+    }
+
+    if (!req.file.mimetype.startsWith('video/')) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: 'Only video files are allowed here' });
     }
 
     const ok = verifyMagicBytes(req.file.path, req.file.mimetype);

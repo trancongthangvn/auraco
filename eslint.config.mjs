@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Separate CommonJS Node.js backend, has its own conventions/tooling.
     "server/**",
+    // One-off CommonJS Node scripts that generate client deliverables
+    // (Word reports); not part of the app bundle.
+    "docs/**",
   ]),
 ]);
 

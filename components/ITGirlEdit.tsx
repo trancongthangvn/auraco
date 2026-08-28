@@ -1,9 +1,22 @@
+"use client";
+
 import Image from "next/image";
+import { useRevealOnScroll } from "@/components/useRevealOnScroll";
 
 export default function ITGirlEdit() {
+  const [revealRef, revealClass] = useRevealOnScroll<HTMLElement>();
+  const visible = revealClass.includes("is-visible");
+
   return (
-    <section className="mx-auto max-w-[1400px] px-6 py-16 grid gap-8 lg:grid-cols-2 items-center">
-      <div className="relative aspect-[4/3] overflow-hidden">
+    <section
+      ref={revealRef}
+      className="mx-auto max-w-[1400px] px-6 py-16 grid gap-8 lg:grid-cols-2 items-center"
+    >
+      <div
+        className={`relative aspect-[4/3] overflow-hidden reveal-from-start${
+          visible ? " is-visible" : ""
+        }`}
+      >
         <Image
           src="/images/pages/64e5ed6e-0491-4f3d-a678-b315945972da.png"
           alt="The IT-Girl Edit"
@@ -12,7 +25,9 @@ export default function ITGirlEdit() {
           className="object-cover"
         />
       </div>
-      <div>
+      <div
+        className={`reveal-from-end${visible ? " is-visible" : ""}`}
+      >
         <h2 className="font-serif-display text-3xl mb-4">
           The IT-Girl Edit: Effortless Edge & Sterling Chic
         </h2>

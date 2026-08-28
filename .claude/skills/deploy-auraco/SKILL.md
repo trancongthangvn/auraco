@@ -29,7 +29,22 @@ Full infra details, environment file contents, and hard-learned gotchas live in 
 2. **Ship source** (exclude `node_modules`, `.next`, `out`, `.git`, `server/node_modules`, `server/uploads`, `*.env`) to the container's staging directory via rsync → tar → `pct push` → extract (see `DEPLOYMENT.md` for the exact commands).
 3. **Install deps + build IN PLACE on the container**: `npm ci && npm run build` at the app root, `cd server && npm ci` — never rebuild locally and copy `.next` over (see gotcha below).
 4. **Restart staging PM2 processes**: `pm2 restart aura-web-staging aura-api-staging`.
-5. **Verify staging**: curl key routes for 200, then a real browser check — homepage, one product page, catalog, checkout, admin login, **and at least one mobile-viewport pass with console-error checking** (a past bug crashed the checkout page only visible via console, not curl). Report the staging link and wait for confirmation.
+5. **Verify staging**: curl key routes for 200, then a real browser check — homepage, one product page, catalog, checkout, admin login, **and at least one mobile-viewport pass with console-error checking** (a past bug crashed the checkout page only visible via console, not curl).
+
+   **A 200 is not a render.** The whole `/catalog` tree once shipped blank to production while returning 200 with correct HTML (see gotcha below). For every page you check, assert the DOM actually has content:
+
+   ```js
+   const m = document.querySelector('main');
+   ({ h: Math.round(m.getBoundingClientRect().height),
+      visible: [...document.querySelectorAll('a[href*="/product/"]')]
+                 .filter(a => a.getBoundingClientRect().height > 0).length })
+   ```
+
+   `h` must be well over 0 and `visible` must be non-zero on catalog pages.
+
+   **Use the user's real Chrome, not the in-app Browser pane.** The pane does not composite frames: screenshots time out, lazy images never finish loading, and `srcset` picks `w=3840` — all false alarms that waste a lot of time. Drive real Chrome via the `claude-in-chrome` MCP (`select_browser` → `tabs_context_mcp` → `navigate` → `javascript_tool`), and set `img.loading='eager'` before measuring images, since a background tab does not load lazy ones.
+
+   Report the staging link and wait for confirmation.
 6. **Only on explicit confirmation, promote to production**: copy staging's source into `/var/www/auraco-app` while PRESERVING production's own `server/.env` and `.env.local` (different ports — back them up first, `cp -a`, restore them), then **rebuild in place there too** (`npm run build`), then `pm2 restart aura-api aura-web`.
 7. **Verify production**: curl + browser check against both the LAN IP and `https://aura.maxmin.vn`. Confirm `/api/health` uptime reached through the Next.js rewrite matches uptime hit directly on the API port — a mismatch means the rewrite is still pointing at the wrong environment's API (see gotcha below).
 
@@ -40,3 +55,16 @@ Full infra details, environment file contents, and hard-learned gotchas live in 
 - **Postgres NUMERIC columns come back as strings** via `pg` — never call `.toFixed()` on a price/money value straight from an API response without `Number(...)` first. This crashed the entire checkout page in production once; grep `.toFixed(` after touching any money field.
 - **Next.js bakes `rewrites()` destinations into the build at `next build` time.** Copying a prebuilt `.next` folder between environments (e.g. staging → production) silently carries over the OLD environment's `API_URL`, even after fixing `.env.local` in the new location — the app looks fine (200s everywhere) but every `/api/*` call reaches the wrong backend. Always rebuild in place after the environment's own `.env.local` is correct, never just `cp -a` a prebuilt app across environments.
 - Git commit author for this repo is configured **locally** (not globally) to `ALODEV <hello.alodev@gmail.com>` — never commit as "Claude".
+- **Never use `useSearchParams()` in this codebase.** It forces the component behind a `<Suspense>` boundary, and such a boundary shipped to production unresolved: `/catalog`, `/catalog/[collection]` and `/product` all rendered blank for every visitor while curl showed a perfect 51KB of HTML, because the content stayed stranded in a `<div hidden id="S:0">` that was never swapped in. Read the query string from the page's server-side `searchParams` prop and pass it down as a prop instead (`brandParam` / `queryParam` on `CatalogClient`).
+- **Guard every `next/image` whose `src` can be empty**: `{src && <Image .../>}`. Image optimization is now enabled (`next.config.ts`), so a product saved without images or a collection with no `image_url` renders a broken-image icon. For the same reason the admin's paste-URL field only accepts same-origin paths — an external host would throw at render and 500 the page unless added to `remotePatterns`.
+- **Restart local verification servers on a fresh port.** `pkill -f "next start"` does not reliably kill node on Windows/Git Bash: the old server keeps the port, the new one dies silently, and you verify a stale build. Confirm the new build is live by grepping the response for a string that only exists in the new code.
+- **Staging and production share one database**, so any test row you create (an inquiry from the contact form, a test admin account) lands in the client's real data. Delete it immediately after testing. A DB-only fix — e.g. the payment method label — takes effect on both environments with no rebuild.
+
+## Parity work against the reference site
+
+Full record in `DEPLOYMENT.md` ("Reference-site parity: decisions on record"). The short version:
+
+- Measure with `getComputedStyle` / `getBoundingClientRect` on <https://auracojewelry.com>; screenshots are not available, so numbers are the only reliable source.
+- The reference site has bugs of its own — a `Jost` font it never loads, a terms-of-service page that duplicates its return policy. Match its *intent*, not its defects.
+- Never copy its prose (copyright) or its real support email (misdirects live customer mail). Match structure and headings only.
+- Its checkout is Shopify-hosted and redirects off-domain; it is not clonable and our custom checkout stands on its own.

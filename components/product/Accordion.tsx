@@ -8,15 +8,15 @@ export default function Accordion({
 }: {
   items: { title: string; content: string }[];
 }) {
-  const [open, setOpen] = useState<number | null>(0);
+  const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <div className="border-t border-black/10 mt-8">
+    <div className="border-t border-[#2b261f]/10 mt-8">
       {items.map((item, i) => (
-        <div key={item.title} className="border-b border-black/10">
+        <div key={item.title} className="border-b border-[#2b261f]/10">
           <button
             onClick={() => setOpen(open === i ? null : i)}
-            className="w-full flex items-center justify-between py-4 text-sm tracking-wide"
+            className="w-full flex items-center justify-between py-4 text-[15px] font-normal text-[#2b261f]"
           >
             {item.title}
             {open === i ? <MinusIcon size={14} /> : <PlusIcon size={14} />}

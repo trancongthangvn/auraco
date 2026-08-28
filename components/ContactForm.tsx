@@ -2,72 +2,128 @@
 
 import { useState } from "react";
 import { CheckIcon } from "@/components/icons";
+import { useDictionary } from "@/components/i18n/LanguageProvider";
+import { apiFetch, ApiError } from "@/lib/api";
 
+/**
+ * Posts to POST /api/inquiries, which is what fills the admin "Yêu cầu liên hệ"
+ * inbox. The API requires a non-empty `subject`; the form's optional Product
+ * field doubles as that, falling back to a generic subject when left blank.
+ */
 export default function ContactForm() {
+  const dict = useDictionary().contact;
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [product, setProduct] = useState("");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (sending || sent) return;
+    setSending(true);
+    setError(null);
+    apiFetch("/api/inquiries", {
+      method: "POST",
+      body: JSON.stringify({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim() || null,
+        subject: product.trim() || dict.defaultSubject,
+        message: message.trim(),
+      }),
+    })
+      .then(() => {
+        setSent(true);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof ApiError ? err.message : dict.error);
+      })
+      .finally(() => {
+        setSending(false);
+      });
+  };
+
+  const field =
+    "w-full border border-black/20 px-4 py-3 text-sm focus:border-[#2b261f] focus:outline-none disabled:bg-black/[0.03]";
+  const label = "block text-xs tracking-wide uppercase mb-2";
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        setSent(true);
-      }}
-      className="mx-auto max-w-[560px] px-6 py-16 space-y-5"
-    >
+    <form onSubmit={submit} className="mx-auto max-w-[560px] px-6 py-16 space-y-5">
       <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Full name
-        </label>
+        <label className={label}>{dict.fullName}</label>
         <input
           required
-          className="w-full border border-black/20 px-4 py-3 text-sm"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={sending || sent}
+          className={field}
         />
       </div>
       <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Email
-        </label>
+        <label className={label}>{dict.email}</label>
         <input
           required
           type="email"
-          className="w-full border border-black/20 px-4 py-3 text-sm"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={sending || sent}
+          className={field}
         />
       </div>
       <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Phone number (optional)
-        </label>
+        <label className={label}>{dict.phone}</label>
         <input
           type="tel"
-          className="w-full border border-black/20 px-4 py-3 text-sm"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          disabled={sending || sent}
+          className={field}
         />
       </div>
       <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Product (optional)
-        </label>
-        <input className="w-full border border-black/20 px-4 py-3 text-sm" />
+        <label className={label}>{dict.product}</label>
+        <input
+          value={product}
+          onChange={(e) => setProduct(e.target.value)}
+          disabled={sending || sent}
+          className={field}
+        />
       </div>
       <div>
-        <label className="block text-xs tracking-wide uppercase mb-2">
-          Message
-        </label>
+        <label className={label}>{dict.message}</label>
         <textarea
           required
           rows={5}
-          className="w-full border border-black/20 px-4 py-3 text-sm"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          disabled={sending || sent}
+          className={field}
         />
       </div>
+
+      {error && (
+        <p className="border border-red-700/30 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
       <button
         type="submit"
-        className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors inline-flex items-center justify-center gap-2"
+        disabled={sending || sent}
+        className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60"
       >
         {sent ? (
           <>
-            MESSAGE SENT <CheckIcon size={15} />
+            {dict.sent} <CheckIcon size={15} />
           </>
+        ) : sending ? (
+          dict.sending
         ) : (
-          "SEND MESSAGE"
+          dict.send
         )}
       </button>
     </form>

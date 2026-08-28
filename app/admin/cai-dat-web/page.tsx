@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { apiFetch, ApiError } from "@/lib/api";
+import { useRequireAdmin } from "@/components/admin/useRequireAdmin";
+import Button from "@/components/admin/ui/Button";
+import { Input, Textarea, Label } from "@/components/admin/ui/Field";
 
 // Matches server/routes/content.js toAdminSiteSettings() shape for
 // GET/PUT /api/content/admin/site-settings. seoTitle/seoDescription are
@@ -27,6 +30,7 @@ type SiteSettings = {
 };
 
 export default function AdminSiteSettingsPage() {
+  useRequireAdmin();
   const [siteTitle, setSiteTitle] = useState("");
   const [siteDescription, setSiteDescription] = useState("");
   const [ogImage, setOgImage] = useState("");
@@ -98,45 +102,36 @@ export default function AdminSiteSettingsPage() {
       ) : (
         <form
           onSubmit={handleSubmit}
-          className="bg-white border border-black/10 p-6 max-w-2xl space-y-5"
+          className="bg-white rounded-2xl border border-black/10 shadow-sm p-6 max-w-2xl space-y-5"
         >
           {error && (
-            <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-4 py-2">
+            <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Tiêu đề website (SEO title)
-            </label>
-            <input
+            <Label>Tiêu đề website (SEO title)</Label>
+            <Input
               value={siteTitle}
               onChange={(e) => setSiteTitle(e.target.value)}
-              className="w-full border border-black/20 px-3 py-2 text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Mô tả website (SEO description)
-            </label>
-            <textarea
+            <Label>Mô tả website (SEO description)</Label>
+            <Textarea
               value={siteDescription}
               onChange={(e) => setSiteDescription(e.target.value)}
               rows={3}
-              className="w-full border border-black/20 px-3 py-2 text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Ảnh chia sẻ mạng xã hội (Open Graph)
-            </label>
-            <input
+            <Label>Ảnh chia sẻ mạng xã hội (Open Graph)</Label>
+            <Input
               value={ogImage}
               onChange={(e) => setOgImage(e.target.value)}
-              className="w-full border border-black/20 px-3 py-2 text-sm"
             />
             <p className="text-xs text-black/40 mt-2">
               Đường dẫn ảnh hiển thị khi chia sẻ link website lên Facebook,
@@ -145,13 +140,9 @@ export default function AdminSiteSettingsPage() {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="text-sm px-5 py-2.5 bg-[#2b261f] text-white hover:bg-black transition-colors disabled:opacity-50"
-            >
+            <Button type="submit" variant="primary" disabled={saving}>
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
-            </button>
+            </Button>
             {saved && <span className="text-xs text-green-700">Đã lưu.</span>}
           </div>
         </form>

@@ -6,6 +6,8 @@ import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
+import Badge from "@/components/admin/ui/Badge";
+import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
 
 type AdminUser = {
   id: number;
@@ -69,28 +71,37 @@ export default function AdminAccountsPage() {
       {!loading && error && <p className="text-sm text-red-700">{error}</p>}
 
       {!loading && !error && (
-        <div className="bg-white border border-black/10 overflow-x-auto">
+        <TableCard>
           <table className="w-full text-sm min-w-[400px]">
             <thead>
-              <tr className="text-left text-black/50 border-b border-black/10">
-                <th className="py-3 px-4 font-normal">Tên</th>
-                <th className="py-3 px-4 font-normal">Tên đăng nhập</th>
-                <th className="py-3 px-4 font-normal">Vai trò</th>
+              <tr className="border-b border-black/10">
+                <Th>Tên</Th>
+                <Th>Tên đăng nhập</Th>
+                <Th>Vai trò</Th>
               </tr>
             </thead>
             <tbody>
               {accounts.map((a) => (
-                <tr key={a.id} className="border-b border-black/5">
-                  <td className="py-2 px-4">{a.display_name}</td>
-                  <td className="py-2 px-4">{a.username}</td>
-                  <td className="py-2 px-4">
-                    {a.role === "admin" ? "Quản trị viên" : "Nhân viên"}
-                  </td>
+                <tr key={a.id} className={TR_HOVER}>
+                  <Td>{a.display_name}</Td>
+                  <Td>{a.username}</Td>
+                  <Td>
+                    <Badge tone={a.role === "admin" ? "warning" : "neutral"}>
+                      {a.role === "admin" ? "Quản trị viên" : "Nhân viên"}
+                    </Badge>
+                  </Td>
                 </tr>
               ))}
+              {accounts.length === 0 && (
+                <tr>
+                  <td colSpan={3}>
+                    <EmptyState>Chưa có tài khoản nào.</EmptyState>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-        </div>
+        </TableCard>
       )}
       <p className="text-xs text-black/40 mt-4">
         Theo phạm vi hợp đồng, hệ thống có đúng 1 tài khoản Quản trị viên

@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { apiFetch, ApiError } from "@/lib/api";
+import { useRequireAdmin } from "@/components/admin/useRequireAdmin";
+import Button from "@/components/admin/ui/Button";
+import Badge from "@/components/admin/ui/Badge";
+import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
 
 const TABS = ["Lịch sử giao dịch", "Cấu hình phương thức"] as const;
 type Tab = (typeof TABS)[number];
@@ -26,6 +30,7 @@ type PaymentTransaction = {
 };
 
 export default function AdminPaymentsPage() {
+  useRequireAdmin();
   const [tab, setTab] = useState<Tab>("Lịch sử giao dịch");
 
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
@@ -121,54 +126,63 @@ export default function AdminPaymentsPage() {
       </div>
 
       {tab === "Lịch sử giao dịch" && (
-        <div className="bg-white border border-black/10 overflow-x-auto">
+        <>
           {txLoading ? (
             <p className="p-4 text-sm text-black/50">Đang tải...</p>
           ) : txError ? (
             <p className="p-4 text-sm text-red-700">{txError}</p>
           ) : (
-            <table className="w-full text-sm min-w-[600px]">
-              <thead>
-                <tr className="text-left text-black/50 border-b border-black/10">
-                  <th className="py-3 px-4 font-normal">Đơn hàng</th>
-                  <th className="py-3 px-4 font-normal">Phương thức</th>
-                  <th className="py-3 px-4 font-normal text-right">Số tiền</th>
-                  <th className="py-3 px-4 font-normal text-center">Trạng thái</th>
-                  <th className="py-3 px-4 font-normal text-right">Thời gian</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((t) => (
-                  <tr key={t.id} className="border-b border-black/5">
-                    <td className="py-2 px-4">AC-{t.order_id}</td>
-                    <td className="py-2 px-4">{t.method}</td>
-                    <td className="py-2 px-4 text-right">${t.amount}</td>
-                    <td className="py-2 px-4 text-center">
-                      <span
-                        className={`text-xs px-2 py-1 border ${
-                          t.status === "Đã thanh toán"
-                            ? "border-green-700 text-green-700"
-                            : t.status === "Chờ xử lý"
-                            ? "border-gold text-gold"
-                            : "border-red-700 text-red-700"
-                        }`}
-                      >
-                        {t.status}
-                      </span>
-                    </td>
-                    <td className="py-2 px-4 text-right text-black/50 whitespace-nowrap">
-                      {new Date(t.created_at).toLocaleString("vi-VN")}
-                    </td>
+            <TableCard>
+              <table className="w-full text-sm min-w-[600px]">
+                <thead>
+                  <tr className="border-b border-black/10">
+                    <Th>Đơn hàng</Th>
+                    <Th>Phương thức</Th>
+                    <Th align="right">Số tiền</Th>
+                    <Th align="center">Trạng thái</Th>
+                    <Th align="right">Thời gian</Th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {transactions.map((t) => (
+                    <tr key={t.id} className={TR_HOVER}>
+                      <Td>AC-{t.order_id}</Td>
+                      <Td>{t.method}</Td>
+                      <Td align="right">${t.amount}</Td>
+                      <Td align="center">
+                        <Badge
+                          tone={
+                            t.status === "Đã thanh toán"
+                              ? "success"
+                              : t.status === "Chờ xử lý"
+                              ? "warning"
+                              : "danger"
+                          }
+                        >
+                          {t.status}
+                        </Badge>
+                      </Td>
+                      <Td align="right" className="text-black/50 whitespace-nowrap">
+                        {new Date(t.created_at).toLocaleString("vi-VN")}
+                      </Td>
+                    </tr>
+                  ))}
+                  {transactions.length === 0 && (
+                    <tr>
+                      <td colSpan={5}>
+                        <EmptyState>Chưa có giao dịch nào.</EmptyState>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </TableCard>
           )}
-        </div>
+        </>
       )}
 
       {tab === "Cấu hình phương thức" && (
-        <div className="bg-white border border-black/10 divide-y divide-black/10">
+        <div className="bg-white rounded-2xl border border-black/10 shadow-sm divide-y divide-black/10">
           {settingsLoading ? (
             <p className="p-4 text-sm text-black/50">Đang tải...</p>
           ) : settingsError ? (
@@ -183,16 +197,14 @@ export default function AdminPaymentsPage() {
                   <p className="text-sm font-medium">{s.label}</p>
                   <p className="text-xs text-black/40">{s.detail}</p>
                 </div>
-                <button
+                <Button
+                  variant={s.enabled ? "primary" : "secondary"}
+                  size="sm"
                   onClick={() => toggleMethod(s.key)}
-                  className={`text-xs px-3 py-1.5 border shrink-0 ${
-                    s.enabled
-                      ? "border-green-700 text-green-700"
-                      : "border-black/30 text-black/40"
-                  }`}
+                  className="shrink-0"
                 >
                   {s.enabled ? "Đang bật" : "Đã tắt"}
-                </button>
+                </Button>
               </div>
             ))
           )}

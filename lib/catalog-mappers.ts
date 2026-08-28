@@ -18,6 +18,8 @@ export type ApiProduct = {
   features: string[];
   stock: number;
   active: boolean;
+  /** Optional looping product video (MP4). Null/absent for most products. */
+  video_url?: string | null;
   attributes?: { name: string; value: string }[];
   collections?: string[];
 };
@@ -48,6 +50,7 @@ export function toFullProduct(api: ApiProduct): FullProduct {
     description: api.description,
     features: api.features,
     stock: api.stock,
+    videoUrl: api.video_url ?? undefined,
     attributes: api.attributes,
   };
 }

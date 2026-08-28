@@ -4,8 +4,18 @@ import { useEffect, useState } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
+import { useRequireAdmin } from "@/components/admin/useRequireAdmin";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Mail, Phone, Trash2, ChevronDown } from "lucide-react";
+import Button from "@/components/admin/ui/Button";
+import IconButton from "@/components/admin/ui/IconButton";
+import Badge from "@/components/admin/ui/Badge";
+import {
+  ModalBackdrop,
+  ModalPanel,
+  ModalHeader,
+  ModalFooter,
+} from "@/components/admin/ui/Modal";
 
 type Inquiry = {
   id: number;
@@ -27,6 +37,7 @@ function formatDate(iso: string) {
 
 export default function AdminInquiriesPage() {
   const { session } = useAdminAuth();
+  useRequireAdmin();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,10 +105,13 @@ export default function AdminInquiriesPage() {
           {inquiries.map((i) => {
             const open = expanded === i.id;
             return (
-              <div key={i.id} className="bg-white border border-black/10">
+              <div
+                key={i.id}
+                className="bg-white rounded-2xl border border-black/10 shadow-sm overflow-hidden transition-shadow duration-150 hover:shadow-md"
+              >
                 <button
                   onClick={() => setExpanded(open ? null : i.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-100 hover:bg-black/[0.02]"
                 >
                   <span
                     className={`shrink-0 h-2 w-2 rounded-full ${
@@ -111,6 +125,9 @@ export default function AdminInquiriesPage() {
                     </p>
                     <p className="text-xs text-black/40">{formatDate(i.created_at)}</p>
                   </div>
+                  <Badge tone={i.resolved ? "neutral" : "warning"}>
+                    {i.resolved ? "Đã xử lý" : "Chưa xử lý"}
+                  </Badge>
                   <ChevronDown
                     size={16}
                     className={`text-black/30 shrink-0 transition-transform ${
@@ -141,26 +158,22 @@ export default function AdminInquiriesPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      <button
+                      <Button
+                        size="sm"
+                        variant={i.resolved ? "secondary" : "primary"}
                         onClick={() => toggleResolved(i)}
-                        className={`text-xs px-3 py-1.5 border ${
-                          i.resolved
-                            ? "border-black/30 text-black/40"
-                            : "border-green-700 text-green-700"
-                        }`}
                       >
                         {i.resolved ? "Đánh dấu chưa xử lý" : "Đánh dấu đã xử lý"}
-                      </button>
-                      <button
+                      </Button>
+                      <IconButton
+                        tone="danger"
                         onClick={() => setConfirmDelete(i)}
                         disabled={!isAdmin}
-                        title={!isAdmin ? "Chỉ Quản trị viên được xóa" : ""}
-                        className={`flex items-center gap-1.5 text-xs ${
-                          isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
-                        }`}
+                        title={!isAdmin ? "Chỉ Quản trị viên được xóa" : "Xóa"}
+                        aria-label="Xóa"
                       >
-                        <Trash2 size={13} /> Xóa
-                      </button>
+                        <Trash2 size={15} />
+                      </IconButton>
                     </div>
                   </div>
                 )}
@@ -177,28 +190,24 @@ export default function AdminInquiriesPage() {
       )}
 
       {confirmDelete && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
-          <div className="bg-white p-6 w-full max-w-sm">
-            <h2 className="text-lg font-medium mb-2">Xóa yêu cầu liên hệ?</h2>
-            <p className="text-sm text-black/60 mb-6">
-              Yêu cầu từ {confirmDelete.name} sẽ bị xóa khỏi danh sách này.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="text-sm px-4 py-2 border border-black/20"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={() => remove(confirmDelete.id)}
-                className="text-sm px-4 py-2 bg-red-700 text-white"
-              >
-                Xóa
-              </button>
+        <ModalBackdrop onClose={() => setConfirmDelete(null)}>
+          <ModalPanel maxWidth="max-w-sm">
+            <ModalHeader title="Xóa yêu cầu liên hệ?" onClose={() => setConfirmDelete(null)} />
+            <div className="px-6 py-5">
+              <p className="text-sm text-black/60">
+                Yêu cầu từ {confirmDelete.name} sẽ bị xóa khỏi danh sách này.
+              </p>
             </div>
-          </div>
-        </div>
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>
+                Hủy
+              </Button>
+              <Button variant="danger" onClick={() => remove(confirmDelete.id)}>
+                Xóa
+              </Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalBackdrop>
       )}
     </AdminShell>
   );

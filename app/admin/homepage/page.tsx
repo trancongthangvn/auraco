@@ -5,11 +5,21 @@ import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
+import { useRequireAdmin } from "@/components/admin/useRequireAdmin";
 import { apiFetch, ApiError } from "@/lib/api";
 import {
   beachVibeProducts as initialBeachVibe,
   newArrivalProducts as initialNewArrivals,
 } from "@/data/site";
+import Button from "@/components/admin/ui/Button";
+import { Input, Textarea, Label } from "@/components/admin/ui/Field";
+import { TableCard, Th, Td, TR_HOVER } from "@/components/admin/ui/Table";
+import {
+  ModalBackdrop,
+  ModalPanel,
+  ModalHeader,
+  ModalFooter,
+} from "@/components/admin/ui/Modal";
 
 // API shapes (server/routes/content.js GET/PUT /api/content(/admin)/homepage)
 type HeroSlide = {
@@ -45,6 +55,7 @@ type Tab = (typeof TABS)[number];
 
 export default function AdminHomepagePage() {
   const { session } = useAdminAuth();
+  useRequireAdmin();
   const isAdmin = session?.role === "admin";
   const [tab, setTab] = useState<Tab>("Hero banner");
 
@@ -214,7 +225,7 @@ export default function AdminHomepagePage() {
       <PageHeader />
 
       {error && (
-        <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 px-4 py-2">
+        <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2">
           {error}
         </div>
       )}
@@ -224,7 +235,7 @@ export default function AdminHomepagePage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm whitespace-nowrap border-b-2 -mb-px ${
+            className={`px-4 py-2 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors duration-150 ${
               tab === t
                 ? "border-[#2b261f] text-[#2b261f]"
                 : "border-transparent text-black/50 hover:text-black"
@@ -240,21 +251,21 @@ export default function AdminHomepagePage() {
       ) : (
         <>
           {tab === "Hero banner" && (
-            <div className="bg-white border border-black/10 overflow-x-auto">
+            <TableCard>
               <table className="w-full text-sm min-w-[600px]">
                 <thead>
-                  <tr className="text-left text-black/50 border-b border-black/10">
-                    <th className="py-3 px-4 font-normal">Ảnh</th>
-                    <th className="py-3 px-4 font-normal">Nhãn</th>
-                    <th className="py-3 px-4 font-normal">Tiêu đề</th>
-                    <th className="py-3 px-4 font-normal text-right">Thao tác</th>
+                  <tr className="border-b border-black/10">
+                    <Th>Ảnh</Th>
+                    <Th>Nhãn</Th>
+                    <Th>Tiêu đề</Th>
+                    <Th align="right">Thao tác</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {heroSlides.map((s) => (
-                    <tr key={s.id ?? s.label} className="border-b border-black/5">
-                      <td className="py-2 px-4">
-                        <div className="relative h-10 w-16 bg-[#f5f2ee]">
+                    <tr key={s.id ?? s.label} className={TR_HOVER}>
+                      <Td>
+                        <div className="relative h-10 w-16 rounded-lg overflow-hidden bg-[#f5f2ee]">
                           <Image
                             src={s.image_url}
                             alt={s.label}
@@ -263,34 +274,30 @@ export default function AdminHomepagePage() {
                             className="object-cover"
                           />
                         </div>
-                      </td>
-                      <td className="py-2 px-4">{s.label}</td>
-                      <td className="py-2 px-4 max-w-[280px] truncate">
-                        {s.title}
-                      </td>
-                      <td className="py-2 px-4 text-right space-x-3 whitespace-nowrap">
-                        <button
-                          onClick={() => openEditSlide(s)}
-                          className="text-xs underline"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          onClick={() => removeSlide(s)}
-                          disabled={!isAdmin}
-                          title={!isAdmin ? "Chỉ Quản trị viên được xóa" : ""}
-                          className={`text-xs underline ${
-                            isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
-                          }`}
-                        >
-                          Xóa
-                        </button>
-                      </td>
+                      </Td>
+                      <Td>{s.label}</Td>
+                      <Td className="max-w-[280px] truncate">{s.title}</Td>
+                      <Td align="right">
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => openEditSlide(s)}>
+                            Sửa
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => removeSlide(s)}
+                            disabled={!isAdmin}
+                            title={!isAdmin ? "Chỉ Quản trị viên được xóa" : ""}
+                          >
+                            Xóa
+                          </Button>
+                        </div>
+                      </Td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableCard>
           )}
 
           {tab === "Sản phẩm nổi bật" && (
@@ -301,8 +308,11 @@ export default function AdminHomepagePage() {
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   {beachVibe.map((p) => (
-                    <div key={p.name} className="bg-white border border-black/10 p-2">
-                      <div className="relative aspect-square bg-[#f5f2ee] mb-2">
+                    <div
+                      key={p.name}
+                      className="bg-white rounded-2xl border border-black/10 shadow-sm p-2"
+                    >
+                      <div className="relative aspect-square rounded-xl overflow-hidden bg-[#f5f2ee] mb-2">
                         <Image
                           src={p.img}
                           alt={p.name}
@@ -312,15 +322,15 @@ export default function AdminHomepagePage() {
                         />
                       </div>
                       <p className="text-xs truncate mb-1">{p.name}</p>
-                      <button
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        className="w-full"
                         onClick={() => removeFeatured("beach", p.name)}
                         disabled={!isAdmin}
-                        className={`text-xs underline ${
-                          isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
-                        }`}
                       >
                         Gỡ khỏi mục này
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -332,8 +342,11 @@ export default function AdminHomepagePage() {
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   {newArrivals.map((p) => (
-                    <div key={p.name} className="bg-white border border-black/10 p-2">
-                      <div className="relative aspect-square bg-[#f5f2ee] mb-2">
+                    <div
+                      key={p.name}
+                      className="bg-white rounded-2xl border border-black/10 shadow-sm p-2"
+                    >
+                      <div className="relative aspect-square rounded-xl overflow-hidden bg-[#f5f2ee] mb-2">
                         <Image
                           src={p.img}
                           alt={p.name}
@@ -343,15 +356,15 @@ export default function AdminHomepagePage() {
                         />
                       </div>
                       <p className="text-xs truncate mb-1">{p.name}</p>
-                      <button
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        className="w-full"
                         onClick={() => removeFeatured("new", p.name)}
                         disabled={!isAdmin}
-                        className={`text-xs underline ${
-                          isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
-                        }`}
                       >
                         Gỡ khỏi mục này
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -367,186 +380,167 @@ export default function AdminHomepagePage() {
           {tab === "Đánh giá khách hàng" && (
             <div>
               <div className="flex justify-end mb-4">
-                <button
+                <Button
+                  variant="primary"
                   onClick={() => setCreatingTestimonial(true)}
                   disabled={!isAdmin}
-                  className="text-sm border border-[#2b261f] px-4 py-2 hover:bg-[#2b261f] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   + Thêm đánh giá
-                </button>
+                </Button>
               </div>
-              <div className="bg-white border border-black/10 overflow-x-auto">
+              <TableCard>
                 <table className="w-full text-sm min-w-[560px]">
                   <thead>
-                    <tr className="text-left text-black/50 border-b border-black/10">
-                      <th className="py-3 px-4 font-normal">Khách hàng</th>
-                      <th className="py-3 px-4 font-normal">Ngày</th>
-                      <th className="py-3 px-4 font-normal">Nội dung</th>
-                      <th className="py-3 px-4 font-normal text-right">Thao tác</th>
+                    <tr className="border-b border-black/10">
+                      <Th>Khách hàng</Th>
+                      <Th>Ngày</Th>
+                      <Th>Nội dung</Th>
+                      <Th align="right">Thao tác</Th>
                     </tr>
                   </thead>
                   <tbody>
                     {testimonials.map((t) => (
-                      <tr key={t.id ?? t.name + t.quote_date} className="border-b border-black/5">
-                        <td className="py-2 px-4 whitespace-nowrap">{t.name}</td>
-                        <td className="py-2 px-4 whitespace-nowrap">
+                      <tr key={t.id ?? t.name + t.quote_date} className={TR_HOVER}>
+                        <Td className="whitespace-nowrap">{t.name}</Td>
+                        <Td className="whitespace-nowrap">
                           {t.quote_date
                             ? new Date(t.quote_date).toLocaleDateString("vi-VN")
                             : ""}
-                        </td>
-                        <td className="py-2 px-4 max-w-[280px] truncate text-black/60">
+                        </Td>
+                        <Td className="max-w-[280px] truncate text-black/60">
                           {t.quote}
-                        </td>
-                        <td className="py-2 px-4 text-right space-x-3 whitespace-nowrap">
-                          <button
-                            onClick={() => openEditTestimonial(t)}
-                            className="text-xs underline"
-                          >
-                            Sửa
-                          </button>
-                          <button
-                            onClick={() => removeTestimonial(t)}
-                            disabled={!isAdmin}
-                            title={!isAdmin ? "Chỉ Quản trị viên được xóa" : ""}
-                            className={`text-xs underline ${
-                              isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
-                            }`}
-                          >
-                            Xóa
-                          </button>
-                        </td>
+                        </Td>
+                        <Td align="right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => openEditTestimonial(t)}
+                            >
+                              Sửa
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              onClick={() => removeTestimonial(t)}
+                              disabled={!isAdmin}
+                              title={!isAdmin ? "Chỉ Quản trị viên được xóa" : ""}
+                            >
+                              Xóa
+                            </Button>
+                          </div>
+                        </Td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TableCard>
             </div>
           )}
         </>
       )}
 
       {editingSlide && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
-          <div className="bg-white p-6 w-full max-w-md">
-            <h2 className="text-lg font-medium mb-4">Sửa banner</h2>
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Nhãn
-            </label>
-            <input
-              value={slideForm.label}
-              onChange={(e) => setSlideForm((f) => ({ ...f, label: e.target.value }))}
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
-            />
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Tiêu đề
-            </label>
-            <textarea
-              value={slideForm.title}
-              onChange={(e) => setSlideForm((f) => ({ ...f, title: e.target.value }))}
-              rows={3}
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
-            />
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setEditingSlide(null)}
-                className="text-sm px-4 py-2 border border-black/20"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={submitEditSlide}
-                disabled={savingSlide}
-                className="text-sm px-4 py-2 bg-[#2b261f] text-white disabled:opacity-50"
-              >
-                {savingSlide ? "Đang lưu..." : "Lưu thay đổi"}
-              </button>
+        <ModalBackdrop onClose={() => setEditingSlide(null)}>
+          <ModalPanel maxWidth="max-w-md">
+            <ModalHeader title="Sửa banner" onClose={() => setEditingSlide(null)} />
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <Label>Nhãn</Label>
+                <Input
+                  value={slideForm.label}
+                  onChange={(e) => setSlideForm((f) => ({ ...f, label: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Tiêu đề</Label>
+                <Textarea
+                  value={slideForm.title}
+                  onChange={(e) => setSlideForm((f) => ({ ...f, title: e.target.value }))}
+                  rows={3}
+                />
+              </div>
             </div>
-          </div>
-        </div>
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => setEditingSlide(null)}>
+                Hủy
+              </Button>
+              <Button variant="primary" onClick={submitEditSlide} disabled={savingSlide}>
+                {savingSlide ? "Đang lưu..." : "Lưu thay đổi"}
+              </Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalBackdrop>
       )}
 
       {editingTestimonial && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
-          <div className="bg-white p-6 w-full max-w-md">
-            <h2 className="text-lg font-medium mb-4">Sửa đánh giá</h2>
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Tên khách hàng
-            </label>
-            <input
-              value={testimonialForm.name}
-              onChange={(e) => setTestimonialForm((f) => ({ ...f, name: e.target.value }))}
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
-            />
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Nội dung đánh giá
-            </label>
-            <textarea
-              value={testimonialForm.quote}
-              onChange={(e) => setTestimonialForm((f) => ({ ...f, quote: e.target.value }))}
-              rows={4}
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
-            />
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setEditingTestimonial(null)}
-                className="text-sm px-4 py-2 border border-black/20"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={submitEditTestimonial}
-                disabled={savingTestimonial}
-                className="text-sm px-4 py-2 bg-[#2b261f] text-white disabled:opacity-50"
-              >
-                {savingTestimonial ? "Đang lưu..." : "Lưu thay đổi"}
-              </button>
+        <ModalBackdrop onClose={() => setEditingTestimonial(null)}>
+          <ModalPanel maxWidth="max-w-md">
+            <ModalHeader title="Sửa đánh giá" onClose={() => setEditingTestimonial(null)} />
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <Label>Tên khách hàng</Label>
+                <Input
+                  value={testimonialForm.name}
+                  onChange={(e) => setTestimonialForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Nội dung đánh giá</Label>
+                <Textarea
+                  value={testimonialForm.quote}
+                  onChange={(e) => setTestimonialForm((f) => ({ ...f, quote: e.target.value }))}
+                  rows={4}
+                />
+              </div>
             </div>
-          </div>
-        </div>
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => setEditingTestimonial(null)}>
+                Hủy
+              </Button>
+              <Button variant="primary" onClick={submitEditTestimonial} disabled={savingTestimonial}>
+                {savingTestimonial ? "Đang lưu..." : "Lưu thay đổi"}
+              </Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalBackdrop>
       )}
 
       {creatingTestimonial && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
-          <div className="bg-white p-6 w-full max-w-md">
-            <h2 className="text-lg font-medium mb-4">Thêm đánh giá mới</h2>
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Tên khách hàng
-            </label>
-            <input
-              value={newTestimonialForm.name}
-              onChange={(e) =>
-                setNewTestimonialForm((f) => ({ ...f, name: e.target.value }))
-              }
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
-            />
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Nội dung đánh giá
-            </label>
-            <textarea
-              value={newTestimonialForm.quote}
-              onChange={(e) =>
-                setNewTestimonialForm((f) => ({ ...f, quote: e.target.value }))
-              }
-              rows={4}
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
-            />
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setCreatingTestimonial(false)}
-                className="text-sm px-4 py-2 border border-black/20"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={submitNewTestimonial}
-                disabled={savingTestimonial}
-                className="text-sm px-4 py-2 bg-[#2b261f] text-white disabled:opacity-50"
-              >
-                {savingTestimonial ? "Đang lưu..." : "Thêm"}
-              </button>
+        <ModalBackdrop onClose={() => setCreatingTestimonial(false)}>
+          <ModalPanel maxWidth="max-w-md">
+            <ModalHeader title="Thêm đánh giá mới" onClose={() => setCreatingTestimonial(false)} />
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <Label>Tên khách hàng</Label>
+                <Input
+                  value={newTestimonialForm.name}
+                  onChange={(e) =>
+                    setNewTestimonialForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <Label>Nội dung đánh giá</Label>
+                <Textarea
+                  value={newTestimonialForm.quote}
+                  onChange={(e) =>
+                    setNewTestimonialForm((f) => ({ ...f, quote: e.target.value }))
+                  }
+                  rows={4}
+                />
+              </div>
             </div>
-          </div>
-        </div>
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => setCreatingTestimonial(false)}>
+                Hủy
+              </Button>
+              <Button variant="primary" onClick={submitNewTestimonial} disabled={savingTestimonial}>
+                {savingTestimonial ? "Đang lưu..." : "Thêm"}
+              </Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalBackdrop>
       )}
     </AdminShell>
   );

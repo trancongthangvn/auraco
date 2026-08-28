@@ -20,7 +20,14 @@ const MIME_WHITELIST = {
   'image/png': { ext: '.png', maxSize: 2 * 1024 * 1024, magic: [[0x89, 0x50, 0x4e, 0x47]] },
   'image/webp': { ext: '.webp', maxSize: 2 * 1024 * 1024, magic: [[0x52, 0x49, 0x46, 0x46]] }, // 'RIFF'
   'image/gif': { ext: '.gif', maxSize: 2 * 1024 * 1024, magic: [[0x47, 0x49, 0x46, 0x38]] }, // 'GIF8'
-  'video/mp4': { ext: '.mp4', maxSize: 50 * 1024 * 1024, magic: [[0x66, 0x74, 0x79, 0x70]] }, // 'ftyp' box, offset 4
+  // MP4's 'ftyp' box starts at byte 4 (bytes 0-3 are the box size), hence the
+  // explicit magicOffset — checking it at offset 0 would reject every real mp4.
+  'video/mp4': {
+    ext: '.mp4',
+    maxSize: 50 * 1024 * 1024,
+    magic: [[0x66, 0x74, 0x79, 0x70]],
+    magicOffset: 4,
+  },
 };
 
 const MAX_SIZE = Math.max(...Object.values(MIME_WHITELIST).map((m) => m.maxSize));
@@ -69,11 +76,13 @@ function verifyMagicBytes(filePath, declaredMime) {
   const rule = MIME_WHITELIST[declaredMime];
   if (!rule) return false;
 
+  const offset = rule.magicOffset || 0;
+
   const fd = fs.openSync(filePath, 'r');
   try {
     const buf = Buffer.alloc(16);
     fs.readSync(fd, buf, 0, 16, 0);
-    return rule.magic.some((sig) => sig.every((byte, i) => buf[i] === byte));
+    return rule.magic.some((sig) => sig.every((byte, i) => buf[offset + i] === byte));
   } finally {
     fs.closeSync(fd);
   }

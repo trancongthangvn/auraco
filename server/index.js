@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const { UPLOAD_DIR } = require('./lib/upload');
 
 const app = express();
 
@@ -67,6 +68,26 @@ setInterval(() => {
 app.post('/api/admin/login', loginRateLimiter);
 
 // ----------------------------------------------------------------------------
+// Serve uploaded media. The upload routes hand back "/uploads/<file>" URLs and
+// next.config.ts rewrites /uploads/* here, so without this every uploaded
+// image 404s. Files are served read-only with a long cache (names are
+// content-unique: timestamp + random).
+// ----------------------------------------------------------------------------
+app.use(
+  '/uploads',
+  express.static(UPLOAD_DIR, {
+    index: false,
+    dotfiles: 'deny',
+    maxAge: '30d',
+    setHeaders: (res) => {
+      // Never let a stored file be interpreted as an executable document.
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Disposition', 'inline');
+    },
+  })
+);
+
+// ----------------------------------------------------------------------------
 // Health check
 // ----------------------------------------------------------------------------
 app.get('/api/health', (req, res) => {
@@ -82,6 +103,7 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/collections', require('./routes/collections'));
 app.use('/api/discount-codes', require('./routes/discount-codes'));
 app.use('/api', require('./routes/inquiries-reviews-press'));
+app.use('/api/content', require('./routes/posts'));
 app.use('/api/content', require('./routes/content'));
 
 // ----------------------------------------------------------------------------

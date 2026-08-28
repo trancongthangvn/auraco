@@ -615,7 +615,7 @@ export default function CheckoutClient() {
             </h2>
 
             {itemsLoading ? (
-              <p className="text-sm text-black/50 mb-6">Đang tải...</p>
+              <p className="text-sm text-black/50 mb-6">Loading…</p>
             ) : itemsError ? (
               <p className="text-sm text-red-700 mb-6">{itemsError}</p>
             ) : (
@@ -623,13 +623,15 @@ export default function CheckoutClient() {
                 {items.map((item) => (
                   <div key={item.id} className="flex items-center gap-4">
                     <div className="relative w-16 h-16 shrink-0 border border-black/10 bg-white">
-                      <Image
-                        src={item.images[0]}
-                        alt={item.name}
-                        fill
-                        sizes="64px"
-                        className="object-cover"
-                      />
+                      {item.images[0] && (
+                        <Image
+                          src={item.images[0]}
+                          alt={item.name}
+                          fill
+                          sizes="64px"
+                          className="object-cover"
+                        />
+                      )}
                     </div>
                     <div className="flex-1">
                       <p className="text-sm">{item.name}</p>

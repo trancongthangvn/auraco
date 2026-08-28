@@ -8,8 +8,20 @@ import PageHeader from "@/components/admin/PageHeader";
 import { apiFetch, ApiError } from "@/lib/api";
 import type { OrderStatus } from "@/data/admin";
 import { ChevronLeftIcon } from "@/components/icons";
+import { Select } from "@/components/admin/ui/Field";
+import Badge from "@/components/admin/ui/Badge";
 
 const STATUSES: OrderStatus[] = ["Đang xử lý", "Đã giao", "Đã hủy"];
+
+const STATUS_TONE: Record<OrderStatus, "success" | "warning" | "danger"> = {
+  "Đang xử lý": "warning",
+  "Đã giao": "success",
+  "Đã hủy": "danger",
+};
+
+const BACK_LINK_CLASSES =
+  "inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm text-black/60 " +
+  "transition-all duration-150 ease-out hover:text-[#2b261f] hover:bg-black/5 active:scale-[0.97]";
 
 type OrderItem = {
   id: number;
@@ -91,10 +103,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
         <p className="text-sm text-black/50">
           {error || `Không tìm thấy đơn hàng ${id}.`}
         </p>
-        <Link
-          href="/admin/orders"
-          className="inline-flex items-center gap-1.5 text-sm underline mt-4"
-        >
+        <Link href="/admin/orders" className={`${BACK_LINK_CLASSES} mt-4 -ml-2.5`}>
           <ChevronLeftIcon size={14} /> Quay lại danh sách đơn hàng
         </Link>
       </AdminShell>
@@ -107,38 +116,36 @@ export default function OrderDetailClient({ id }: { id: string }) {
 
   return (
     <AdminShell>
-      <Link
-        href="/admin/orders"
-        className="inline-flex items-center gap-1.5 text-sm text-black/60 hover:text-black mb-4"
-      >
+      <Link href="/admin/orders" className={`${BACK_LINK_CLASSES} mb-4 -ml-2.5`}>
         <ChevronLeftIcon size={14} /> Quay lại danh sách đơn hàng
       </Link>
 
       <PageHeader>
         <span className="text-sm text-black/50">Mã đơn {order.order_code}</span>
-        <select
+        <Badge tone={STATUS_TONE[order.status]}>{order.status}</Badge>
+        <Select
           value={order.status}
           onChange={(e) => updateStatus(e.target.value as OrderStatus)}
-          className="text-sm border border-black/20 px-3 py-2"
+          className="!w-auto"
         >
           {STATUSES.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
           ))}
-        </select>
+        </Select>
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white border border-black/10 p-5">
+          <div className="bg-white rounded-2xl border border-black/10 shadow-sm p-5">
             <h2 className="text-sm font-medium uppercase tracking-wide mb-4">
               Sản phẩm
             </h2>
             <div className="space-y-4">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-4">
-                  <div className="relative h-14 w-14 shrink-0 bg-[#f5f2ee]">
+                  <div className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-[#f5f2ee]">
                     {item.image_url && (
                       <Image
                         src={item.image_url}
@@ -181,7 +188,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white border border-black/10 p-5">
+          <div className="bg-white rounded-2xl border border-black/10 shadow-sm p-5">
             <h2 className="text-sm font-medium uppercase tracking-wide mb-3">
               Khách hàng
             </h2>
@@ -190,7 +197,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
             <p className="text-sm text-black/60">{order.phone}</p>
           </div>
 
-          <div className="bg-white border border-black/10 p-5">
+          <div className="bg-white rounded-2xl border border-black/10 shadow-sm p-5">
             <h2 className="text-sm font-medium uppercase tracking-wide mb-3">
               Địa chỉ giao hàng
             </h2>
@@ -199,7 +206,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
             <p className="text-sm text-black/70">{order.country}</p>
           </div>
 
-          <div className="bg-white border border-black/10 p-5">
+          <div className="bg-white rounded-2xl border border-black/10 shadow-sm p-5">
             <h2 className="text-sm font-medium uppercase tracking-wide mb-3">
               Thanh toán
             </h2>

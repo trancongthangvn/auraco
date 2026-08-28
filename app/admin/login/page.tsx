@@ -4,6 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
+import { Input, Label } from "@/components/admin/ui/Field";
+import Button from "@/components/admin/ui/Button";
 
 export default function AdminLoginPage() {
   const { login } = useAdminAuth();
@@ -27,7 +29,7 @@ export default function AdminLoginPage() {
             setLoading(false);
           }
         }}
-        className="w-full max-w-sm bg-white border border-black/10 p-8"
+        className="w-full max-w-sm bg-white rounded-2xl border border-black/10 shadow-sm p-8"
       >
         <Image
           src="/images/brand/logo-badge.png"
@@ -40,39 +42,31 @@ export default function AdminLoginPage() {
           Đăng nhập trang quản trị
         </p>
 
-        <label className="block text-xs uppercase tracking-wide mb-2">
-          Tên đăng nhập
-        </label>
-        <input
+        <Label>Tên đăng nhập</Label>
+        <Input
           autoComplete="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="admin"
-          className="w-full border border-black/20 px-4 py-3 text-sm mb-4"
+          className="mb-4"
         />
 
-        <label className="block text-xs uppercase tracking-wide mb-2">
-          Mật khẩu
-        </label>
-        <input
+        <Label>Mật khẩu</Label>
+        <Input
           type="password"
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
-          className="w-full border border-black/20 px-4 py-3 text-sm mb-2"
+          className="mb-2"
         />
 
         {error && <p className="text-xs text-red-700 mb-4">{error}</p>}
         {!error && <div className="mb-6" />}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-[#2b261f] text-white py-3 text-sm tracking-wide hover:bg-black transition-colors disabled:opacity-60"
-        >
+        <Button type="submit" variant="primary" disabled={loading} className="w-full">
           {loading ? "Đang xác thực..." : "ĐĂNG NHẬP"}
-        </button>
+        </Button>
         <p className="text-xs text-black/40 mt-4 text-center">
           Tài khoản quản trị được cấp riêng cho AURA & CO, không tự đăng ký
           được từ trang này.

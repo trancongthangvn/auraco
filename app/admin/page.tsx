@@ -5,6 +5,8 @@ import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { apiFetch, ApiError } from "@/lib/api";
 import type { OrderStatus } from "@/data/admin";
+import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
+import Badge from "@/components/admin/ui/Badge";
 
 type AdminProduct = {
   id: number;
@@ -79,7 +81,10 @@ export default function AdminDashboardPage() {
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-8">
             {stats.map((s) => (
-              <div key={s.label} className="bg-white border border-black/10 p-5">
+              <div
+                key={s.label}
+                className="bg-white rounded-2xl border border-black/10 shadow-sm p-5"
+              >
                 <p className="text-3xl font-serif-display mb-1">{s.value}</p>
                 <p className="text-xs text-black/50 uppercase tracking-wide">
                   {s.label}
@@ -88,36 +93,52 @@ export default function AdminDashboardPage() {
             ))}
           </div>
 
-          <div className="bg-white border border-black/10 p-5">
+          <div className="bg-white rounded-2xl border border-black/10 shadow-sm p-5">
             <h2 className="text-sm font-medium mb-4 uppercase tracking-wide">
               Đơn hàng gần đây
             </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[560px]">
-                <thead>
-                  <tr className="text-left text-black/50 border-b border-black/10">
-                    <th className="py-2 font-normal">Mã đơn</th>
-                    <th className="py-2 font-normal">Khách hàng</th>
-                    <th className="py-2 font-normal">Ngày</th>
-                    <th className="py-2 font-normal text-right">Giá trị</th>
-                    <th className="py-2 font-normal text-right">Trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.slice(0, 5).map((o) => (
-                    <tr key={o.id} className="border-b border-black/5">
-                      <td className="py-2">{o.order_code}</td>
-                      <td className="py-2">{o.customer_name}</td>
-                      <td className="py-2">
-                        {new Date(o.created_at).toLocaleDateString("vi-VN")}
-                      </td>
-                      <td className="py-2 text-right">${o.total}</td>
-                      <td className="py-2 text-right">{o.status}</td>
+            {orders.length === 0 ? (
+              <EmptyState>Chưa có đơn hàng nào.</EmptyState>
+            ) : (
+              <TableCard>
+                <table className="w-full text-sm min-w-[560px]">
+                  <thead>
+                    <tr className="border-b border-black/10">
+                      <Th>Mã đơn</Th>
+                      <Th>Khách hàng</Th>
+                      <Th>Ngày</Th>
+                      <Th align="right">Giá trị</Th>
+                      <Th align="right">Trạng thái</Th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {orders.slice(0, 5).map((o) => (
+                      <tr key={o.id} className={TR_HOVER}>
+                        <Td>{o.order_code}</Td>
+                        <Td>{o.customer_name}</Td>
+                        <Td>
+                          {new Date(o.created_at).toLocaleDateString("vi-VN")}
+                        </Td>
+                        <Td align="right">${o.total}</Td>
+                        <Td align="right">
+                          <Badge
+                            tone={
+                              o.status === "Đã giao"
+                                ? "success"
+                                : o.status === "Đã hủy"
+                                ? "danger"
+                                : "warning"
+                            }
+                          >
+                            {o.status}
+                          </Badge>
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableCard>
+            )}
           </div>
         </>
       )}

@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const { pool, query } = require('../db');
-const { authMiddleware, requireAdmin } = require('../middleware/auth');
+const { authMiddleware, requireAdmin, requireStaffOrAdmin } = require('../middleware/auth');
 const { upload, verifyMagicBytes } = require('../lib/upload');
 
 const router = express.Router();
@@ -254,7 +254,7 @@ router.get('/orders/:id', async (req, res) => {
 // Query params: status, payment_method, email, q (order_code/customer_name),
 // page, limit
 // ----------------------------------------------------------------------------
-router.get('/admin/orders', authMiddleware, requireAdmin, async (req, res) => {
+router.get('/admin/orders', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   try {
     const { status, payment_method, email, q } = req.query;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -317,7 +317,7 @@ router.get('/admin/orders', authMiddleware, requireAdmin, async (req, res) => {
 // PUT /admin/orders/:id — admin status update.
 // Body: { status: 'Đang xử lý' | 'Đã giao' | 'Đã hủy' (or English alias) }
 // ----------------------------------------------------------------------------
-router.put('/admin/orders/:id', authMiddleware, requireAdmin, async (req, res) => {
+router.put('/admin/orders/:id', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   const { id } = req.params;
   if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'Invalid order id' });
 

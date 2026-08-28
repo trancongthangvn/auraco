@@ -6,6 +6,17 @@ import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
+import Button from "@/components/admin/ui/Button";
+import IconButton from "@/components/admin/ui/IconButton";
+import { Input, Label } from "@/components/admin/ui/Field";
+import VideoField from "@/components/admin/VideoField";
+import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
+import {
+  ModalBackdrop,
+  ModalPanel,
+  ModalHeader,
+  ModalFooter,
+} from "@/components/admin/ui/Modal";
 
 type AdminProduct = {
   id: number;
@@ -22,6 +33,7 @@ type AdminProduct = {
   features: string[];
   stock: number;
   active: boolean;
+  video_url: string | null;
   attributes?: AdminAttribute[];
   collections?: string[];
 };
@@ -37,6 +49,7 @@ export default function AdminProductsPage() {
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editVideoUrl, setEditVideoUrl] = useState<string | null>(null);
   const [editAttributes, setEditAttributes] = useState<AdminAttribute[]>([]);
   const [originalAttributes, setOriginalAttributes] = useState<AdminAttribute[]>([]);
   const [saving, setSaving] = useState(false);
@@ -83,6 +96,7 @@ export default function AdminProductsPage() {
     setEditing(p);
     setEditName(p.name);
     setEditPrice(String(p.price));
+    setEditVideoUrl(p.video_url ?? null);
     setModalError(null);
     setEditAttributes(p.attributes ?? []);
     setOriginalAttributes(p.attributes ?? []);
@@ -137,6 +151,7 @@ export default function AdminProductsPage() {
           body: JSON.stringify({
             name: editName,
             price: Number.isFinite(parsedPrice) ? parsedPrice : editing.price,
+            videoUrl: editVideoUrl,
           }),
         }
       );
@@ -211,180 +226,181 @@ export default function AdminProductsPage() {
       </PageHeader>
 
       {error && (
-        <div className="mb-4 text-xs text-red-700 border border-red-700/30 bg-red-50 px-3 py-2">
+        <div className="mb-4 text-xs text-red-700 border border-red-700/30 bg-red-50 rounded-xl px-3 py-2">
           {error}
         </div>
       )}
 
-      <div className="bg-white border border-black/10 overflow-x-auto">
+      <TableCard>
         <table className="w-full text-sm min-w-[640px]">
           <thead>
-            <tr className="text-left text-black/50 border-b border-black/10">
-              <th className="py-3 px-4 font-normal">Ảnh</th>
-              <th className="py-3 px-4 font-normal">Tên sản phẩm</th>
-              <th className="py-3 px-4 font-normal">Danh mục</th>
-              <th className="py-3 px-4 font-normal text-right">Giá</th>
-              <th className="py-3 px-4 font-normal text-center">Trạng thái</th>
-              <th className="py-3 px-4 font-normal text-right">Thao tác</th>
+            <tr className="border-b border-black/10">
+              <Th>Ảnh</Th>
+              <Th>Tên sản phẩm</Th>
+              <Th>Danh mục</Th>
+              <Th align="right">Giá</Th>
+              <Th align="center">Trạng thái</Th>
+              <Th align="right">Thao tác</Th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={6} className="py-6 px-4 text-center text-black/40">
-                  Đang tải...
+                <td colSpan={6}>
+                  <EmptyState>Đang tải...</EmptyState>
                 </td>
               </tr>
             )}
             {!loading && products.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-6 px-4 text-center text-black/40">
-                  Chưa có sản phẩm nào.
+                <td colSpan={6}>
+                  <EmptyState>Chưa có sản phẩm nào.</EmptyState>
                 </td>
               </tr>
             )}
             {products.map((p) => (
-              <tr key={p.slug} className="border-b border-black/5">
-                <td className="py-2 px-4">
-                  <div className="relative h-10 w-10 bg-[#f5f2ee]">
+              <tr key={p.slug} className={TR_HOVER}>
+                <Td>
+                  <div className="relative h-10 w-10 rounded-lg overflow-hidden bg-[#f5f2ee]">
                     {p.images?.[0] && (
                       <Image src={p.images[0]} alt={p.name} fill sizes="40px" className="object-cover" />
                     )}
                   </div>
-                </td>
-                <td className="py-2 px-4">{p.name}</td>
-                <td className="py-2 px-4">{p.category}</td>
-                <td className="py-2 px-4 text-right">${Number(p.price).toFixed(2)}</td>
-                <td className="py-2 px-4 text-center">
+                </Td>
+                <Td>{p.name}</Td>
+                <Td>{p.category}</Td>
+                <Td align="right">${Number(p.price).toFixed(2)}</Td>
+                <Td align="center">
                   <button
                     onClick={() => toggleVisible(p)}
-                    className={`text-xs px-2 py-1 border ${
+                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap border transition-all duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 ${
                       p.active
-                        ? "border-green-700 text-green-700"
-                        : "border-black/30 text-black/40"
+                        ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+                        : "border-black/15 bg-black/5 text-black/40 hover:bg-black/10"
                     }`}
                   >
                     {p.active ? "Đang hiển thị" : "Đã ẩn"}
                   </button>
-                </td>
-                <td className="py-2 px-4 text-right space-x-3">
-                  <button
-                    onClick={() => openEdit(p)}
-                    className="text-xs underline"
-                  >
-                    Sửa
-                  </button>
-                  <button
-                    onClick={() => remove(p.slug)}
-                    disabled={!isAdmin}
-                    title={!isAdmin ? "Chỉ Quản trị viên được xóa sản phẩm" : ""}
-                    className={`text-xs underline ${
-                      isAdmin ? "text-red-700" : "text-black/20 cursor-not-allowed"
-                    }`}
-                  >
-                    Xóa
-                  </button>
-                </td>
+                </Td>
+                <Td align="right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => openEdit(p)}>
+                      Sửa
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => remove(p.slug)}
+                      disabled={!isAdmin}
+                      title={!isAdmin ? "Chỉ Quản trị viên được xóa sản phẩm" : ""}
+                    >
+                      Xóa
+                    </Button>
+                  </div>
+                </Td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </TableCard>
 
       {editing && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white p-6 w-full max-w-lg my-auto">
-            <h2 className="text-lg font-medium mb-4">Sửa sản phẩm</h2>
-
-            {modalError && (
-              <div className="mb-4 text-xs text-red-700 border border-red-700/30 bg-red-50 px-3 py-2">
-                {modalError}
-              </div>
-            )}
-
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Tên sản phẩm
-            </label>
-            <input
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-4"
-            />
-            <label className="block text-xs uppercase tracking-wide mb-2">
-              Giá (USD)
-            </label>
-            <input
-              value={editPrice}
-              onChange={(e) => setEditPrice(e.target.value)}
-              type="number"
-              className="w-full border border-black/20 px-3 py-2 text-sm mb-6"
-            />
-
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs uppercase tracking-wide">
-                Thuộc tính sản phẩm
-              </label>
-              <button
-                onClick={() =>
-                  setEditAttributes((list) => [...list, { name: "", value: "" }])
-                }
-                className="text-xs underline"
-              >
-                + Thêm thuộc tính
-              </button>
-            </div>
-            <p className="text-xs text-black/40 mb-3">
-              Cặp tên/giá trị tự do, ví dụ: Chất liệu, Kích thước, Trọng lượng,
-              Kiểu khóa...
-            </p>
-            <div className="space-y-2 mb-6">
-              {editAttributes.length === 0 && (
-                <p className="text-xs text-black/30 italic">
-                  Chưa có thuộc tính nào.
-                </p>
-              )}
-              {editAttributes.map((attr, i) => (
-                <div key={attr.id ?? `new-${i}`} className="flex gap-2">
-                  <input
-                    value={attr.name}
-                    onChange={(e) => updateAttribute(i, "name", e.target.value)}
-                    placeholder="Tên (VD: Chất liệu)"
-                    className="w-1/3 border border-black/20 px-2 py-1.5 text-xs"
-                  />
-                  <input
-                    value={attr.value}
-                    onChange={(e) => updateAttribute(i, "value", e.target.value)}
-                    placeholder="Giá trị (VD: 18k Gold Vermeil)"
-                    className="flex-1 border border-black/20 px-2 py-1.5 text-xs"
-                  />
-                  <button
-                    onClick={() => removeAttribute(i)}
-                    className="text-xs text-red-700 shrink-0"
-                  >
-                    Xóa
-                  </button>
+        <ModalBackdrop onClose={() => setEditing(null)}>
+          <ModalPanel maxWidth="max-w-lg">
+            <ModalHeader title="Sửa sản phẩm" onClose={() => setEditing(null)} />
+            <div className="px-6 py-4">
+              {modalError && (
+                <div className="mb-4 text-xs text-red-700 border border-red-700/30 bg-red-50 rounded-xl px-3 py-2">
+                  {modalError}
                 </div>
-              ))}
+              )}
+
+              <Label>Tên sản phẩm</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="mb-4"
+              />
+              <Label>Giá (USD)</Label>
+              <Input
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+                type="number"
+                className="mb-6"
+              />
+
+              <div className="mb-6">
+                <VideoField
+                  label="Video sản phẩm"
+                  hint="Video MP4 ngắn, lặp — hiển thị ở băng video trên trang chủ. Để trống nếu sản phẩm không có video."
+                  value={editVideoUrl}
+                  onChange={setEditVideoUrl}
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="flex items-center justify-between mb-2">
+                <Label className="mb-0">Thuộc tính sản phẩm</Label>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    setEditAttributes((list) => [...list, { name: "", value: "" }])
+                  }
+                >
+                  + Thêm thuộc tính
+                </Button>
+              </div>
+              <p className="text-xs text-black/40 mb-3">
+                Cặp tên/giá trị tự do, ví dụ: Chất liệu, Kích thước, Trọng lượng,
+                Kiểu khóa...
+              </p>
+              <div className="space-y-2 mb-2">
+                {editAttributes.length === 0 && (
+                  <p className="text-xs text-black/30 italic">
+                    Chưa có thuộc tính nào.
+                  </p>
+                )}
+                {editAttributes.map((attr, i) => (
+                  <div key={attr.id ?? `new-${i}`} className="flex gap-2">
+                    <Input
+                      value={attr.name}
+                      onChange={(e) => updateAttribute(i, "name", e.target.value)}
+                      placeholder="Tên (VD: Chất liệu)"
+                      className="w-1/3 text-xs"
+                    />
+                    <Input
+                      value={attr.value}
+                      onChange={(e) => updateAttribute(i, "value", e.target.value)}
+                      placeholder="Giá trị (VD: 18k Gold Vermeil)"
+                      className="flex-1 text-xs"
+                    />
+                    <IconButton
+                      type="button"
+                      tone="danger"
+                      className="shrink-0"
+                      aria-label="Xóa thuộc tính"
+                      onClick={() => removeAttribute(i)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                      </svg>
+                    </IconButton>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setEditing(null)}
-                disabled={saving}
-                className="text-sm px-4 py-2 border border-black/20"
-              >
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => setEditing(null)} disabled={saving}>
                 Hủy
-              </button>
-              <button
-                onClick={saveEdit}
-                disabled={saving}
-                className="text-sm px-4 py-2 bg-[#2b261f] text-white disabled:opacity-50"
-              >
+              </Button>
+              <Button variant="primary" onClick={saveEdit} disabled={saving}>
                 {saving ? "Đang lưu..." : "Lưu thay đổi"}
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalBackdrop>
       )}
     </AdminShell>
   );

@@ -32,4 +32,18 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, requireAdmin };
+/**
+ * Must run after authMiddleware. Requires req.user.role to be 'admin' or
+ * 'staff' — i.e. any authenticated admin-panel user. Staff's role is scoped
+ * to products + orders only by which routes this is applied to (see
+ * server/routes/products.js and server/routes/orders-payments.js); every
+ * other admin route stays behind requireAdmin.
+ */
+function requireStaffOrAdmin(req, res, next) {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'staff')) {
+    return res.status(403).json({ error: 'Staff or admin privileges required' });
+  }
+  next();
+}
+
+module.exports = { authMiddleware, requireAdmin, requireStaffOrAdmin };

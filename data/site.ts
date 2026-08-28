@@ -20,18 +20,18 @@ export const heroSlides = [
 ];
 
 export const navLinks = [
-  { label: "Necklaces", href: "/catalog?brand=Necklaces" },
-  { label: "Bracelets", href: "/catalog?brand=Bracelets" },
-  { label: "Earrings", href: "/catalog?brand=Earrings" },
-  { label: "Signature Sets", href: "/catalog?brand=Signature-Sets" },
-  { label: "Collections", href: "/catalog" },
-  { label: "Best Sellers", href: "/catalog/BEST-SELLERS" },
+  { key: "necklaces" as const, label: "Necklaces", href: "/catalog?brand=Necklaces" },
+  { key: "bracelets" as const, label: "Bracelets", href: "/catalog?brand=Bracelets" },
+  { key: "earrings" as const, label: "Earrings", href: "/catalog?brand=Earrings" },
+  { key: "signatureSets" as const, label: "Signature Sets", href: "/catalog?brand=Signature-Sets" },
+  { key: "collections" as const, label: "Collections", href: "/catalog" },
+  { key: "bestSellers" as const, label: "Best Sellers", href: "/catalog/BEST-SELLERS" },
 ];
 
 export const ourStoryLinks = [
-  { label: "News", href: "/news" },
-  { label: "About", href: "/pages/about" },
-  { label: "Contact", href: "/pages/contact" },
+  { key: "news" as const, label: "News", href: "/news" },
+  { key: "about" as const, label: "About", href: "/pages/about" },
+  { key: "contact" as const, label: "Contact", href: "/pages/contact" },
 ];
 
 export const collections = [
@@ -279,13 +279,13 @@ export const journalPosts = [
 
 export const footerLinks = {
   shop: [
-    { label: "Catalog", href: "/catalog" },
-    { label: "Cart", href: "/cart" },
+    { key: "catalog" as const, label: "Catalog", href: "/catalog" },
+    { key: "cart" as const, label: "Cart", href: "/cart" },
   ],
   policies: [
-    { label: "Security Policy", href: "/pages/security-policy" },
-    { label: "Privacy Policy", href: "/pages/privacy-policy" },
-    { label: "Return Policy", href: "/pages/return-policy" },
-    { label: "Terms of Service", href: "/pages/terms-of-service" },
+    { key: "securityPolicy" as const, label: "Security Policy", href: "/pages/security-policy" },
+    { key: "privacyPolicy" as const, label: "Privacy Policy", href: "/pages/privacy-policy" },
+    { key: "returnPolicy" as const, label: "Return Policy", href: "/pages/return-policy" },
+    { key: "termsOfService" as const, label: "Terms of Service", href: "/pages/terms-of-service" },
   ],
 };

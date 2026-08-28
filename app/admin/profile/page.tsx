@@ -5,6 +5,8 @@ import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
+import Button from "@/components/admin/ui/Button";
+import { Input, Label } from "@/components/admin/ui/Field";
 
 export default function AdminProfilePage() {
   const { session } = useAdminAuth();
@@ -53,7 +55,7 @@ export default function AdminProfilePage() {
             setSubmitting(false);
           }
         }}
-        className="bg-white border border-black/10 p-6 max-w-md space-y-4"
+        className="bg-white rounded-2xl border border-black/10 shadow-sm p-6 max-w-md space-y-4"
       >
         <div>
           <p className="text-xs text-black/40 mb-1">Đăng nhập với tên</p>
@@ -61,38 +63,29 @@ export default function AdminProfilePage() {
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wide mb-2">
-            Mật khẩu hiện tại
-          </label>
-          <input
+          <Label>Mật khẩu hiện tại</Label>
+          <Input
             type="password"
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
-            className="w-full border border-black/20 px-3 py-2 text-sm"
           />
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wide mb-2">
-            Mật khẩu mới
-          </label>
-          <input
+          <Label>Mật khẩu mới</Label>
+          <Input
             type="password"
             value={next}
             onChange={(e) => setNext(e.target.value)}
-            className="w-full border border-black/20 px-3 py-2 text-sm"
           />
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wide mb-2">
-            Nhập lại mật khẩu mới
-          </label>
-          <input
+          <Label>Nhập lại mật khẩu mới</Label>
+          <Input
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="w-full border border-black/20 px-3 py-2 text-sm"
           />
         </div>
 
@@ -103,13 +96,9 @@ export default function AdminProfilePage() {
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="text-sm px-5 py-2.5 bg-[#2b261f] text-white hover:bg-black transition-colors disabled:opacity-50"
-        >
+        <Button type="submit" variant="primary" disabled={submitting}>
           {submitting ? "Đang xử lý..." : "Đổi mật khẩu"}
-        </button>
+        </Button>
       </form>
     </AdminShell>
   );

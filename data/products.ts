@@ -16,6 +16,8 @@ export type FullProduct = {
   description: string;
   features: string[];
   stock: number;
+  /** Optional looping product video (MP4) shown in the homepage video carousel. */
+  videoUrl?: string;
   attributes?: ProductAttribute[];
 };
 

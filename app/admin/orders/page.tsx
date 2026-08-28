@@ -6,8 +6,17 @@ import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { apiFetch, ApiError } from "@/lib/api";
 import type { OrderStatus } from "@/data/admin";
+import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
+import { Select } from "@/components/admin/ui/Field";
+import Badge from "@/components/admin/ui/Badge";
 
 const STATUSES: OrderStatus[] = ["Đang xử lý", "Đã giao", "Đã hủy"];
+
+const STATUS_TONE: Record<OrderStatus, "success" | "warning" | "danger"> = {
+  "Đang xử lý": "warning",
+  "Đã giao": "success",
+  "Đã hủy": "danger",
+};
 
 type AdminOrder = {
   id: number;
@@ -64,58 +73,59 @@ export default function AdminOrdersPage() {
         <p className="text-sm text-black/50">Đang tải...</p>
       ) : error ? (
         <p className="text-sm text-red-600">{error}</p>
+      ) : orders.length === 0 ? (
+        <TableCard>
+          <EmptyState>Chưa có đơn hàng nào.</EmptyState>
+        </TableCard>
       ) : (
-        <div className="bg-white border border-black/10 overflow-x-auto">
-          <table className="w-full text-sm min-w-[620px]">
+        <TableCard>
+          <table className="w-full text-sm min-w-[680px]">
             <thead>
-              <tr className="text-left text-black/50 border-b border-black/10">
-                <th className="py-3 px-4 font-normal">Mã đơn</th>
-                <th className="py-3 px-4 font-normal">Khách hàng</th>
-                <th className="py-3 px-4 font-normal">Ngày đặt</th>
-                <th className="py-3 px-4 font-normal text-right">Giá trị</th>
-                <th className="py-3 px-4 font-normal text-right">Trạng thái</th>
-                <th className="py-3 px-4 font-normal text-right">Chi tiết</th>
+              <tr className="border-b border-black/10">
+                <Th>Mã đơn</Th>
+                <Th>Khách hàng</Th>
+                <Th>Ngày đặt</Th>
+                <Th align="right">Giá trị</Th>
+                <Th align="right">Trạng thái</Th>
+                <Th align="right">Chi tiết</Th>
               </tr>
             </thead>
             <tbody>
               {orders.map((o) => (
-                <tr key={o.id} className="border-b border-black/5">
-                  <td className="py-2 px-4">{o.order_code}</td>
-                  <td className="py-2 px-4">{o.customer_name}</td>
-                  <td className="py-2 px-4">
-                    {new Date(o.created_at).toLocaleDateString("vi-VN")}
-                  </td>
-                  <td className="py-2 px-4 text-right">
-                    ${parseFloat(o.total).toFixed(2)}
-                  </td>
-                  <td className="py-2 px-4 text-right">
-                    <select
-                      value={o.status}
-                      onChange={(e) =>
-                        updateStatus(o.id, e.target.value as OrderStatus)
-                      }
-                      className="text-xs border border-black/20 px-2 py-1"
-                    >
-                      {STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="py-2 px-4 text-right">
+                <tr key={o.id} className={TR_HOVER}>
+                  <Td className="font-medium text-[#2b261f]">{o.order_code}</Td>
+                  <Td>{o.customer_name}</Td>
+                  <Td>{new Date(o.created_at).toLocaleDateString("vi-VN")}</Td>
+                  <Td align="right">${parseFloat(o.total).toFixed(2)}</Td>
+                  <Td align="right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Badge tone={STATUS_TONE[o.status]}>{o.status}</Badge>
+                      <Select
+                        value={o.status}
+                        onChange={(e) => updateStatus(o.id, e.target.value as OrderStatus)}
+                        className="!w-auto !py-1.5 !px-2 text-xs"
+                      >
+                        {STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  </Td>
+                  <Td align="right">
                     <Link
                       href={`/admin/orders/${o.id}`}
-                      className="text-xs underline hover:text-gold"
+                      className="inline-flex h-8 items-center justify-center rounded-xl border border-black/15 bg-white px-3 text-xs font-medium text-[#2b261f] transition-all duration-150 ease-out hover:border-black/30 hover:bg-black/[0.03] active:scale-[0.97]"
                     >
                       Xem
                     </Link>
-                  </td>
+                  </Td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </TableCard>
       )}
     </AdminShell>
   );

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { useRevealOnScroll } from "@/components/useRevealOnScroll";
 
 export type HeroSlide = {
   label: string;
@@ -16,6 +17,7 @@ export default function Hero({ slides }: { slides: HeroSlide[] }) {
   const [index, setIndex] = useState(0);
   const heroSlides = slides;
   const slide = heroSlides[index];
+  const [revealRef, revealClass] = useRevealOnScroll<HTMLElement>({ fadeOnly: true });
 
   if (!slide) return null;
 
@@ -24,27 +26,39 @@ export default function Hero({ slides }: { slides: HeroSlide[] }) {
   const next = () => setIndex((i) => (i + 1) % heroSlides.length);
 
   return (
-    <section className="relative h-[70vh] min-h-[420px] w-full overflow-hidden">
-      <Image
-        src={slide.img}
-        alt={slide.title}
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-black/5" />
+    <section
+      ref={revealRef}
+      className={`relative w-full aspect-[1400/788] min-h-[420px] max-h-[85vh] overflow-hidden ${revealClass}`}
+    >
+      {/* Guard an empty image_url so a half-configured slide degrades to the
+          dark overlay rather than a broken image. */}
+      {slide.img && (
+        <Image
+          src={slide.img}
+          alt={slide.title}
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
+      )}
 
-      <div className="relative z-10 flex h-full flex-col justify-end px-8 pb-16 sm:px-16">
-        <p className="text-white/90 tracking-[0.25em] text-sm mb-3">
+      <div
+        className="absolute inset-0 z-10 flex flex-col items-center justify-end gap-1 px-2 py-10 text-center sm:px-14"
+        style={{
+          background:
+            "linear-gradient(100deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.22) 48%, rgba(0,0,0,0.08) 100%)",
+        }}
+      >
+        <h1 className="font-serif-display uppercase text-white text-[2rem] sm:text-[3.25rem] font-normal leading-[1.05] tracking-[0.045em]">
           {slide.label}
-        </p>
-        <h1 className="font-serif-display text-white text-4xl sm:text-5xl max-w-xl leading-tight mb-6">
-          {slide.title}
         </h1>
+        <p className="max-w-[310px] text-white/90 text-[15px] uppercase leading-[1.48] tracking-[0.075em]">
+          {slide.title}
+        </p>
         <Link
           href={slide.href}
-          className="inline-block w-fit border border-white px-6 py-3 text-sm tracking-wide text-white hover:bg-white hover:text-[#2b261f] transition-colors"
+          className="group relative mt-1 inline-block w-fit border-b border-white/75 pb-1.5 pt-1 text-xs uppercase tracking-[0.1em] text-white transition-[letter-spacing] duration-300 hover:tracking-[0.13em]"
         >
           DISCOVER NOW
         </Link>
@@ -53,26 +67,26 @@ export default function Hero({ slides }: { slides: HeroSlide[] }) {
       <button
         aria-label="Previous slide"
         onClick={prev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white px-2 hover:opacity-70"
+        className="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-opacity hover:opacity-80"
       >
-        <ChevronLeftIcon size={22} />
+        <ChevronLeftIcon size={20} />
       </button>
       <button
         aria-label="Next slide"
         onClick={next}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white px-2 hover:opacity-70"
+        className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-opacity hover:opacity-80"
       >
-        <ChevronRightIcon size={22} />
+        <ChevronRightIcon size={20} />
       </button>
 
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+      <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-[7px]">
         {heroSlides.map((s, i) => (
           <button
             key={s.label}
             aria-label={`Go to slide ${i + 1}`}
             onClick={() => setIndex(i)}
-            className={`h-1.5 rounded-full transition-all ${
-              i === index ? "w-6 bg-white" : "w-1.5 bg-white/50"
+            className={`h-[9px] w-[9px] rounded-full transition-colors ${
+              i === index ? "bg-white" : "bg-white/45"
             }`}
           />
         ))}

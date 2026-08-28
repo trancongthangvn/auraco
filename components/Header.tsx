@@ -29,6 +29,13 @@ const megaCategories: Record<string, string> = {
   signatureSets: "Signature Sets",
 };
 
+/**
+ * Nav keys whose mega-menu shows the whole category (sorted A-Z, scrollable)
+ * with the reference site's row styling, instead of the five-item preview.
+ * Currently only Necklaces, by the site owner's explicit choice.
+ */
+const FULL_LIST_MEGA = new Set(["necklaces"]);
+
 export default function Header() {
   const dict = useDictionary();
   const [storyOpen, setStoryOpen] = useState(false);
@@ -50,9 +57,15 @@ export default function Header() {
     setMegaProducts((prev) => ({ ...prev, [key]: "loading" }));
     apiFetch<ApiProduct[]>(`/api/products?category=${encodeURIComponent(category)}`)
       .then((rows) => {
+        const mapped = rows.map(toFullProduct);
         setMegaProducts((prev) => ({
           ...prev,
-          [key]: rows.slice(0, 5).map(toFullProduct),
+          // Necklaces mirrors the reference site: the full category, sorted
+          // A-Z, in a scrollable panel. The other three menus keep the short
+          // five-item preview — deliberate, confirmed with the site owner.
+          [key]: FULL_LIST_MEGA.has(key)
+            ? mapped.sort((a, b) => a.name.localeCompare(b.name))
+            : mapped.slice(0, 5),
         }));
       })
       .catch(() => {
@@ -130,11 +143,21 @@ export default function Header() {
                 </Link>
                 {openMega === link.key && (
                   <div className="absolute top-full left-1/2 -translate-x-1/2 pt-[30px] z-50">
-                    <div className="w-[420px] max-w-[92vw] max-h-[75vh] overflow-y-auto bg-white border border-black/10 shadow-[0_14px_40px_rgba(32,27,22,0.08)]">
+                    <div
+                      className={`bg-white border border-black/10 shadow-[0_14px_40px_rgba(32,27,22,0.08)] max-w-[92vw] overflow-y-auto ${
+                        FULL_LIST_MEGA.has(link.key)
+                          ? "w-[440px] max-h-[210px]"
+                          : "w-[420px] max-h-[75vh]"
+                      }`}
+                    >
                       <div className="px-5 pt-4 pb-1">
                         <Link
                           href={link.href}
-                          className="text-xs font-semibold tracking-wide text-gold hover:underline"
+                          className={`hover:underline ${
+                            FULL_LIST_MEGA.has(link.key)
+                              ? "text-xs uppercase tracking-[0.055em] text-[#8f6a3c]"
+                              : "text-xs font-semibold tracking-wide text-gold"
+                          }`}
                         >
                           View all {dict.nav[link.key]}
                         </Link>
@@ -153,16 +176,29 @@ export default function Header() {
                             <Link
                               key={p.slug}
                               href={`/product/${p.slug}`}
-                              className="flex items-center gap-3 py-2 border-b border-black/5 last:border-b-0 normal-case text-[13px] text-ink/70 hover:text-gold"
+                              className={`flex items-center gap-3 border-b border-black/10 last:border-b-0 hover:text-gold ${
+                                FULL_LIST_MEGA.has(link.key)
+                                  ? "py-2 uppercase text-xs tracking-[0.055em] text-ink"
+                                  : "py-2 normal-case text-[13px] text-ink/70 border-black/5"
+                              }`}
                             >
-                              <span className="relative shrink-0 w-9 h-9 overflow-hidden bg-[#f5f2ee] border border-black/5">
-                                <Image
-                                  src={p.images[0]}
-                                  alt=""
-                                  fill
-                                  sizes="36px"
-                                  className="object-cover"
-                                />
+                              <span
+                                className={`relative shrink-0 w-9 h-9 overflow-hidden bg-[#f5f2ee] ${
+                                  FULL_LIST_MEGA.has(link.key)
+                                    ? ""
+                                    : "border border-black/5"
+                                }`}
+                              >
+                                {/* Products can be saved without images. */}
+                                {p.images[0] && (
+                                  <Image
+                                    src={p.images[0]}
+                                    alt=""
+                                    fill
+                                    sizes="36px"
+                                    className="object-cover"
+                                  />
+                                )}
                               </span>
                               <span className="truncate">{p.name}</span>
                             </Link>

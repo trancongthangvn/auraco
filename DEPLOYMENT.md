@@ -107,8 +107,30 @@ The clone is measured against <https://auracojewelry.com>. These calls were made
 - **We did not replicate their bugs.** Their terms-of-service page is a verbatim duplicate of their return policy; ours has real, distinct ToS content.
 - **We did not copy their support email.** `auraco.jewelry.us@gmail.com` is a live business inbox — putting it in the clone would misdirect real customer mail. The legal pages use a placeholder. **Open:** whoever owns this project's real contact address needs to supply it.
 
+## Mobile (375px) — what has and has not been checked
+
+Re-run against **production** after the final merge, at a 375×812 viewport.
+
+**Verified — no horizontal overflow anywhere.** `document.documentElement.scrollWidth === 375` on all nine pages checked: `/`, `/catalog`, `/product/[slug]`, `/checkout`, `/login`, `/register` and all four legal pages. The catalog grid drops to two columns (151.5px each). This is pure layout arithmetic, which the Browser pane measures correctly even though it cannot composite.
+
+Elements that *do* extend past the viewport are inside their own horizontal scrollers — the press-logo marquee track and the `w-[260px]` product-carousel cards — which is intended and does not scroll the page.
+
+**Found — small tap targets.** Not blocking, but worth fixing when auth/checkout are next touched:
+
+| Page | Element | Size |
+|---|---|---|
+| `/checkout` | consent checkbox | 13×13 |
+| `/checkout` | payment-method radio | 13×13 |
+| `/login` | "remember me" checkbox | 13×13 |
+| `/login`, `/register` | email / password inputs | 28px tall |
+
+13px controls on a checkout consent and payment selector are hard to hit on a phone (~44px is the usual target). The 20px text links and the 14px announcement-bar dismiss button are normal for their type.
+
+**Still NOT verified — responsive image selection on mobile.** At 375px the pane reports `currentSrc` as `w=3840` for *every* image, including ones with correct `sizes` (`260px`, `(min-width: 640px) 33vw, 50vw`) rendering into 164–327px boxes. This is a pane artifact, not a real finding: in real Chrome at 2560px the same images correctly resolve to `w=1080`. But real Chrome could not be driven to a mobile viewport here (`resize_window` reports success while `outerWidth` stays 0 and `innerWidth` stays 2560), so **which candidate a real phone picks at 375px is genuinely unknown**. Check this on an actual device or with proper DevTools device emulation before claiming mobile image performance is fine.
+
+**Also still not verified:** spacing and visual rendering on mobile, for the same reason — no environment here can both emulate a phone viewport and composite frames.
+
 ## Known open items
 
-- **Mobile QA is only DOM-verified.** Checkout, login, register and the legal pages were checked at 375px and 768px for horizontal overflow (`document.documentElement.scrollWidth` vs `window.innerWidth`) via the in-app Browser pane. That measurement does not depend on compositing so it should hold, but spacing and image rendering on mobile have **not** been visually confirmed. Needs a pass in real Chrome.
-- **Checkout mobile QA predates the final merge** and is worth rechecking against current production.
-- The contact address placeholder above.
+- Responsive image selection and visual spacing at mobile widths (above).
+- The contact address placeholder — the project owner needs to supply the real address for the legal pages.

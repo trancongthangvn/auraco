@@ -144,10 +144,13 @@ export default function Header() {
                 {openMega === link.key && (
                   <div className="absolute top-full left-1/2 -translate-x-1/2 pt-[30px] z-50">
                     <div
-                      className={`bg-white border border-black/10 shadow-[0_14px_40px_rgba(32,27,22,0.08)] max-w-[92vw] overflow-y-auto ${
+                      className={`bg-white border border-black/10 shadow-[0_14px_40px_rgba(32,27,22,0.08)] max-w-[92vw] ${
                         FULL_LIST_MEGA.has(link.key)
-                          ? "w-[440px] max-h-[210px]"
-                          : "w-[420px] max-h-[75vh]"
+                          ? // Full category, shown in one go — no inner scroll,
+                            // by the site owner's request. The reference site
+                            // caps this at 210px and scrolls; we do not.
+                            "w-[440px]"
+                          : "w-[420px] max-h-[75vh] overflow-y-auto"
                       }`}
                     >
                       <div className="px-5 pt-4 pb-1">

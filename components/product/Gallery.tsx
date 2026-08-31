@@ -13,11 +13,13 @@ import Lightbox from "./Lightbox";
  * thumbnails at `calc(50% - 6.4px)` each. Below `lg` the reference collapses
  * to a square frame over an 80px horizontal strip.
  *
- * `object-cover` matches the reference. The frame used to be a flat square,
- * where cover cropped an on-model portrait hard enough to lose the model's
- * head — switching to this taller, fluid-width frame gives cover much more
- * room, so `object-position: top` is enough to keep the crop from ever
- * biting into a face instead of reintroducing the plain-square failure mode.
+ * The main frame uses `object-contain`, not `object-cover` — a plain
+ * product-on-white shot (a necklace's full chain + pendant, a pair of
+ * earrings laid flat) needs to show the whole item uncropped regardless of
+ * its aspect ratio; `cover` was clipping the bottom of pendant-style
+ * necklaces against this frame's height. Thumbnails stay `object-cover
+ * object-top` (small, cropping is far less noticeable, and it's what keeps
+ * an on-model thumbnail from losing the model's head).
  */
 export default function Gallery({
   images,
@@ -46,7 +48,7 @@ export default function Gallery({
             fill
             priority
             sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-cover object-top"
+            className="object-contain"
           />
         )}
       </button>

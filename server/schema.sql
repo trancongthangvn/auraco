@@ -99,6 +99,14 @@ CREATE TABLE products (
   video_url         TEXT, -- optional looping product video for the homepage video carousel
   bundle_discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0
                     CHECK (bundle_discount_percent >= 0 AND bundle_discount_percent <= 100),
+  brand             VARCHAR(160), -- free-text designer/collection name, distinct from category (Necklaces/...) and collections (Quiet Luxury/...)
+  thumbnail_url     TEXT,
+  discount_percent  NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (discount_percent >= 0 AND discount_percent <= 100),
+  badge_label       VARCHAR(40), -- small black card badge, e.g. HOT, LIMITED — null/empty hides it
+  sticker_image_url TEXT,
+  meta_title        VARCHAR(200),
+  meta_description  VARCHAR(320),
+  show_at_home      BOOLEAN      NOT NULL DEFAULT FALSE,
   created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
   updated_at        TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
@@ -106,6 +114,30 @@ COMMENT ON TABLE products IS 'Catalog products. images/features kept as JSONB ar
 CREATE INDEX idx_products_category ON products(category);
 CREATE INDEX idx_products_active ON products(active);
 CREATE INDEX idx_products_sort_order ON products (sort_order, created_at DESC);
+
+-- ----------------------------------------------------------------------------
+-- product_variants (purchasable color/size combinations, admin-managed)
+-- ----------------------------------------------------------------------------
+CREATE TABLE product_variants (
+  id                SERIAL PRIMARY KEY,
+  product_id        INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  color_name        VARCHAR(80),
+  color_swatch      VARCHAR(20),
+  size              VARCHAR(40),
+  price             NUMERIC(10,2) NOT NULL CHECK (price >= 0),
+  compare_at_price  NUMERIC(10,2) CHECK (compare_at_price IS NULL OR compare_at_price >= 0),
+  stock             INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
+  sku               VARCHAR(80),
+  front_image       TEXT,
+  hover_images      JSONB NOT NULL DEFAULT '[]',
+  is_default        BOOLEAN NOT NULL DEFAULT FALSE,
+  active            BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order        INTEGER NOT NULL DEFAULT 0,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE product_variants IS 'Purchasable color/size combinations. A product with zero rows here behaves exactly as a non-variant product (its own price/stock/images are used directly). Exactly one row per product should have is_default = true when the product has any — enforced in the API, not SQL.';
+CREATE INDEX idx_product_variants_product ON product_variants (product_id, sort_order);
 
 -- ----------------------------------------------------------------------------
 -- product_bundles ("frequently bought together" companions, admin-picked)
@@ -203,7 +235,9 @@ CREATE TABLE order_items (
   material     VARCHAR(200) NOT NULL,   -- snapshot at time of purchase
   price        NUMERIC(10,2) NOT NULL CHECK (price >= 0), -- unit price snapshot
   qty          INTEGER NOT NULL CHECK (qty > 0),
-  image_url    TEXT
+  image_url    TEXT,
+  variant_id    INTEGER REFERENCES product_variants(id) ON DELETE SET NULL,
+  variant_label VARCHAR(120) -- snapshot, e.g. 'Gold / One Size'
 );
 COMMENT ON TABLE order_items IS 'Line items snapshot name/material/price at purchase time so historical orders remain accurate if the product changes later.';
 CREATE INDEX idx_order_items_order ON order_items(order_id);

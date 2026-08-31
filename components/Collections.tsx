@@ -25,7 +25,7 @@ export default function Collections({
       <h2 className="font-serif-display section-title">
         Collections
       </h2>
-      <div className="grid grid-cols-2 gap-[0.65rem] sm:grid-cols-3 sm:gap-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4">
         {collections.map((c) => (
           <Link
             key={c.name}
@@ -34,8 +34,10 @@ export default function Collections({
           >
             {/* A collection added in the admin without an image yields an
                 empty `img`; rendering <Image src=""> there shows a broken
-                image icon, so fall back to the tinted placeholder box. */}
-            <span className="relative block aspect-[4/3] overflow-hidden bg-[#e9e4dc]">
+                image icon, so fall back to the tinted placeholder box.
+                Taller on mobile (bigger frame within the 2-col grid),
+                reverts to the original 4:3 once there's room for 3 columns. */}
+            <span className="relative block aspect-[5/4] overflow-hidden bg-[#e9e4dc] sm:aspect-[4/3]">
               {c.img && (
                 <Image
                   src={c.img}
@@ -46,8 +48,8 @@ export default function Collections({
                 />
               )}
             </span>
-            <span className="flex flex-col gap-[0.35rem] pb-[18.4px] pl-[17.6px] pr-[17.6px] pt-4 text-center">
-              <span className="font-display-serif text-[19px] font-normal leading-[21.85px] text-[#28241f]">
+            <span className="flex flex-col gap-[0.35rem] pb-3 pl-2 pr-2 pt-2.5 text-center sm:pb-[18.4px] sm:pl-[17.6px] sm:pr-[17.6px] sm:pt-4">
+              <span className="font-display-serif whitespace-nowrap text-[14px] font-normal leading-[16px] text-[#28241f] sm:text-[19px] sm:leading-[21.85px]">
                 {c.name}
               </span>
             </span>

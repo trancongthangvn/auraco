@@ -378,7 +378,7 @@ export default function CatalogClient({
            instead produced empty result sets (e.g. Necklaces ∩ Quiet
            Luxury), which read as the page breaking. */
         <nav aria-label="Collections" className="mb-2 mt-[13px]">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden">
             {collectionFilters.map((c) => {
               const active = collection === c.value;
               return (
@@ -386,7 +386,7 @@ export default function CatalogClient({
                   key={c.value}
                   href={c.value === "ALL" ? "/catalog" : `/catalog/${c.value}`}
                   aria-current={active ? "page" : undefined}
-                  className={`font-ui inline-flex items-center rounded-full border-[0.667px] px-[14.4px] py-[7.2px] text-[13.12px] font-normal leading-[16.4px] tracking-[0.26px] transition-colors ${
+                  className={`font-ui inline-flex shrink-0 items-center rounded-full border-[0.667px] px-[14.4px] py-[7.2px] text-[13.12px] font-normal leading-[16.4px] tracking-[0.26px] transition-colors ${
                     active
                       ? "border-ink bg-ink text-white"
                       : "border-[#2b261f]/[0.18] bg-white text-[#2b261f] hover:border-ink"
@@ -409,11 +409,11 @@ export default function CatalogClient({
            the filter trigger on one side and sort on the other, and no
            product count between them. */
         <div className="sticky top-16 z-30 mb-1 flex items-center justify-between gap-4 border-[0.667px] border-[#2b261f]/[0.14] bg-white/[0.96] px-[13.6px] py-[10.4px]">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
             <button
               type="button"
               onClick={filtersOpen ? () => setFiltersOpen(false) : openFilters}
-              className="font-ui flex items-center gap-[7.2px] rounded-lg border-[0.667px] border-[#2b261f]/[0.14] bg-white px-3 py-2 text-[12.48px] font-semibold uppercase leading-[19.344px] tracking-[1.4976px] hover:text-gold"
+              className="font-ui flex w-full items-center justify-center gap-[7.2px] rounded-lg border-[0.667px] border-[#2b261f]/[0.14] bg-white px-3 py-2 text-[12.48px] font-semibold uppercase leading-[19.344px] tracking-[1.4976px] hover:text-gold sm:w-auto sm:justify-start"
             >
               <svg
                 width="18"
@@ -444,12 +444,12 @@ export default function CatalogClient({
           {/* The reference pads the control's wrapper as well as the select
               itself, which is what makes the 53px-tall cell around a 37px
               control. */}
-          <label className="block px-3 py-2">
+          <label className="block min-w-0 flex-1 px-3 py-2 sm:flex-none">
             <span className="sr-only">Sort by</span>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as typeof sort)}
-              className="font-ui w-[156px] rounded-lg border-[0.667px] border-[#2b261f]/[0.14] bg-white px-3 py-2 text-[12.48px] font-semibold leading-[19.344px] text-[#2b261f]"
+              className="font-ui w-full rounded-lg border-[0.667px] border-[#2b261f]/[0.14] bg-white px-3 py-2 text-[12.48px] font-semibold leading-[19.344px] text-[#2b261f] sm:w-[156px]"
             >
               <option value="featured">Featured</option>
               <option value="newest">Newest</option>
@@ -681,16 +681,6 @@ export default function CatalogClient({
               <span className="sr-only">Remove filter</span>
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              setMaterials([]);
-              setPriceBand("");
-            }}
-            className="text-xs text-black/55 underline hover:text-ink"
-          >
-            Clear all
-          </button>
         </div>
       )}
 

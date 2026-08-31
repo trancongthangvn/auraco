@@ -164,11 +164,18 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-2 px-4 py-3 sm:px-4 lg:min-h-[64px] lg:grid lg:grid-cols-[auto_1fr_auto] lg:justify-normal lg:gap-x-[20px]">
+      {/* Always a 3-column grid (auto/1fr/auto), not flex+mx-auto: at every
+          width there are exactly 3 visible children (hamburger+logo+icons on
+          mobile, logo+nav+icons on desktop — the 4th is always display:none
+          and drops out of grid flow), so auto-placement centers the logo
+          truly regardless of how wide the two side clusters are. mx-auto
+          alone couldn't do this once the icon cluster outweighed the
+          hamburger button, which visibly off-centered the wordmark. */}
+      <div className="mx-auto grid max-w-[1200px] grid-cols-[auto_1fr_auto] items-center gap-2 px-4 py-3 sm:px-4 lg:min-h-[64px] lg:gap-x-[20px]">
         <button
           aria-label={mobileOpen ? dict.nav.closeMenu : dict.nav.openMenu}
           onClick={() => setMobileOpen((v) => !v)}
-          className="lg:hidden lg:col-start-1 shrink-0 -ml-1 p-1 hover:text-gold"
+          className="lg:hidden shrink-0 -ml-1 p-1 hover:text-gold"
         >
           {mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}
         </button>
@@ -176,12 +183,12 @@ export default function Header({
         <Link
           href="/"
           aria-label="AURA & CO"
-          className="shrink-0 mx-auto lg:col-start-1 lg:mx-0 font-serif-display text-[27px] font-normal leading-[27px] tracking-[-0.015em] text-ink"
+          className="shrink-0 mx-auto font-serif-display text-[27px] font-normal leading-[27px] tracking-[-0.015em] text-ink"
         >
           AURA & CO
         </Link>
 
-        <nav className="font-ui hidden lg:col-start-2 lg:flex items-center justify-center gap-6 text-[13.2px] font-normal uppercase tracking-[0.055em] leading-[1.2] text-[#2b261f] lg:translate-y-[1.5px]">
+        <nav className="font-ui hidden lg:flex items-center justify-center gap-6 text-[13.2px] font-normal uppercase tracking-[0.055em] leading-[1.2] text-[#2b261f] lg:translate-y-[1.5px]">
           {navLinks.map((link) => {
             if (link.key === "collections") {
               return (
@@ -412,7 +419,7 @@ export default function Header({
           </div>
         </nav>
 
-        <div className="flex items-center gap-1 text-sm shrink-0 lg:col-start-3 lg:gap-[5.6px]">
+        <div className="flex items-center gap-1 text-sm shrink-0 lg:gap-[5.6px]">
           <CurrencyPicker />
           <Link
             href="/login"

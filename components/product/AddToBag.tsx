@@ -93,13 +93,13 @@ export default function AddToBag({ product }: { product: FullProduct }) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-[7.2px] mb-3">
+      <div className="flex flex-row gap-2 mb-3">
         <button
           onClick={() => {
             setAdded(true);
             setTimeout(() => setAdded(false), 1800);
           }}
-          className="w-full rounded-full border border-[#28241f] bg-white text-[#28241f] px-[21.6px] py-[10.4px] font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] hover:bg-black/5 transition-colors inline-flex items-center justify-center gap-2"
+          className="flex-1 min-h-[44px] rounded-full border border-[#28241f] bg-white text-[#28241f] px-3 py-2 font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] hover:bg-black/5 transition-colors inline-flex items-center justify-center gap-2"
         >
           {added ? (
             <>
@@ -111,7 +111,7 @@ export default function AddToBag({ product }: { product: FullProduct }) {
         </button>
         <a
           href="/checkout"
-          className="w-full text-center rounded-full bg-[#2b261f] border border-[#2b261f] text-white px-[21.6px] py-[10.4px] font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] hover:bg-black transition-colors"
+          className="flex-1 min-h-[44px] text-center rounded-full bg-[#2b261f] border border-[#2b261f] text-white px-3 py-2 font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] hover:bg-black transition-colors inline-flex items-center justify-center"
         >
           {dict.buyNow}
         </a>

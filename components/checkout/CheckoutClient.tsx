@@ -309,7 +309,7 @@ export default function CheckoutClient() {
               />
             </div>
             <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" className="mt-0.5" />
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-ink" />
               Keep me updated on new arrivals and offers
             </label>
           </section>

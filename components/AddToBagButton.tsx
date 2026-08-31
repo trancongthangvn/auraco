@@ -25,7 +25,7 @@ export default function AddToBagButton({ productName }: { productName: string })
         setAdded(true);
         setTimeout(() => setAdded(false), 1600);
       }}
-      className="absolute bottom-3 right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink shadow-[0_8px_20px_rgba(43,38,31,0.22)] transition-[opacity,box-shadow,background-color] duration-300 hover:bg-ink hover:text-white hover:shadow-[0_12px_26px_rgba(43,38,31,0.32)] sm:opacity-0 sm:group-hover:opacity-100"
+      className="absolute bottom-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/55 text-ink backdrop-blur-[2px] transition-[opacity,box-shadow,background-color,border-color] duration-300 hover:border-ink hover:bg-ink hover:text-white sm:opacity-0 sm:group-hover:opacity-100"
     >
       {added ? <CheckIcon size={17} /> : <BagIcon size={17} />}
     </button>

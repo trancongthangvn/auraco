@@ -47,7 +47,7 @@ export default function LoginForm() {
             type="checkbox"
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
-            className="border border-black/20"
+            className="h-4 w-4 border border-black/20 accent-ink"
           />
           {dict.rememberMe}
         </label>

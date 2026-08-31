@@ -60,9 +60,7 @@ export default function Gallery({
               aria-label={`Show image ${i + 1} of ${images.length}`}
               aria-current={active === i ? "true" : undefined}
               onClick={() => setActive(i)}
-              className={`relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg bg-[#f6f0e6] lg:aspect-auto lg:w-full lg:basis-[calc(50%_-_6.4px)] ${
-                active === i ? "outline outline-2 outline-[#2b261f]" : ""
-              }`}
+              className="relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg bg-[#f6f0e6] lg:aspect-auto lg:w-full lg:basis-[calc(50%_-_6.4px)]"
             >
               <Image
                 src={src}

@@ -104,29 +104,26 @@ export default function ProductCarousel({
   const card = (p: Product) => (
     <Link
       href={p.href}
-      className={`group relative block transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04] ${
-        boxed
-          ? "overflow-hidden rounded-xl bg-white shadow-[0_10px_30px_rgba(43,38,31,0.14)] ring-1 ring-black/10"
-          : ""
-      }`}
+      className="group relative block"
     >
       {/* A product saved without any image gives an empty src, which
           renders as a broken image icon — fall back to the tinted box. */}
-      <div
-        className={`relative aspect-square overflow-hidden bg-[#f5f2ee] ${
-          boxed ? "" : "mb-3"
-        }`}
-      >
+      <div className="relative aspect-square overflow-hidden bg-[#f5f2ee] mb-3">
+        {p.badgeLabel && (
+          <span className="absolute left-2 top-2 z-10 rounded-full bg-[#111] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.04em] text-white">
+            {p.badgeLabel}
+          </span>
+        )}
         {p.img && (
           <Image
             src={p.img}
             alt={p.name}
             fill
             sizes={layout === "grid" ? "(min-width: 640px) 33vw, 50vw" : "320px"}
-            className={`object-cover transition-opacity duration-500 ${
+            className={`object-cover transition-[opacity,transform] duration-500 ${
               p.hoverImg
                 ? "group-hover:opacity-0"
-                : "transition-transform group-hover:scale-105"
+                : "group-hover:scale-105"
             }`}
           />
         )}
@@ -150,7 +147,7 @@ export default function ProductCarousel({
           }}
         />
       </div>
-      <div className={boxed ? "px-4 pb-4 pt-3" : ""}>
+      <div>
         <p className="mb-1 flex items-center"><StarRating rating={p.rating} size={16} /></p>
         {/* Two reserved lines keep material and price aligned across the row. */}
         <h3 className="font-serif-display mb-1 line-clamp-2 min-h-[30px] text-[20px] font-normal leading-[23px] text-[#28241f]">
@@ -167,20 +164,23 @@ export default function ProductCarousel({
   );
 
   return (
-    <section
-      ref={revealRef}
-      className={
-        boxed
-          ? `home-block mx-auto ${revealClass}`
-          : `home-block mx-auto ${revealClass}`
-      }
-    >
+    <section ref={revealRef} className={`home-block mx-auto ${revealClass}`}>
       <div>
-      {/* An empty title means the section is headed by something else. */}
+      {/* An empty title means the section is headed by something else.
+          Carousel sections (Best Sellers / You May Also Like) get a plain
+          left-aligned heading — no card chrome around them either, just
+          image + caption butted together — rather than the centered,
+          uppercase section-title band used on homepage grid sections. */}
       {(title || subtitle) && (
-        <div className="text-center mb-5">
+        <div className={boxed ? "mb-5 flex items-baseline justify-between" : "text-center mb-5"}>
           {title && (
-            <h2 className="font-serif-display section-title">
+            <h2
+              className={
+                boxed
+                  ? "font-serif-display text-[22px] font-normal text-[#28241f]"
+                  : "font-serif-display section-title"
+              }
+            >
               {title}
             </h2>
           )}

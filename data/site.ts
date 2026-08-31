@@ -81,6 +81,9 @@ export type Product = {
   img: string;
   /** Second gallery image, shown on hover as the on-model shot. */
   hoverImg?: string;
+  /** Admin-set card badge (products.badge_label), e.g. "New In", "Hot" —
+   *  shown as a small pill top-left of the image. Undefined hides it. */
+  badgeLabel?: string;
 };
 
 export const beachVibeProducts: Product[] = [

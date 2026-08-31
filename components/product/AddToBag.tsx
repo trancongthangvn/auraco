@@ -10,28 +10,6 @@ import { useCart } from "@/components/cart/CartProvider";
 import { useVariant } from "./VariantProvider";
 import { currencyMeta } from "@/lib/currency";
 
-/** Metal swatches parsed out of the product's own free-text `material`
- *  field (e.g. "18k Rose Gold Vermeil, Cubic Zirconia") — display-only, the
- *  way a mixed-metal single-SKU product page shows its metal(s) without a
- *  real switcher. We don't carry per-metal price/stock variants, so this
- *  never changes price, image, or availability; it only labels what the
- *  product is actually made of. */
-const METAL_SWATCHES: { match: RegExp; label: string; color: string }[] = [
-  { match: /rose gold/i, label: "Rose Gold", color: "#b76e79" },
-  { match: /gold/i, label: "Gold", color: "#a67c3d" },
-  { match: /silver/i, label: "Silver", color: "#c7c7c7" },
-];
-
-function parseMetals(material: string) {
-  const found: { label: string; color: string }[] = [];
-  for (const { match, label, color } of METAL_SWATCHES) {
-    if (match.test(material) && !found.some((f) => f.label === label)) {
-      found.push({ label, color });
-    }
-  }
-  return found;
-}
-
 export default function AddToBag({ product }: { product: FullProduct }) {
   const dict = useDictionary().product;
   const { currency } = useCurrency();
@@ -42,7 +20,6 @@ export default function AddToBag({ product }: { product: FullProduct }) {
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const hasVariants = variants.length > 0;
-  const metals = hasVariants ? [] : parseMetals(product.material);
 
   // One swatch per distinct color — a color with several sizes still shows
   // once here (there's no size picker yet, so it selects that color's first
@@ -52,6 +29,10 @@ export default function AddToBag({ product }: { product: FullProduct }) {
         (v, i) => variants.findIndex((o) => o.colorName === v.colorName) === i
       )
     : [];
+  // A single color isn't a real choice — showing one static swatch would
+  // look like a picker with nothing to pick. Only surface this row once
+  // there's an actual decision to make.
+  const showSwatches = colorSwatches.length >= 2;
 
   const displayPrice = hasVariants && selectedVariant ? selectedVariant.price : product.price;
   const displayCompareAt = hasVariants
@@ -98,29 +79,32 @@ export default function AddToBag({ product }: { product: FullProduct }) {
         </span>
       </p>
 
-      {hasVariants ? (
+      {showSwatches && (
         <div className="mb-4">
           <span className="font-ui text-[11px] uppercase tracking-[0.08em] text-[#5c554a]">
             {dict.metal}: {selectedVariant?.colorName}
             {selectedVariant?.size ? ` / ${selectedVariant.size}` : ""}
           </span>
-          <div className="mt-1.5 flex items-center gap-2">
-            {colorSwatches.map((v) => (
-              <button
-                key={v.colorName}
-                type="button"
-                title={v.colorName}
-                aria-label={v.colorName}
-                aria-pressed={selectedVariant?.colorName === v.colorName}
-                onClick={() => setSelectedVariant(v)}
-                className={`h-6 w-6 rounded-full ring-2 ring-offset-2 transition-shadow ${
-                  selectedVariant?.colorName === v.colorName
-                    ? "ring-[#2b261f]"
-                    : "ring-transparent hover:ring-[#2b261f]/40"
-                }`}
-                style={{ backgroundColor: v.colorSwatch || "#e5e0d8" }}
-              />
-            ))}
+          <div className="mt-1.5 flex items-center gap-2.5">
+            {colorSwatches.map((v) => {
+              const active = selectedVariant?.colorName === v.colorName;
+              return (
+                <button
+                  key={v.colorName}
+                  type="button"
+                  title={v.colorName}
+                  aria-label={v.colorName}
+                  aria-pressed={active}
+                  onClick={() => setSelectedVariant(v)}
+                  className={`h-6 w-6 rounded-full ring-2 ring-offset-2 transition-[transform,box-shadow] hover:scale-110 ${
+                    active
+                      ? "ring-[#2b261f]"
+                      : "ring-transparent hover:ring-[#2b261f]/70"
+                  }`}
+                  style={{ backgroundColor: v.colorSwatch || "#e5e0d8" }}
+                />
+              );
+            })}
           </div>
           {outOfStock && (
             <p className="mt-2 text-[11px] text-red-700">
@@ -128,24 +112,6 @@ export default function AddToBag({ product }: { product: FullProduct }) {
             </p>
           )}
         </div>
-      ) : (
-        metals.length > 0 && (
-          <div className="mb-4">
-            <span className="font-ui text-[11px] uppercase tracking-[0.08em] text-[#5c554a]">
-              {dict.metal}: {metals.map((m) => m.label).join(", ")}
-            </span>
-            <div className="mt-1.5 flex items-center gap-2">
-              {metals.map((m) => (
-                <span
-                  key={m.label}
-                  title={m.label}
-                  className="h-6 w-6 rounded-full ring-2 ring-offset-2 ring-[#2b261f]"
-                  style={{ backgroundColor: m.color }}
-                />
-              ))}
-            </div>
-          </div>
-        )
       )}
 
       <div className="flex items-center gap-2.5 mb-2.5">

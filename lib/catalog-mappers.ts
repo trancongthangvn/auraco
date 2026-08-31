@@ -47,6 +47,8 @@ export type ApiProduct = {
   /** Only present on the single-product endpoint (GET /api/products/:slug);
    *  absent on list endpoints. Already filtered to active=true by the API. */
   variants?: ApiProductVariant[];
+  /** Small card badge ("New In", "Hot"...) — null/absent hides it. */
+  badge_label?: string | null;
 };
 
 export type ApiCollection = {

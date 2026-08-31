@@ -97,6 +97,7 @@ function toCarouselProducts(list: ApiProduct[]): CarouselProduct[] {
     priceValue: Number(p.price),
     rating: Math.round(Number(p.rating)),
     img: p.images[0],
+    badgeLabel: p.badge_label ?? undefined,
   }));
 }
 

@@ -11,9 +11,9 @@ import ImageField from "@/components/admin/ImageField";
 
 // Matches server/routes/content.js toAdminSiteSettings() shape for
 // GET/PUT /api/content/admin/site-settings. seoTitle/seoDescription/
-// ogImageUrl/deliveryReturnsItems are convenience fields backed by the
-// `extra` JSONB column server-side; storeName/contactEmail/contactPhone/
-// freeShippingThreshold are real columns. taxPercent/shippingFee/
+// ogImageUrl/deliveryReturnsItems/taxPercent are convenience fields backed
+// by the `extra` JSONB column server-side; storeName/contactEmail/
+// contactPhone/freeShippingThreshold are real columns. shippingFee/
 // whatsappNumber/trustBadges/footerLinks exist in the API but have no form
 // fields here yet — left untouched, add when a page needs them.
 type SiteSettings = {
@@ -28,6 +28,7 @@ type SiteSettings = {
     seo_description?: string | null;
     delivery_returns_items?: string[] | null;
     og_image_url?: string | null;
+    tax_percent?: number | null;
     [key: string]: unknown;
   };
   updatedAt?: string;
@@ -52,6 +53,7 @@ export default function AdminSiteSettingsPage() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [freeShippingThreshold, setFreeShippingThreshold] = useState("");
+  const [taxPercent, setTaxPercent] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +75,7 @@ export default function AdminSiteSettingsPage() {
         setFreeShippingThreshold(
           data.freeShippingThreshold != null ? String(data.freeShippingThreshold) : ""
         );
+        setTaxPercent(extra.tax_percent != null ? String(extra.tax_percent) : "");
         setDeliveryReturnsItems(
           extra.delivery_returns_items && extra.delivery_returns_items.length > 0
             ? extra.delivery_returns_items
@@ -111,6 +114,15 @@ export default function AdminSiteSettingsPage() {
       setSaving(false);
       return;
     }
+    const parsedTaxPercent = taxPercent.trim() ? Number(taxPercent) : null;
+    if (
+      parsedTaxPercent !== null &&
+      (!Number.isFinite(parsedTaxPercent) || parsedTaxPercent < 0 || parsedTaxPercent > 100)
+    ) {
+      setError("Thuế (%) phải là số từ 0 đến 100");
+      setSaving(false);
+      return;
+    }
     try {
       await apiFetch<SiteSettings>("/api/content/admin/site-settings", {
         method: "PUT",
@@ -123,6 +135,7 @@ export default function AdminSiteSettingsPage() {
           contactEmail: contactEmail.trim() || null,
           contactPhone: contactPhone.trim() || null,
           ...(parsedThreshold !== null ? { freeShippingThreshold: parsedThreshold } : {}),
+          taxPercent: parsedTaxPercent ?? 0,
         }),
       });
       setDeliveryReturnsItems(items);
@@ -203,15 +216,32 @@ export default function AdminSiteSettingsPage() {
             </div>
           </div>
 
-          <div>
-            <Label>Ngưỡng miễn phí vận chuyển (USD)</Label>
-            <Input
-              type="number"
-              min={0}
-              value={freeShippingThreshold}
-              onChange={(e) => setFreeShippingThreshold(e.target.value)}
-              placeholder="VD: 120"
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <Label>Ngưỡng miễn phí vận chuyển (USD)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={freeShippingThreshold}
+                onChange={(e) => setFreeShippingThreshold(e.target.value)}
+                placeholder="VD: 120"
+              />
+            </div>
+            <div>
+              <Label>Thuế (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={taxPercent}
+                onChange={(e) => setTaxPercent(e.target.value)}
+                placeholder="VD: 8"
+              />
+              <p className="mt-1 text-xs text-black/40">
+                Tính vào Tổng cộng khi thanh toán, hiển thị dạng &quot;Bao
+                gồm $X thuế&quot;. Để trống hoặc 0 nếu không thu thuế.
+              </p>
+            </div>
           </div>
 
           <div className="border-t border-black/10 pt-5">

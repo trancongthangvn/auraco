@@ -13,6 +13,52 @@ import {
   GlobeIcon,
 } from "@/components/icons";
 
+/** Small brand-representative badge per payment method key — same visual
+ *  language as components/PaymentIcons.tsx (the footer strip), scaled down
+ *  for a list row. Falls back to a plain generic mark for anything not in
+ *  this map (e.g. a future admin-added method key). */
+function PaymentMethodBadge({ methodKey }: { methodKey: string }) {
+  const base =
+    "flex h-6 w-9 shrink-0 items-center justify-center rounded-[4px] border border-black/10 bg-white";
+  switch (methodKey) {
+    case "card":
+      return (
+        <span className={base}>
+          <svg width="18" height="11" viewBox="0 0 24 14" aria-hidden="true">
+            <circle cx="9" cy="7" r="6" fill="#EB001B" />
+            <circle cx="15" cy="7" r="6" fill="#F79E1B" fillOpacity="0.85" />
+          </svg>
+        </span>
+      );
+    case "paypal":
+      return (
+        <span className={base}>
+          <span className="text-[9px] font-bold italic text-[#003087]">
+            Pay<span className="text-[#009cde]">Pal</span>
+          </span>
+        </span>
+      );
+    case "cashapp":
+      return (
+        <span className={`${base} !bg-[#00D64F]`}>
+          <span className="text-sm font-bold text-white">$</span>
+        </span>
+      );
+    case "zelle":
+      return (
+        <span className={`${base} !bg-[#6D1ED4]`}>
+          <span className="font-serif text-sm italic text-white">Z</span>
+        </span>
+      );
+    default:
+      return (
+        <span className={base}>
+          <span className="text-[9px] font-semibold uppercase text-black/40">Pay</span>
+        </span>
+      );
+  }
+}
+
 const countries = [
   "Vietnam",
   "United States",
@@ -91,8 +137,12 @@ export default function CheckoutClient() {
   const [proofError, setProofError] = useState("");
   const [proofUploaded, setProofUploaded] = useState(false);
 
+  const [taxPercent, setTaxPercent] = useState(0);
+
   const shippingReady = city.trim().length > 0 && postalCode.trim().length > 0;
-  const total = Math.max(0, subtotal - discountAmount);
+  const preTaxTotal = Math.max(0, subtotal - discountAmount);
+  const taxAmount = (preTaxTotal * taxPercent) / 100;
+  const total = preTaxTotal + taxAmount;
 
   useEffect(() => {
     (async () => {
@@ -110,6 +160,13 @@ export default function CheckoutClient() {
         );
       }
     })();
+    // Tax is a display-only line here (same as Shipping, which is always
+    // "Free" today) — orders has no tax_amount column, so this isn't
+    // persisted server-side, only shown in the summary the customer sees
+    // before placing the order.
+    apiFetch<{ taxPercent: number | null }>("/api/content/site-settings")
+      .then((s) => setTaxPercent(s.taxPercent ?? 0))
+      .catch(() => {});
   }, []);
 
   const cardMethod = paymentMethods.find((m) => m.key === "card");
@@ -228,25 +285,26 @@ export default function CheckoutClient() {
 
   return (
     <>
-      {/* Minimal checkout top bar */}
+      {/* Minimal checkout top bar. Grid (auto/1fr/auto) rather than
+          flex+justify-between: with only 3 children of very different
+          widths, justify-between doesn't truly center the middle one — the
+          same fix as the main site Header (components/Header.tsx). */}
       <header className="border-b border-black/5">
-        <div className="mx-auto flex items-center justify-between px-6 py-4 gap-4">
-          <Link href="/" aria-label="AURA & CO" className="shrink-0">
-            <Image
-              src="/images/brand/logo-badge.png"
-              alt="AURA & CO"
-              width={44}
-              height={44}
-              className="h-10 w-10 sm:h-11 sm:w-11"
-            />
+        <div className="mx-auto grid grid-cols-[auto_1fr_auto] items-center gap-4 px-6 py-4">
+          <Link
+            href="/"
+            aria-label="AURA & CO"
+            className="shrink-0 whitespace-nowrap font-serif-display text-[22px] font-normal leading-none tracking-[-0.015em] text-ink"
+          >
+            AURA & CO
           </Link>
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-sm">
+          <span className="mx-auto hidden items-center gap-1.5 text-sm sm:inline-flex">
             <GlobeIcon size={16} />
             USD
           </span>
           <Link
             href="/cart"
-            className="inline-flex items-center gap-1.5 text-sm tracking-wide hover:text-gold transition-colors"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm tracking-wide hover:text-gold transition-colors"
           >
             <ChevronLeftIcon size={14} /> Back to cart
           </Link>
@@ -455,16 +513,17 @@ export default function CheckoutClient() {
             )}
 
             {!order && (
-              <div className="border border-black/20">
+              <div className="divide-y divide-black/10 border border-black/20">
                 {cardMethod && (
                   <>
-                    <label className="flex items-center gap-3 px-4 py-3 border-b border-black/10 text-sm">
+                    <label className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-black/[0.03] transition-colors">
                       <input
                         type="radio"
                         name="payment"
                         checked={payment === "card"}
                         onChange={() => setPayment("card")}
                       />
+                      <PaymentMethodBadge methodKey="card" />
                       {cardMethod.label}
                     </label>
 
@@ -497,7 +556,7 @@ export default function CheckoutClient() {
                     <button
                       type="button"
                       onClick={() => setMoreOptionsOpen((v) => !v)}
-                      className="w-full flex items-center gap-2 text-left px-4 py-3 text-sm tracking-wide hover:bg-black/5 transition-colors"
+                      className="w-full flex items-center gap-2 text-left px-4 py-3 text-sm tracking-wide hover:bg-black/[0.03] transition-colors"
                     >
                       {moreOptionsOpen ? (
                         <MinusIcon size={14} />
@@ -510,11 +569,11 @@ export default function CheckoutClient() {
                     </button>
 
                     {moreOptionsOpen && (
-                      <div>
+                      <div className="divide-y divide-black/10">
                         {otherMethods.map((option) => (
                           <label
                             key={option.key}
-                            className="flex items-center gap-3 px-4 py-3 border-t border-black/10 text-sm"
+                            className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-black/[0.03] transition-colors"
                           >
                             <input
                               type="radio"
@@ -522,6 +581,7 @@ export default function CheckoutClient() {
                               checked={payment === option.key}
                               onChange={() => setPayment(option.key)}
                             />
+                            <PaymentMethodBadge methodKey={option.key} />
                             {option.label}
                           </label>
                         ))}
@@ -714,9 +774,16 @@ export default function CheckoutClient() {
                 <span className="text-black/60">Shipping</span>
                 <span>Free</span>
               </div>
-              <div className="flex justify-between text-base pt-2 border-t border-black/10 mt-2">
-                <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+              <div className="pt-2 border-t border-black/10 mt-2">
+                <div className="flex justify-between text-base">
+                  <span>Total</span>
+                  <span>${total.toFixed(2)}</span>
+                </div>
+                {taxAmount > 0 && (
+                  <p className="mt-1 text-xs text-black/50">
+                    Including ${taxAmount.toFixed(2)} in taxes
+                  </p>
+                )}
               </div>
             </div>
           </div>

@@ -16,6 +16,19 @@ import { StarRating, SparkleIcon } from "@/components/icons";
 import { toFullProduct, type ApiProduct } from "@/lib/catalog-mappers";
 import { getServerDictionary } from "@/lib/i18n/server";
 
+/** Admin-editable, site-wide (same for every product) — falls back to the
+ *  hard-coded dictionary copy until an admin saves a list of their own (see
+ *  app/admin/cai-dat-web/page.tsx). */
+async function fetchSiteSettings(): Promise<{ deliveryReturnsItems: string[] | null }> {
+  try {
+    return await serverApiFetch<{ deliveryReturnsItems: string[] | null }>(
+      "/api/content/site-settings"
+    );
+  } catch {
+    return { deliveryReturnsItems: null };
+  }
+}
+
 async function fetchProduct(slug: string): Promise<FullProduct | null> {
   // A handful of real product slugs (e.g. "Aura-&-CO") carry a URI-reserved
   // character. Next.js 16 doesn't reliably hand generateMetadata and the page
@@ -142,10 +155,11 @@ export default async function ProductPage({
   const product = await fetchProduct(slug);
   if (!product) notFound();
 
-  const [rawBestSellers, rawRelated, bundle] = await Promise.all([
+  const [rawBestSellers, rawRelated, bundle, siteSettings] = await Promise.all([
     fetchBestSellersRaw(product),
     fetchRelatedRaw(product),
     fetchBundle(product.slug),
+    fetchSiteSettings(),
   ]);
   const bestSellers = toCarouselProducts(rawBestSellers);
   const related = toCarouselProducts(rawRelated);
@@ -197,12 +211,21 @@ export default async function ProductPage({
             <Description>
               <p className="font-bold">{dict.product.whyLoveIt}</p>
               <p className="whitespace-pre-line">{product.description}</p>
-              {product.features.map((f) => (
-                <p key={f} className="flex gap-2">
-                  <SparkleIcon size={14} className="text-gold mt-1 shrink-0" />
-                  {f}
-                </p>
-              ))}
+              {product.features.map((f) => {
+                // Admin can save a feature as "Label: value" (two boxes in the
+                // edit form); bold the label when present, otherwise render
+                // the plain sentence as before — keeps the 300+ already-
+                // imported label-less features unchanged.
+                const sep = f.indexOf(": ");
+                const label = sep === -1 ? null : f.slice(0, sep);
+                const rest = sep === -1 ? f : f.slice(sep + 2);
+                return (
+                  <p key={f} className="flex gap-2">
+                    <SparkleIcon size={14} className="text-gold mt-1 shrink-0" />
+                    {label ? <><strong className="font-semibold">{label}:</strong>&nbsp;{rest}</> : rest}
+                  </p>
+                );
+              })}
             </Description>
 
             <AddToBag product={product} />
@@ -228,7 +251,10 @@ export default async function ProductPage({
                 {
                   title: dict.product.deliveryReturns,
                   content: "",
-                  bulletItems: dict.product.deliveryReturnsItems,
+                  bulletItems:
+                    siteSettings.deliveryReturnsItems && siteSettings.deliveryReturnsItems.length > 0
+                      ? siteSettings.deliveryReturnsItems
+                      : dict.product.deliveryReturnsItems,
                 },
               ]}
             />

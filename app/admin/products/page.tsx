@@ -56,15 +56,21 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const [collections, setCollections] = useState<AdminCollection[]>([]);
 
   const [editing, setEditing] = useState<AdminProduct | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newSlug, setNewSlug] = useState("");
+  const [newMaterial, setNewMaterial] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editCollections, setEditCollections] = useState<string[]>([]);
   const [editSortOrder, setEditSortOrder] = useState("0");
+  const [editStock, setEditStock] = useState("0");
   const [editBundleCompanions, setEditBundleCompanions] = useState<string[]>([]);
   const [editBundleDiscount, setEditBundleDiscount] = useState("0");
   const [editVideoUrl, setEditVideoUrl] = useState<string | null>(null);
@@ -123,8 +129,27 @@ export default function AdminProductsPage() {
     return next;
   }
 
-  const updateFeature = (index: number, value: string) => {
-    setEditFeatures((list) => list.map((f, i) => (i === index ? value : f)));
+  /** Each feature is stored as a single "Label: Value" string (no schema
+   *  change needed — the 300+ already-imported products keep working as
+   *  plain, label-less bullets). The admin form edits label/value as two
+   *  boxes and joins/splits at the boundary; the storefront bolds the label
+   *  when one is present (see product/[slug]/page.tsx). */
+  const splitFeature = (raw: string): { label: string; value: string } => {
+    const i = raw.indexOf(": ");
+    return i === -1 ? { label: "", value: raw } : { label: raw.slice(0, i), value: raw.slice(i + 2) };
+  };
+  const joinFeature = (label: string, value: string) =>
+    label.trim() ? `${label.trim()}: ${value}` : value;
+
+  const updateFeatureLabel = (index: number, label: string) => {
+    setEditFeatures((list) =>
+      list.map((f, i) => (i === index ? joinFeature(label, splitFeature(f).value) : f))
+    );
+  };
+  const updateFeatureValue = (index: number, value: string) => {
+    setEditFeatures((list) =>
+      list.map((f, i) => (i === index ? joinFeature(splitFeature(f).label, value) : f))
+    );
   };
   const removeFeature = (index: number) => {
     setEditFeatures((list) => list.filter((_, i) => i !== index));
@@ -150,6 +175,7 @@ export default function AdminProductsPage() {
     setEditCategory(p.category);
     setEditCollections(p.collections ?? []);
     setEditSortOrder(String(p.sort_order ?? 0));
+    setEditStock(String(p.stock ?? 0));
     setEditVideoUrl(p.video_url ?? null);
     setEditDescription(p.description ?? "");
     setEditFeatures(p.features ?? []);
@@ -207,6 +233,57 @@ export default function AdminProductsPage() {
     }
   };
 
+  const openCreate = () => {
+    setCreating(true);
+    setNewSlug("");
+    setEditName("");
+    setEditPrice("");
+    setNewMaterial("");
+    setEditCategory(CATEGORY_OPTIONS[0]);
+    setEditCollections([]);
+    setEditSortOrder("0");
+    setEditStock("0");
+    setCreateError(null);
+  };
+
+  const createProduct = async () => {
+    setSaving(true);
+    setCreateError(null);
+    try {
+      const slug = (newSlug || editName)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      const parsedPrice = Number(editPrice);
+      const parsedStock = Number.parseInt(editStock, 10);
+      const created = await apiFetch<AdminProduct>("/api/products/admin/products", {
+        method: "POST",
+        body: JSON.stringify({
+          slug,
+          name: editName,
+          category: editCategory,
+          collections: editCollections,
+          material: newMaterial,
+          price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
+          stock: Number.isInteger(parsedStock) ? parsedStock : 0,
+        }),
+      });
+      setProducts((list) => [created, ...list]);
+      setCreating(false);
+      openEdit(created);
+    } catch (err) {
+      setCreateError(err instanceof ApiError ? err.message : "Không thể tạo sản phẩm");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
   const saveEdit = async () => {
     if (!editing) return;
     setSaving(true);
@@ -214,6 +291,7 @@ export default function AdminProductsPage() {
     try {
       const parsedPrice = Number(editPrice);
       const parsedSortOrder = Number.parseInt(editSortOrder, 10);
+      const parsedStock = Number.parseInt(editStock, 10);
       const updated = await apiFetch<AdminProduct>(
         `/api/products/admin/products/${editing.slug}`,
         {
@@ -224,6 +302,7 @@ export default function AdminProductsPage() {
             category: editCategory,
             collections: editCollections,
             sortOrder: Number.isInteger(parsedSortOrder) ? parsedSortOrder : 0,
+            stock: Number.isInteger(parsedStock) ? parsedStock : editing.stock,
             videoUrl: editVideoUrl,
             description: editDescription,
             features: editFeatures.filter((f) => f.trim().length > 0),
@@ -306,8 +385,11 @@ export default function AdminProductsPage() {
     <AdminShell>
       <PageHeader>
         <span className="text-xs text-black/50">
-          {loading ? "Đang tải..." : `${products.length} sản phẩm`}
+          {loading ? "Đang tải..." : `${filteredProducts.length}/${products.length} sản phẩm`}
         </span>
+        <Button variant="secondary" onClick={openCreate}>
+          + Thêm sản phẩm
+        </Button>
       </PageHeader>
 
       {error && (
@@ -315,6 +397,13 @@ export default function AdminProductsPage() {
           {error}
         </div>
       )}
+
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Tìm theo tên sản phẩm..."
+        className="mb-4 max-w-sm"
+      />
 
       <TableCard>
         <table className="w-full text-sm min-w-[640px]">
@@ -337,6 +426,13 @@ export default function AdminProductsPage() {
                 </td>
               </tr>
             )}
+            {!loading && products.length > 0 && filteredProducts.length === 0 && (
+              <tr>
+                <td colSpan={7}>
+                  <EmptyState>Không tìm thấy sản phẩm nào khớp &quot;{search}&quot;.</EmptyState>
+                </td>
+              </tr>
+            )}
             {!loading && products.length === 0 && (
               <tr>
                 <td colSpan={7}>
@@ -344,7 +440,7 @@ export default function AdminProductsPage() {
                 </td>
               </tr>
             )}
-            {products.map((p) => (
+            {filteredProducts.map((p) => (
               <tr key={p.slug} className={TR_HOVER}>
                 <Td>
                   <div className="relative h-10 w-10 rounded-lg overflow-hidden bg-[#f5f2ee]">
@@ -398,6 +494,133 @@ export default function AdminProductsPage() {
           </tbody>
         </table>
       </TableCard>
+
+      {creating && (
+        <ModalBackdrop onClose={() => setCreating(false)}>
+          <ModalPanel maxWidth="max-w-md">
+            <ModalHeader title="Thêm sản phẩm" onClose={() => setCreating(false)} />
+            <div className="px-6 py-4">
+              {createError && (
+                <div className="mb-4 text-xs text-red-700 border border-red-700/30 bg-red-50 rounded-xl px-3 py-2">
+                  {createError}
+                </div>
+              )}
+
+              <Label>Tên sản phẩm</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="VD: Layered Opal Necklace"
+                className="mb-4"
+                disabled={saving}
+              />
+
+              <Label>Slug (để trống để tự tạo từ tên)</Label>
+              <Input
+                value={newSlug}
+                onChange={(e) => setNewSlug(e.target.value)}
+                placeholder="vd-layered-opal-necklace"
+                className="mb-4"
+                disabled={saving}
+              />
+
+              <Label>Danh mục (Brand)</Label>
+              <select
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value)}
+                disabled={saving}
+                className="mb-4 w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-ink"
+              >
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+
+              <Label>Chất liệu</Label>
+              <Input
+                value={newMaterial}
+                onChange={(e) => setNewMaterial(e.target.value)}
+                placeholder="VD: 18k Gold Vermeil"
+                className="mb-4"
+                disabled={saving}
+              />
+
+              <Label>Category (bộ sưu tập)</Label>
+              <div className="mb-4 flex flex-wrap gap-2">
+                {collections.length === 0 && (
+                  <p className="text-xs text-black/30 italic">Chưa có bộ sưu tập nào.</p>
+                )}
+                {collections.map((c) => {
+                  const active = editCollections.includes(c.slug);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      disabled={saving}
+                      onClick={() =>
+                        setEditCollections((list) =>
+                          active
+                            ? list.filter((s) => s !== c.slug)
+                            : [...list, c.slug]
+                        )
+                      }
+                      className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                        active
+                          ? "border-ink bg-ink text-white"
+                          : "border-black/15 bg-white text-black/70 hover:border-ink"
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <Label>Giá (USD)</Label>
+                  <Input
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    type="number"
+                    className="mb-1"
+                    disabled={saving}
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label>Tồn kho (Stock)</Label>
+                  <Input
+                    value={editStock}
+                    onChange={(e) => setEditStock(e.target.value)}
+                    type="number"
+                    min={0}
+                    className="mb-1"
+                    disabled={saving}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-black/40 mb-2 mt-1">
+                Sau khi tạo, form sửa chi tiết (ảnh, mô tả, điểm nổi bật, thứ tự ưu
+                tiên...) sẽ mở ra ngay để bạn điền tiếp.
+              </p>
+            </div>
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => setCreating(false)} disabled={saving}>
+                Hủy
+              </Button>
+              <Button
+                variant="primary"
+                onClick={createProduct}
+                disabled={saving || !editName.trim() || !newMaterial.trim() || !editPrice.trim()}
+              >
+                {saving ? "Đang tạo..." : "Tạo sản phẩm"}
+              </Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalBackdrop>
+      )}
 
       {editing && (
         <ModalBackdrop onClose={() => setEditing(null)}>
@@ -482,6 +705,16 @@ export default function AdminProductsPage() {
                 0 nếu không cần ưu tiên.
               </p>
 
+              <Label>Tồn kho (Stock)</Label>
+              <Input
+                value={editStock}
+                onChange={(e) => setEditStock(e.target.value)}
+                type="number"
+                min={0}
+                disabled={saving}
+                className="mb-6"
+              />
+
               <div className="mb-6">
                 <VideoField
                   label="Video sản phẩm"
@@ -544,8 +777,15 @@ export default function AdminProductsPage() {
                       </IconButton>
                     </div>
                     <Input
-                      value={feature}
-                      onChange={(e) => updateFeature(i, e.target.value)}
+                      value={splitFeature(feature).label}
+                      onChange={(e) => updateFeatureLabel(i, e.target.value)}
+                      placeholder="Tên (VD: Metal) — để trống nếu không cần"
+                      className="w-1/3 text-xs"
+                      disabled={saving}
+                    />
+                    <Input
+                      value={splitFeature(feature).value}
+                      onChange={(e) => updateFeatureValue(i, e.target.value)}
                       placeholder="VD: 100% Waterproof & Tarnish-Free Guarantee"
                       className="flex-1 text-xs"
                       disabled={saving}

@@ -15,7 +15,9 @@ const router = express.Router();
 //   PUT    /api/content/admin/homepage         (admin)
 //   GET    /api/content/site-settings          (public, safe subset)
 //   GET    /api/content/admin/site-settings     (admin, full row)
-//   PUT    /api/content/admin/site-settings     (admin, full row)
+//   PUT    /api/content/admin/site-settings     (admin, full row; also accepts
+//                                                 deliveryReturnsItems: string[] —
+//                                                 site-wide product page bullets)
 //   GET    /api/content/posts                  (public, published only)
 //   GET    /api/content/posts/:slug            (public, published only)
 //   POST   /api/content/admin/posts             (admin)
@@ -39,6 +41,10 @@ function isBoolean(v) {
   return typeof v === 'boolean';
 }
 
+function isStringArray(v) {
+  return Array.isArray(v) && v.every((item) => isNonEmptyString(item));
+}
+
 // Public-safe subset of site_settings. Everything else (including the raw
 // `extra` blob, in case future ad hoc settings stored there are internal)
 // is only exposed via the admin endpoints.
@@ -52,6 +58,12 @@ function isBoolean(v) {
 // shipping_fee) and merged/read from there. `shipping_fee` (a flat
 // checkout shipping cost) is likewise kept in `extra` since the schema
 // only defines `free_shipping_threshold` as a real column.
+//
+// `delivery_returns_items` (the site-wide "Delivery & Returns" bullet list
+// shown on every product page) is stored the same way. It's English-only —
+// the product page's own dictionary strings stay as the per-locale fallback
+// when this key is absent, so existing i18n content keeps working until an
+// admin sets it.
 function toPublicSiteSettings(row) {
   const extra = row.extra || {};
   return {
@@ -66,6 +78,7 @@ function toPublicSiteSettings(row) {
     whatsappNumber: extra.whatsapp_number ?? null,
     shippingFee: extra.shipping_fee ?? null,
     taxPercent: extra.tax_percent ?? null,
+    deliveryReturnsItems: extra.delivery_returns_items ?? null,
   };
 }
 
@@ -336,6 +349,12 @@ router.put('/admin/site-settings', authMiddleware, requireAdmin, async (req, res
       return res.status(400).json({ error: 'taxPercent must be a non-negative number' });
     }
     extraPatch.tax_percent = body.taxPercent;
+  }
+  if (body.deliveryReturnsItems !== undefined) {
+    if (!isStringArray(body.deliveryReturnsItems) || body.deliveryReturnsItems.length === 0) {
+      return res.status(400).json({ error: 'deliveryReturnsItems must be a non-empty array of non-empty strings' });
+    }
+    extraPatch.delivery_returns_items = body.deliveryReturnsItems;
   }
   if (Object.keys(extraPatch).length > 0) {
     sets.push(`extra = extra || $${idx++}::jsonb`);

@@ -15,6 +15,7 @@ import {
   FolderTree,
   Layout,
   Globe,
+  Images,
   Users,
   KeyRound,
   Lightbulb,
@@ -39,6 +40,12 @@ const GUIDES: Record<string, GuideMeta> = {
     icon: Package,
     guide:
       "Quản lý toàn bộ sản phẩm trang sức: tên, danh mục, giá, ẩn/hiện trên website. Bấm Sửa để chỉnh từng sản phẩm.",
+  },
+  "/admin/media": {
+    title: "Thư viện ảnh",
+    icon: Images,
+    guide:
+      "Toàn bộ ảnh đã tải lên từ mọi form trong admin, gộp một chỗ. Bấm Sao chép URL để dùng lại ở nơi khác thay vì tải trùng ảnh.",
   },
   "/admin/collections": {
     title: "Collections",

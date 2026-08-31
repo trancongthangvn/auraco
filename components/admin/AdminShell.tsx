@@ -19,6 +19,7 @@ import {
   FolderTree,
   Layout,
   Globe,
+  Images,
   Users,
   KeyRound,
   LogOut,
@@ -42,6 +43,7 @@ type NavItem = {
 const NAV: NavItem[] = [
   { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, roles: ["admin", "staff"] },
   { href: "/admin/products", label: "Sản phẩm", icon: Package, roles: ["admin", "staff"] },
+  { href: "/admin/media", label: "Thư viện ảnh", icon: Images, roles: ["admin", "staff"] },
   { href: "/admin/collections", label: "Collections", icon: Layers, roles: ["admin"] },
   { href: "/admin/orders", label: "Đơn hàng", icon: ShoppingCart, roles: ["admin", "staff"] },
   { href: "/admin/payments", label: "Thanh toán", icon: CreditCard, roles: ["admin"] },

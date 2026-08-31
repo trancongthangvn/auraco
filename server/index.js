@@ -105,6 +105,7 @@ app.use('/api/discount-codes', require('./routes/discount-codes'));
 app.use('/api', require('./routes/inquiries-reviews-press'));
 app.use('/api/content', require('./routes/posts'));
 app.use('/api/content', require('./routes/content'));
+app.use('/api/media', require('./routes/media'));
 
 // ----------------------------------------------------------------------------
 // 404 + error handling

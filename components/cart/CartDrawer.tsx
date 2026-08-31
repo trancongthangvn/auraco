@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useCart } from "./CartProvider";
 import { cartItemKey } from "@/lib/cart";
 import { apiFetch } from "@/lib/api";
@@ -73,6 +73,7 @@ export default function CartDrawer() {
     addItem,
   } = useCart();
   const router = useRouter();
+  const pathname = usePathname();
   const cartSlugs = items.map((it) => it.slug);
   const suggestions = useWhyNotAdd(cartSlugs);
 
@@ -85,6 +86,21 @@ export default function CartDrawer() {
       document.body.style.overflow = prev;
     };
   }, [drawerOpen]);
+
+  // Auto-close on navigation. The drawer's full-screen backdrop otherwise
+  // stayed mounted across a route change (this component lives in the
+  // shared layout, not the page, so it never remounts) and silently ate
+  // clicks meant for the new page underneath — "Add to Bag" looked broken
+  // because the click was actually landing on the invisible backdrop
+  // instead. Fires once on the initial mount too, which is a harmless no-op
+  // since the drawer starts closed.
+  const closeDrawerRef = useRef(closeDrawer);
+  useEffect(() => {
+    closeDrawerRef.current = closeDrawer;
+  });
+  useEffect(() => {
+    closeDrawerRef.current();
+  }, [pathname]);
 
   if (!drawerOpen) return null;
 

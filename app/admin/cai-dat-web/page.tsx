@@ -10,11 +10,12 @@ import { Input, Textarea, Label } from "@/components/admin/ui/Field";
 import ImageField from "@/components/admin/ImageField";
 
 // Matches server/routes/content.js toAdminSiteSettings() shape for
-// GET/PUT /api/content/admin/site-settings. seoTitle/seoDescription are
-// convenience fields backed by the `extra` JSONB column server-side; this
-// page only edits the fields it already has UI for (SEO title/description,
-// OG image) — extra columns like taxPercent/shippingFee/whatsappNumber
-// exist in the API but have no form fields here, so they are left untouched.
+// GET/PUT /api/content/admin/site-settings. seoTitle/seoDescription/
+// ogImageUrl/deliveryReturnsItems are convenience fields backed by the
+// `extra` JSONB column server-side; storeName/contactEmail/contactPhone/
+// freeShippingThreshold are real columns. taxPercent/shippingFee/
+// whatsappNumber/trustBadges/footerLinks exist in the API but have no form
+// fields here yet — left untouched, add when a page needs them.
 type SiteSettings = {
   storeName?: string;
   contactEmail?: string | null;
@@ -47,6 +48,10 @@ export default function AdminSiteSettingsPage() {
   const [siteDescription, setSiteDescription] = useState("");
   const [ogImage, setOgImage] = useState<string | null>(null);
   const [deliveryReturnsItems, setDeliveryReturnsItems] = useState<string[]>([]);
+  const [storeName, setStoreName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +67,12 @@ export default function AdminSiteSettingsPage() {
         setSiteTitle((extra.seo_title as string) || "");
         setSiteDescription((extra.seo_description as string) || "");
         setOgImage((extra.og_image_url as string | null) ?? null);
+        setStoreName(data.storeName || "");
+        setContactEmail(data.contactEmail || "");
+        setContactPhone(data.contactPhone || "");
+        setFreeShippingThreshold(
+          data.freeShippingThreshold != null ? String(data.freeShippingThreshold) : ""
+        );
         setDeliveryReturnsItems(
           extra.delivery_returns_items && extra.delivery_returns_items.length > 0
             ? extra.delivery_returns_items
@@ -92,13 +103,15 @@ export default function AdminSiteSettingsPage() {
       setSaving(false);
       return;
     }
+    const parsedThreshold = freeShippingThreshold.trim()
+      ? Number(freeShippingThreshold)
+      : null;
+    if (parsedThreshold !== null && (!Number.isFinite(parsedThreshold) || parsedThreshold < 0)) {
+      setError("Ngưỡng miễn phí vận chuyển phải là số không âm");
+      setSaving(false);
+      return;
+    }
     try {
-      // NOTE: content.js's PUT /admin/site-settings only recognizes
-      // seoTitle/seoDescription/deliveryReturnsItems (plus storeName/
-      // contactEmail/contactPhone/freeShippingThreshold/trustBadges/
-      // footerLinks/whatsappNumber/shippingFee/taxPercent) as body keys —
-      // there is no OG image field anywhere in the schema. So ogImage stays
-      // local-only (see the note below the form).
       await apiFetch<SiteSettings>("/api/content/admin/site-settings", {
         method: "PUT",
         body: JSON.stringify({
@@ -106,6 +119,10 @@ export default function AdminSiteSettingsPage() {
           seoDescription: siteDescription,
           deliveryReturnsItems: items,
           ogImageUrl: ogImage,
+          storeName: storeName.trim() || undefined,
+          contactEmail: contactEmail.trim() || null,
+          contactPhone: contactPhone.trim() || null,
+          ...(parsedThreshold !== null ? { freeShippingThreshold: parsedThreshold } : {}),
         }),
       });
       setDeliveryReturnsItems(items);
@@ -160,6 +177,44 @@ export default function AdminSiteSettingsPage() {
           )}
 
           <div>
+            <Label>Tên cửa hàng</Label>
+            <Input
+              value={storeName}
+              onChange={(e) => setStoreName(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <Label>Email liên hệ</Label>
+              <Input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="hello@yourdomain.com"
+              />
+            </div>
+            <div>
+              <Label>Số điện thoại liên hệ</Label>
+              <Input
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Ngưỡng miễn phí vận chuyển (USD)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={freeShippingThreshold}
+              onChange={(e) => setFreeShippingThreshold(e.target.value)}
+              placeholder="VD: 120"
+            />
+          </div>
+
+          <div className="border-t border-black/10 pt-5">
             <Label>Tiêu đề website (SEO title)</Label>
             <Input
               value={siteTitle}

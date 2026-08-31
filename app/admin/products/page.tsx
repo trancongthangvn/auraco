@@ -48,6 +48,33 @@ type AdminProduct = {
   show_at_home?: boolean;
 };
 
+type AdminVariant = {
+  id?: number;
+  color_name: string;
+  color_swatch: string;
+  size: string;
+  price: string;
+  compare_at_price: string;
+  stock: string;
+  sku: string;
+  front_image: string | null;
+  is_default: boolean;
+  active: boolean;
+};
+
+const emptyVariant = (): AdminVariant => ({
+  color_name: "",
+  color_swatch: "#c9a876",
+  size: "",
+  price: "",
+  compare_at_price: "",
+  stock: "0",
+  sku: "",
+  front_image: null,
+  is_default: false,
+  active: true,
+});
+
 type AdminAttribute = { id?: number; name: string; value: string };
 
 type AdminCollection = { id: number; slug: string; name: string };
@@ -87,6 +114,8 @@ export default function AdminProductsPage() {
   const [editMetaTitle, setEditMetaTitle] = useState("");
   const [editMetaDescription, setEditMetaDescription] = useState("");
   const [editShowAtHome, setEditShowAtHome] = useState(false);
+  const [editVariants, setEditVariants] = useState<AdminVariant[]>([]);
+  const [originalVariants, setOriginalVariants] = useState<AdminVariant[]>([]);
   const [editBundleCompanions, setEditBundleCompanions] = useState<string[]>([]);
   const [editBundleDiscount, setEditBundleDiscount] = useState("0");
   const [editVideoUrl, setEditVideoUrl] = useState<string | null>(null);
@@ -174,6 +203,27 @@ export default function AdminProductsPage() {
     setEditFeatures((list) => moveItem(list, index, direction));
   };
 
+  const updateVariant = (index: number, patch: Partial<AdminVariant>) => {
+    setEditVariants((list) =>
+      list.map((v, i) => {
+        if (i !== index) {
+          // Only one variant can be the default at a time.
+          return patch.is_default ? { ...v, is_default: false } : v;
+        }
+        return { ...v, ...patch };
+      })
+    );
+  };
+  const removeVariant = (index: number) => {
+    setEditVariants((list) => list.filter((_, i) => i !== index));
+  };
+  const addVariant = () => {
+    setEditVariants((list) => [
+      ...list,
+      { ...emptyVariant(), is_default: list.length === 0 },
+    ]);
+  };
+
   const updateImage = (index: number, url: string | null) => {
     setEditImages((list) => list.map((img, i) => (i === index ? url ?? "" : img)));
   };
@@ -209,6 +259,42 @@ export default function AdminProductsPage() {
     setOriginalAttributes(p.attributes ?? []);
     setEditBundleCompanions([]);
     setEditBundleDiscount("0");
+    setEditVariants([]);
+    setOriginalVariants([]);
+    try {
+      const variants = await apiFetch<
+        {
+          id: number;
+          color_name: string | null;
+          color_swatch: string | null;
+          size: string | null;
+          price: number;
+          compare_at_price: number | null;
+          stock: number;
+          sku: string | null;
+          front_image: string | null;
+          is_default: boolean;
+          active: boolean;
+        }[]
+      >(`/api/products/admin/products/${p.slug}/variants`);
+      const mapped: AdminVariant[] = variants.map((v) => ({
+        id: v.id,
+        color_name: v.color_name ?? "",
+        color_swatch: v.color_swatch ?? "#c9a876",
+        size: v.size ?? "",
+        price: String(v.price),
+        compare_at_price: v.compare_at_price !== null ? String(v.compare_at_price) : "",
+        stock: String(v.stock),
+        sku: v.sku ?? "",
+        front_image: v.front_image,
+        is_default: v.is_default,
+        active: v.active,
+      }));
+      setEditVariants(mapped);
+      setOriginalVariants(mapped);
+    } catch {
+      // no variants yet — the product behaves as non-variant, form starts empty
+    }
     try {
       const attrs = await apiFetch<AdminAttribute[]>(
         `/api/products/admin/products/${p.slug}/attributes`
@@ -398,6 +484,45 @@ export default function AdminProductsPage() {
           discountPercent: Number.isFinite(parsedBundleDiscount) ? parsedBundleDiscount : 0,
         }),
       });
+
+      const variantRemainingIds = new Set(
+        editVariants.filter((v) => v.id !== undefined).map((v) => v.id)
+      );
+      for (const variant of editVariants) {
+        const body = JSON.stringify({
+          colorName: variant.color_name.trim() || null,
+          colorSwatch: variant.color_swatch || null,
+          size: variant.size.trim() || null,
+          price: Number(variant.price) || 0,
+          compareAtPrice: variant.compare_at_price.trim()
+            ? Number(variant.compare_at_price)
+            : null,
+          stock: Number.parseInt(variant.stock, 10) || 0,
+          sku: variant.sku.trim() || null,
+          frontImage: variant.front_image,
+          isDefault: variant.is_default,
+          active: variant.active,
+        });
+        if (variant.id === undefined) {
+          await apiFetch(`/api/products/admin/products/${editing.slug}/variants`, {
+            method: "POST",
+            body,
+          });
+        } else {
+          await apiFetch(
+            `/api/products/admin/products/${editing.slug}/variants/${variant.id}`,
+            { method: "PUT", body }
+          );
+        }
+      }
+      for (const original of originalVariants) {
+        if (original.id !== undefined && !variantRemainingIds.has(original.id)) {
+          await apiFetch(
+            `/api/products/admin/products/${editing.slug}/variants/${original.id}`,
+            { method: "DELETE" }
+          );
+        }
+      }
 
       setProducts((list) =>
         list.map((p) =>
@@ -1040,6 +1165,133 @@ export default function AdminProductsPage() {
                         <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
                       </svg>
                     </IconButton>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 flex items-center justify-between mb-2">
+                <Label className="mb-0">Biến thể (màu/size)</Label>
+                <Button size="sm" variant="ghost" onClick={addVariant} disabled={saving}>
+                  + Thêm biến thể
+                </Button>
+              </div>
+              <p className="text-xs text-black/40 mb-3">
+                Mỗi biến thể có giá/tồn kho/ảnh riêng. Để trống nếu sản phẩm
+                không có nhiều màu/size — sản phẩm vẫn dùng giá/tồn kho ở
+                trên như bình thường.
+              </p>
+              <div className="space-y-3 mb-2">
+                {editVariants.length === 0 && (
+                  <p className="text-xs text-black/30 italic">
+                    Chưa có biến thể nào.
+                  </p>
+                )}
+                {editVariants.map((v, i) => (
+                  <div key={v.id ?? `new-${i}`} className="rounded-lg border border-black/10 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <input
+                        type="color"
+                        value={v.color_swatch}
+                        onChange={(e) => updateVariant(i, { color_swatch: e.target.value })}
+                        disabled={saving}
+                        className="h-8 w-8 shrink-0 rounded border border-black/10 cursor-pointer"
+                        aria-label="Màu swatch"
+                      />
+                      <Input
+                        value={v.color_name}
+                        onChange={(e) => updateVariant(i, { color_name: e.target.value })}
+                        placeholder="Tên màu (VD: Gold)"
+                        className="flex-1 text-xs"
+                        disabled={saving}
+                      />
+                      <Input
+                        value={v.size}
+                        onChange={(e) => updateVariant(i, { size: e.target.value })}
+                        placeholder="Size (VD: One Size)"
+                        className="flex-1 text-xs"
+                        disabled={saving}
+                      />
+                      <IconButton
+                        type="button"
+                        tone="danger"
+                        className="shrink-0"
+                        aria-label="Xóa biến thể"
+                        disabled={saving}
+                        onClick={() => removeVariant(i)}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                        </svg>
+                      </IconButton>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mb-2 sm:grid-cols-4">
+                      <Input
+                        value={v.price}
+                        onChange={(e) => updateVariant(i, { price: e.target.value })}
+                        type="number"
+                        placeholder="Giá"
+                        className="text-xs"
+                        disabled={saving}
+                      />
+                      <Input
+                        value={v.compare_at_price}
+                        onChange={(e) => updateVariant(i, { compare_at_price: e.target.value })}
+                        type="number"
+                        placeholder="Giá gốc (gạch)"
+                        className="text-xs"
+                        disabled={saving}
+                      />
+                      <Input
+                        value={v.stock}
+                        onChange={(e) => updateVariant(i, { stock: e.target.value })}
+                        type="number"
+                        min={0}
+                        placeholder="Tồn kho"
+                        className="text-xs"
+                        disabled={saving}
+                      />
+                      <Input
+                        value={v.sku}
+                        onChange={(e) => updateVariant(i, { sku: e.target.value })}
+                        placeholder="SKU"
+                        className="text-xs"
+                        disabled={saving}
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <ImageField
+                        label="Ảnh biến thể (để trống dùng ảnh mặc định)"
+                        value={v.front_image}
+                        onChange={(url) => updateVariant(i, { front_image: url })}
+                        disabled={saving}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs">
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          name="variant-default"
+                          checked={v.is_default}
+                          onChange={() => updateVariant(i, { is_default: true })}
+                          disabled={saving}
+                          className="accent-ink"
+                        />
+                        Mặc định
+                      </label>
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          checked={v.active}
+                          onChange={(e) => updateVariant(i, { active: e.target.checked })}
+                          disabled={saving}
+                          className="h-3.5 w-3.5 accent-ink"
+                        />
+                        Đang bán
+                      </label>
+                    </div>
                   </div>
                 ))}
               </div>

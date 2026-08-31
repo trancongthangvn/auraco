@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { query } = require('../db');
+const { query, pool } = require('../db');
 const { authMiddleware, requireStaffOrAdmin } = require('../middleware/auth');
 const { upload, verifyMagicBytes } = require('../lib/upload');
 
@@ -24,11 +24,12 @@ const VALID_CATEGORIES = ['Necklaces', 'Bracelets', 'Earrings', 'Signature Sets'
  * source of truth for every surface (product page badge, Reviews summary,
  * catalog/carousel star ratings). Returns the same array.
  */
-async function attachRelations(products) {
+async function attachRelations(products, opts = {}) {
+  const { includeInactiveVariants = false } = opts;
   if (products.length === 0) return products;
   const ids = products.map((p) => p.id);
 
-  const [attrsResult, collsResult, reviewStatsResult] = await Promise.all([
+  const [attrsResult, collsResult, reviewStatsResult, variantsResult] = await Promise.all([
     query(
       `SELECT id, product_id, name, value, sort_order
          FROM product_attributes
@@ -48,6 +49,13 @@ async function attachRelations(products) {
          FROM product_reviews
         WHERE product_id = ANY($1::int[]) AND status = 'Đã duyệt'
         GROUP BY product_id`,
+      [ids]
+    ),
+    query(
+      `SELECT * FROM product_variants
+        WHERE product_id = ANY($1::int[])
+        ${includeInactiveVariants ? '' : 'AND active = TRUE'}
+        ORDER BY product_id, sort_order, id`,
       [ids]
     ),
   ]);
@@ -72,9 +80,16 @@ async function attachRelations(products) {
     });
   }
 
+  const variantsByProduct = new Map();
+  for (const row of variantsResult.rows) {
+    if (!variantsByProduct.has(row.product_id)) variantsByProduct.set(row.product_id, []);
+    variantsByProduct.get(row.product_id).push(row);
+  }
+
   for (const p of products) {
     p.attributes = attrsByProduct.get(p.id) || [];
     p.collections = collsByProduct.get(p.id) || [];
+    p.variants = variantsByProduct.get(p.id) || [];
     // Approved reviews win where they exist. Where none have been written
     // yet, the stored columns stand: those hold the real ratings imported
     // from the client's live catalogue, and blanking them would strip the
@@ -87,6 +102,28 @@ async function attachRelations(products) {
   }
 
   return products;
+}
+
+/**
+ * Keeps products.stock as SUM(stock) of a product's active variants —
+ * but only once the product actually has variants. A product with zero
+ * variant rows keeps using its own products.stock column untouched, exactly
+ * as it did before this feature existed (see migration 006's comment).
+ * Must run inside the same transaction as the variant write that triggered it.
+ */
+async function recomputeProductStock(client, productId) {
+  const countResult = await client.query(
+    'SELECT COUNT(*)::int AS cnt FROM product_variants WHERE product_id = $1',
+    [productId]
+  );
+  if (countResult.rows[0].cnt === 0) return;
+  await client.query(
+    `UPDATE products SET stock = COALESCE(
+       (SELECT SUM(stock) FROM product_variants WHERE product_id = $1 AND active = TRUE), 0
+     ), updated_at = now()
+     WHERE id = $1`,
+    [productId]
+  );
 }
 
 function isNonEmptyString(v) {
@@ -104,6 +141,14 @@ function isStringOrNull(v) {
 
 /** Empty/blank video URLs are stored as NULL so "has a video" stays IS NOT NULL. */
 function normalizeVideoUrl(v) {
+  if (typeof v !== 'string') return null;
+  const trimmed = v.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+/** Same blank-string-to-NULL normalization as normalizeVideoUrl, for the
+ * other free-text nullable product fields added in migration 006. */
+function normalizeNullableString(v) {
   if (typeof v !== 'string') return null;
   const trimmed = v.trim();
   return trimmed === '' ? null : trimmed;
@@ -143,8 +188,12 @@ router.get('/', async (req, res) => {
 
     const result = await query(sql, params);
     const products = await attachRelations(result.rows);
+    // meta_title/meta_description are for generateMetadata on the product
+    // detail page only — omitted here so the (larger, more cacheable) list
+    // response doesn't carry per-product SEO text nobody reads on a listing.
+    const publicProducts = products.map(({ meta_title, meta_description, ...rest }) => rest);
 
-    res.json({ data: products });
+    res.json({ data: publicProducts });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to list products' });
@@ -218,7 +267,7 @@ router.get('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, r
     const result = await query(
       'SELECT * FROM products ORDER BY (sort_order = 0), sort_order ASC, created_at DESC'
     );
-    const products = await attachRelations(result.rows);
+    const products = await attachRelations(result.rows, { includeInactiveVariants: true });
     res.json({ data: products });
   } catch (err) {
     console.error(err);
@@ -248,6 +297,14 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
       videoUrl,
       video_url: videoUrlSnake,
       collections, // array of collection slugs
+      brand,
+      thumbnailUrl,
+      discountPercent,
+      badgeLabel,
+      stickerImageUrl,
+      metaTitle,
+      metaDescription,
+      showAtHome,
     } = req.body || {};
 
     const videoUrlInput = videoUrl !== undefined ? videoUrl : videoUrlSnake;
@@ -276,12 +333,20 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
     if (videoUrlInput !== undefined && !isStringOrNull(videoUrlInput)) {
       return res.status(400).json({ error: 'videoUrl must be a string or null' });
     }
+    if (
+      discountPercent !== undefined &&
+      (!isFiniteNumber(discountPercent) || discountPercent < 0 || discountPercent > 100)
+    ) {
+      return res.status(400).json({ error: 'discountPercent must be a number between 0 and 100' });
+    }
 
     const result = await query(
       `INSERT INTO products
          (slug, name, category, material, price, compare_at_price, rating,
-          review_count, images, description, features, stock, active, video_url)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+          review_count, images, description, features, stock, active, video_url,
+          brand, thumbnail_url, discount_percent, badge_label, sticker_image_url,
+          meta_title, meta_description, show_at_home)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
        RETURNING *`,
       [
         slug.trim(),
@@ -298,6 +363,14 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
         Number.isInteger(stock) ? stock : 0,
         active === undefined ? true : Boolean(active),
         normalizeVideoUrl(videoUrlInput),
+        normalizeNullableString(brand),
+        normalizeNullableString(thumbnailUrl),
+        isFiniteNumber(discountPercent) ? discountPercent : 0,
+        normalizeNullableString(badgeLabel),
+        normalizeNullableString(stickerImageUrl),
+        normalizeNullableString(metaTitle),
+        normalizeNullableString(metaDescription),
+        showAtHome === undefined ? false : Boolean(showAtHome),
       ]
     );
 
@@ -313,7 +386,7 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
       }
     }
 
-    const [full] = await attachRelations([product]);
+    const [full] = await attachRelations([product], { includeInactiveVariants: true });
     res.status(201).json({ data: full });
   } catch (err) {
     console.error(err);
@@ -353,6 +426,14 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
       collections,
       sortOrder,
       bundleDiscountPercent,
+      brand,
+      thumbnailUrl,
+      discountPercent,
+      badgeLabel,
+      stickerImageUrl,
+      metaTitle,
+      metaDescription,
+      showAtHome,
     } = req.body || {};
 
     const videoUrlInput = videoUrl !== undefined ? videoUrl : videoUrlSnake;
@@ -387,6 +468,12 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
     ) {
       return res.status(400).json({ error: 'bundleDiscountPercent must be a number between 0 and 100' });
     }
+    if (
+      discountPercent !== undefined &&
+      (!isFiniteNumber(discountPercent) || discountPercent < 0 || discountPercent > 100)
+    ) {
+      return res.status(400).json({ error: 'discountPercent must be a number between 0 and 100' });
+    }
 
     const result = await query(
       `UPDATE products SET
@@ -405,8 +492,16 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
          video_url = $13,
          sort_order = $14,
          bundle_discount_percent = $15,
+         brand = $16,
+         thumbnail_url = $17,
+         discount_percent = $18,
+         badge_label = $19,
+         sticker_image_url = $20,
+         meta_title = $21,
+         meta_description = $22,
+         show_at_home = $23,
          updated_at = now()
-       WHERE slug = $16
+       WHERE slug = $24
        RETURNING *`,
       [
         name !== undefined ? name : current.name,
@@ -424,6 +519,14 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
         videoUrlInput !== undefined ? normalizeVideoUrl(videoUrlInput) : current.video_url,
         sortOrder !== undefined ? sortOrder : current.sort_order,
         bundleDiscountPercent !== undefined ? bundleDiscountPercent : current.bundle_discount_percent,
+        brand !== undefined ? normalizeNullableString(brand) : current.brand,
+        thumbnailUrl !== undefined ? normalizeNullableString(thumbnailUrl) : current.thumbnail_url,
+        discountPercent !== undefined ? discountPercent : current.discount_percent,
+        badgeLabel !== undefined ? normalizeNullableString(badgeLabel) : current.badge_label,
+        stickerImageUrl !== undefined ? normalizeNullableString(stickerImageUrl) : current.sticker_image_url,
+        metaTitle !== undefined ? normalizeNullableString(metaTitle) : current.meta_title,
+        metaDescription !== undefined ? normalizeNullableString(metaDescription) : current.meta_description,
+        showAtHome !== undefined ? Boolean(showAtHome) : current.show_at_home,
         req.params.slug,
       ]
     );
@@ -443,7 +546,7 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
       }
     }
 
-    const [full] = await attachRelations([product]);
+    const [full] = await attachRelations([product], { includeInactiveVariants: true });
     res.json({ data: full });
   } catch (err) {
     console.error(err);
@@ -464,6 +567,280 @@ router.delete('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, asyn
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to delete product' });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// Admin: manage product_variants (color/size combinations)
+// GET    /api/products/admin/products/:slug/variants
+// POST   /api/products/admin/products/:slug/variants     { colorName, colorSwatch, size,
+//          price, compareAtPrice, stock, sku, frontImage, hoverImages, isDefault, active, sortOrder }
+// PUT    /api/products/admin/products/:slug/variants/:id  (same body, all optional)
+// DELETE /api/products/admin/products/:slug/variants/:id
+//
+// Every write keeps at most one is_default=true row per product (setting one
+// true clears the others in the same transaction) and recomputes the parent
+// product's stock as SUM(active variant stock) — see recomputeProductStock.
+// ----------------------------------------------------------------------------
+router.get('/admin/products/:slug/variants', authMiddleware, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const productResult = await query('SELECT id FROM products WHERE slug = $1', [req.params.slug]);
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    const result = await query(
+      'SELECT * FROM product_variants WHERE product_id = $1 ORDER BY sort_order, id',
+      [productResult.rows[0].id]
+    );
+    res.json({ data: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to list variants' });
+  }
+});
+
+router.post('/admin/products/:slug/variants', authMiddleware, requireStaffOrAdmin, async (req, res) => {
+  const {
+    colorName,
+    colorSwatch,
+    size,
+    price,
+    compareAtPrice,
+    stock,
+    sku,
+    frontImage,
+    hoverImages,
+    isDefault,
+    active,
+    sortOrder,
+  } = req.body || {};
+
+  if (!isFiniteNumber(price) || price < 0) {
+    return res.status(400).json({ error: 'price must be a non-negative number' });
+  }
+  if (compareAtPrice !== undefined && compareAtPrice !== null && (!isFiniteNumber(compareAtPrice) || compareAtPrice < 0)) {
+    return res.status(400).json({ error: 'compareAtPrice must be a non-negative number' });
+  }
+  if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
+    return res.status(400).json({ error: 'stock must be a non-negative integer' });
+  }
+  if (hoverImages !== undefined && !Array.isArray(hoverImages)) {
+    return res.status(400).json({ error: 'hoverImages must be an array' });
+  }
+  if (sortOrder !== undefined && !Number.isInteger(sortOrder)) {
+    return res.status(400).json({ error: 'sortOrder must be an integer' });
+  }
+
+  let productId;
+  try {
+    const productResult = await query('SELECT id FROM products WHERE slug = $1', [req.params.slug]);
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    productId = productResult.rows[0].id;
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to create variant' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    if (isDefault === true) {
+      await client.query('UPDATE product_variants SET is_default = FALSE WHERE product_id = $1', [productId]);
+    }
+
+    const insertResult = await client.query(
+      `INSERT INTO product_variants
+         (product_id, color_name, color_swatch, size, price, compare_at_price, stock, sku,
+          front_image, hover_images, is_default, active, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       RETURNING *`,
+      [
+        productId,
+        normalizeNullableString(colorName),
+        normalizeNullableString(colorSwatch),
+        normalizeNullableString(size),
+        price,
+        compareAtPrice ?? null,
+        Number.isInteger(stock) ? stock : 0,
+        normalizeNullableString(sku),
+        normalizeNullableString(frontImage),
+        JSON.stringify(hoverImages || []),
+        isDefault === true,
+        active === undefined ? true : Boolean(active),
+        Number.isInteger(sortOrder) ? sortOrder : 0,
+      ]
+    );
+
+    await recomputeProductStock(client, productId);
+    await client.query('COMMIT');
+
+    res.status(201).json({ data: insertResult.rows[0] });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    if (err.code === '23505') {
+      return res.status(400).json({ error: 'A variant with this SKU already exists' });
+    }
+    res.status(500).json({ error: 'Failed to create variant' });
+  } finally {
+    client.release();
+  }
+});
+
+router.put('/admin/products/:slug/variants/:id', authMiddleware, requireStaffOrAdmin, async (req, res) => {
+  const {
+    colorName,
+    colorSwatch,
+    size,
+    price,
+    compareAtPrice,
+    stock,
+    sku,
+    frontImage,
+    hoverImages,
+    isDefault,
+    active,
+    sortOrder,
+  } = req.body || {};
+
+  if (price !== undefined && (!isFiniteNumber(price) || price < 0)) {
+    return res.status(400).json({ error: 'price must be a non-negative number' });
+  }
+  if (compareAtPrice !== undefined && compareAtPrice !== null && (!isFiniteNumber(compareAtPrice) || compareAtPrice < 0)) {
+    return res.status(400).json({ error: 'compareAtPrice must be a non-negative number' });
+  }
+  if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
+    return res.status(400).json({ error: 'stock must be a non-negative integer' });
+  }
+  if (hoverImages !== undefined && !Array.isArray(hoverImages)) {
+    return res.status(400).json({ error: 'hoverImages must be an array' });
+  }
+  if (sortOrder !== undefined && !Number.isInteger(sortOrder)) {
+    return res.status(400).json({ error: 'sortOrder must be an integer' });
+  }
+
+  let productId;
+  let current;
+  try {
+    const productResult = await query('SELECT id FROM products WHERE slug = $1', [req.params.slug]);
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    productId = productResult.rows[0].id;
+
+    const existing = await query(
+      'SELECT * FROM product_variants WHERE id = $1 AND product_id = $2',
+      [req.params.id, productId]
+    );
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Variant not found' });
+    }
+    current = existing.rows[0];
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to update variant' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    if (isDefault === true) {
+      await client.query(
+        'UPDATE product_variants SET is_default = FALSE WHERE product_id = $1 AND id <> $2',
+        [productId, current.id]
+      );
+    }
+
+    const updateResult = await client.query(
+      `UPDATE product_variants SET
+         color_name = $1,
+         color_swatch = $2,
+         size = $3,
+         price = $4,
+         compare_at_price = $5,
+         stock = $6,
+         sku = $7,
+         front_image = $8,
+         hover_images = $9,
+         is_default = $10,
+         active = $11,
+         sort_order = $12,
+         updated_at = now()
+       WHERE id = $13
+       RETURNING *`,
+      [
+        colorName !== undefined ? normalizeNullableString(colorName) : current.color_name,
+        colorSwatch !== undefined ? normalizeNullableString(colorSwatch) : current.color_swatch,
+        size !== undefined ? normalizeNullableString(size) : current.size,
+        price !== undefined ? price : current.price,
+        compareAtPrice !== undefined ? compareAtPrice : current.compare_at_price,
+        stock !== undefined ? stock : current.stock,
+        sku !== undefined ? normalizeNullableString(sku) : current.sku,
+        frontImage !== undefined ? normalizeNullableString(frontImage) : current.front_image,
+        hoverImages !== undefined ? JSON.stringify(hoverImages) : JSON.stringify(current.hover_images),
+        isDefault !== undefined ? Boolean(isDefault) : current.is_default,
+        active !== undefined ? Boolean(active) : current.active,
+        sortOrder !== undefined ? sortOrder : current.sort_order,
+        current.id,
+      ]
+    );
+
+    await recomputeProductStock(client, productId);
+    await client.query('COMMIT');
+
+    res.json({ data: updateResult.rows[0] });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    if (err.code === '23505') {
+      return res.status(400).json({ error: 'A variant with this SKU already exists' });
+    }
+    res.status(500).json({ error: 'Failed to update variant' });
+  } finally {
+    client.release();
+  }
+});
+
+router.delete('/admin/products/:slug/variants/:id', authMiddleware, requireStaffOrAdmin, async (req, res) => {
+  let productId;
+  try {
+    const productResult = await query('SELECT id FROM products WHERE slug = $1', [req.params.slug]);
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    productId = productResult.rows[0].id;
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to delete variant' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const deleteResult = await client.query(
+      'DELETE FROM product_variants WHERE id = $1 AND product_id = $2 RETURNING id',
+      [req.params.id, productId]
+    );
+    if (deleteResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Variant not found' });
+    }
+
+    await recomputeProductStock(client, productId);
+    await client.query('COMMIT');
+
+    res.json({ data: { id: deleteResult.rows[0].id } });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete variant' });
+  } finally {
+    client.release();
   }
 });
 

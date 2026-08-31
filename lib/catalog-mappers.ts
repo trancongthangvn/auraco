@@ -22,6 +22,11 @@ export type ApiProduct = {
   video_url?: string | null;
   attributes?: { name: string; value: string }[];
   collections?: string[];
+  /** Real per-product "Details & Fit" + "How To Style It" HTML, scraped/
+   * paraphrased from the reference site. Null for any product that wasn't
+   * successfully imported — the product page falls back to the generic
+   * attributes/material text in that case. */
+  details_html?: string | null;
 };
 
 export type ApiCollection = {
@@ -52,6 +57,7 @@ export function toFullProduct(api: ApiProduct): FullProduct {
     stock: api.stock,
     videoUrl: api.video_url ?? undefined,
     attributes: api.attributes,
+    detailsHtml: api.details_html ?? undefined,
   };
 }
 

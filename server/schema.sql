@@ -95,12 +95,31 @@ CREATE TABLE products (
   features          JSONB        NOT NULL DEFAULT '[]', -- array of short strings
   stock             INTEGER      NOT NULL DEFAULT 0 CHECK (stock >= 0),
   active            BOOLEAN      NOT NULL DEFAULT TRUE,
+  sort_order        INTEGER      NOT NULL DEFAULT 0, -- manual priority, lower shows first; 0 = falls back to created_at DESC
+  video_url         TEXT, -- optional looping product video for the homepage video carousel
+  bundle_discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0
+                    CHECK (bundle_discount_percent >= 0 AND bundle_discount_percent <= 100),
   created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
   updated_at        TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 COMMENT ON TABLE products IS 'Catalog products. images/features kept as JSONB arrays (ordered, no relational needs); attributes are normalized separately.';
 CREATE INDEX idx_products_category ON products(category);
 CREATE INDEX idx_products_active ON products(active);
+CREATE INDEX idx_products_sort_order ON products (sort_order, created_at DESC);
+
+-- ----------------------------------------------------------------------------
+-- product_bundles ("frequently bought together" companions, admin-picked)
+-- ----------------------------------------------------------------------------
+CREATE TABLE product_bundles (
+  id            SERIAL PRIMARY KEY,
+  product_id    INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  companion_id  INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  sort_order    INTEGER NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (product_id <> companion_id),
+  UNIQUE (product_id, companion_id)
+);
+CREATE INDEX idx_product_bundles_product ON product_bundles (product_id, sort_order);
 
 -- ----------------------------------------------------------------------------
 -- product_attributes (normalized ProductAttribute[] — spec rows like

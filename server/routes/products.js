@@ -16,13 +16,19 @@ const VALID_CATEGORIES = ['Necklaces', 'Bracelets', 'Earrings', 'Signature Sets'
 /**
  * Loads the full attribute list + collection slug list for a set of product
  * ids and merges them onto the given product rows (mutates in place, adds
- * `attributes` and `collections` arrays). Returns the same array.
+ * `attributes` and `collections` arrays). Also overwrites `rating` /
+ * `review_count` with numbers computed live from approved rows in
+ * `product_reviews`, so the stored `products.rating`/`review_count` columns
+ * (legacy seed data) can never drift out of sync with what Reviews.tsx and
+ * the product page actually display — the reviews table is the single
+ * source of truth for every surface (product page badge, Reviews summary,
+ * catalog/carousel star ratings). Returns the same array.
  */
 async function attachRelations(products) {
   if (products.length === 0) return products;
   const ids = products.map((p) => p.id);
 
-  const [attrsResult, collsResult] = await Promise.all([
+  const [attrsResult, collsResult, reviewStatsResult] = await Promise.all([
     query(
       `SELECT id, product_id, name, value, sort_order
          FROM product_attributes
@@ -35,6 +41,13 @@ async function attachRelations(products) {
          FROM product_collections pc
          JOIN collections c ON c.id = pc.collection_id
         WHERE pc.product_id = ANY($1::int[])`,
+      [ids]
+    ),
+    query(
+      `SELECT product_id, AVG(rating)::numeric AS avg_rating, COUNT(*)::int AS review_count
+         FROM product_reviews
+        WHERE product_id = ANY($1::int[]) AND status = 'Đã duyệt'
+        GROUP BY product_id`,
       [ids]
     ),
   ]);
@@ -51,9 +64,26 @@ async function attachRelations(products) {
     collsByProduct.get(row.product_id).push(row.slug);
   }
 
+  const reviewStatsByProduct = new Map();
+  for (const row of reviewStatsResult.rows) {
+    reviewStatsByProduct.set(row.product_id, {
+      rating: Number(row.avg_rating),
+      reviewCount: row.review_count,
+    });
+  }
+
   for (const p of products) {
     p.attributes = attrsByProduct.get(p.id) || [];
     p.collections = collsByProduct.get(p.id) || [];
+    // Approved reviews win where they exist. Where none have been written
+    // yet, the stored columns stand: those hold the real ratings imported
+    // from the client's live catalogue, and blanking them would strip the
+    // stars from 43 of 45 products in exchange for no extra accuracy.
+    const stats = reviewStatsByProduct.get(p.id);
+    if (stats && stats.reviewCount > 0) {
+      p.rating = stats.rating;
+      p.review_count = stats.reviewCount;
+    }
   }
 
   return products;
@@ -99,7 +129,7 @@ router.get('/', async (req, res) => {
       params.push(collection);
       joinClause = `
         JOIN product_collections pc ON pc.product_id = p.id
-        JOIN collections col ON col.id = pc.collection_id AND col.slug = $${params.length}
+        JOIN collections col ON col.id = pc.collection_id AND lower(col.slug) = lower($${params.length})
       `;
     }
 
@@ -108,7 +138,7 @@ router.get('/', async (req, res) => {
         FROM products p
         ${joinClause}
        WHERE ${conditions.join(' AND ')}
-       ORDER BY p.created_at DESC
+       ORDER BY (p.sort_order = 0), p.sort_order ASC, p.created_at DESC
     `;
 
     const result = await query(sql, params);
@@ -126,7 +156,7 @@ router.get('/', async (req, res) => {
 // ----------------------------------------------------------------------------
 router.get('/:slug', async (req, res) => {
   try {
-    const result = await query('SELECT * FROM products WHERE slug = $1', [req.params.slug]);
+    const result = await query('SELECT * FROM products WHERE lower(slug) = lower($1)', [req.params.slug]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
     }
@@ -139,11 +169,55 @@ router.get('/:slug', async (req, res) => {
 });
 
 // ----------------------------------------------------------------------------
+// Public: GET /api/products/:slug/bundle — admin-picked "frequently bought
+// together" companions plus the bundle discount, for the product page.
+// ----------------------------------------------------------------------------
+router.get('/:slug/bundle', async (req, res) => {
+  try {
+    const productResult = await query(
+      'SELECT id, bundle_discount_percent FROM products WHERE lower(slug) = lower($1)',
+      [req.params.slug]
+    );
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    const product = productResult.rows[0];
+
+    const companionsResult = await query(
+      `SELECT c.slug, c.name, c.price, c.compare_at_price, c.images
+         FROM product_bundles pb
+         JOIN products c ON c.id = pb.companion_id
+        WHERE pb.product_id = $1 AND c.active = TRUE
+        ORDER BY pb.sort_order, pb.id`,
+      [product.id]
+    );
+
+    res.json({
+      data: {
+        discountPercent: Number(product.bundle_discount_percent),
+        companions: companionsResult.rows.map((c) => ({
+          slug: c.slug,
+          name: c.name,
+          price: Number(c.price),
+          compareAtPrice: c.compare_at_price != null ? Number(c.compare_at_price) : null,
+          image: Array.isArray(c.images) ? c.images[0] : undefined,
+        })),
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch bundle' });
+  }
+});
+
+// ----------------------------------------------------------------------------
 // Admin: GET /api/products/admin/products (list ALL, including inactive)
 // ----------------------------------------------------------------------------
 router.get('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, res) => {
   try {
-    const result = await query('SELECT * FROM products ORDER BY created_at DESC');
+    const result = await query(
+      'SELECT * FROM products ORDER BY (sort_order = 0), sort_order ASC, created_at DESC'
+    );
     const products = await attachRelations(result.rows);
     res.json({ data: products });
   } catch (err) {
@@ -277,6 +351,8 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
       videoUrl,
       video_url: videoUrlSnake,
       collections,
+      sortOrder,
+      bundleDiscountPercent,
     } = req.body || {};
 
     const videoUrlInput = videoUrl !== undefined ? videoUrl : videoUrlSnake;
@@ -302,6 +378,15 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
     if (videoUrlInput !== undefined && !isStringOrNull(videoUrlInput)) {
       return res.status(400).json({ error: 'videoUrl must be a string or null' });
     }
+    if (sortOrder !== undefined && !Number.isInteger(sortOrder)) {
+      return res.status(400).json({ error: 'sortOrder must be an integer' });
+    }
+    if (
+      bundleDiscountPercent !== undefined &&
+      (!isFiniteNumber(bundleDiscountPercent) || bundleDiscountPercent < 0 || bundleDiscountPercent > 100)
+    ) {
+      return res.status(400).json({ error: 'bundleDiscountPercent must be a number between 0 and 100' });
+    }
 
     const result = await query(
       `UPDATE products SET
@@ -318,8 +403,10 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
          stock = $11,
          active = $12,
          video_url = $13,
+         sort_order = $14,
+         bundle_discount_percent = $15,
          updated_at = now()
-       WHERE slug = $14
+       WHERE slug = $16
        RETURNING *`,
       [
         name !== undefined ? name : current.name,
@@ -335,6 +422,8 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
         stock !== undefined ? stock : current.stock,
         active !== undefined ? Boolean(active) : current.active,
         videoUrlInput !== undefined ? normalizeVideoUrl(videoUrlInput) : current.video_url,
+        sortOrder !== undefined ? sortOrder : current.sort_order,
+        bundleDiscountPercent !== undefined ? bundleDiscountPercent : current.bundle_discount_percent,
         req.params.slug,
       ]
     );
@@ -486,6 +575,119 @@ router.delete('/admin/products/:slug/attributes/:id', authMiddleware, requireSta
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to delete attribute' });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// Admin: "frequently bought together" companions
+// GET /api/products/admin/products/:slug/bundle
+// PUT /api/products/admin/products/:slug/bundle  { companions: string[] (slugs), discountPercent? }
+// ----------------------------------------------------------------------------
+router.get('/admin/products/:slug/bundle', authMiddleware, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const productResult = await query(
+      'SELECT id, bundle_discount_percent FROM products WHERE slug = $1',
+      [req.params.slug]
+    );
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    const product = productResult.rows[0];
+
+    const companionsResult = await query(
+      `SELECT c.slug, c.name, c.price, c.images
+         FROM product_bundles pb
+         JOIN products c ON c.id = pb.companion_id
+        WHERE pb.product_id = $1
+        ORDER BY pb.sort_order, pb.id`,
+      [product.id]
+    );
+
+    res.json({
+      data: {
+        discountPercent: Number(product.bundle_discount_percent),
+        companions: companionsResult.rows.map((c) => ({
+          slug: c.slug,
+          name: c.name,
+          price: Number(c.price),
+          image: Array.isArray(c.images) ? c.images[0] : undefined,
+        })),
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch bundle' });
+  }
+});
+
+router.put('/admin/products/:slug/bundle', authMiddleware, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const { companions, discountPercent } = req.body || {};
+
+    if (companions !== undefined && !Array.isArray(companions)) {
+      return res.status(400).json({ error: 'companions must be an array of slugs' });
+    }
+    if (
+      discountPercent !== undefined &&
+      (!isFiniteNumber(discountPercent) || discountPercent < 0 || discountPercent > 100)
+    ) {
+      return res.status(400).json({ error: 'discountPercent must be a number between 0 and 100' });
+    }
+
+    const productResult = await query('SELECT id FROM products WHERE slug = $1', [req.params.slug]);
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    const productId = productResult.rows[0].id;
+
+    if (discountPercent !== undefined) {
+      await query('UPDATE products SET bundle_discount_percent = $1, updated_at = now() WHERE id = $2', [
+        discountPercent,
+        productId,
+      ]);
+    }
+
+    if (Array.isArray(companions)) {
+      await query('DELETE FROM product_bundles WHERE product_id = $1', [productId]);
+      if (companions.length > 0) {
+        const companionResult = await query(
+          'SELECT id, slug FROM products WHERE slug = ANY($1::text[]) AND id <> $2',
+          [companions, productId]
+        );
+        const orderBySlug = new Map(companions.map((slug, i) => [slug, i]));
+        for (const row of companionResult.rows) {
+          await query(
+            'INSERT INTO product_bundles (product_id, companion_id, sort_order) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
+            [productId, row.id, orderBySlug.get(row.slug) ?? 0]
+          );
+        }
+      }
+    }
+
+    const finalResult = await query('SELECT bundle_discount_percent FROM products WHERE id = $1', [productId]);
+    const companionsResult = await query(
+      `SELECT c.slug, c.name, c.price, c.images
+         FROM product_bundles pb
+         JOIN products c ON c.id = pb.companion_id
+        WHERE pb.product_id = $1
+        ORDER BY pb.sort_order, pb.id`,
+      [productId]
+    );
+
+    res.json({
+      data: {
+        discountPercent: Number(finalResult.rows[0].bundle_discount_percent),
+        companions: companionsResult.rows.map((c) => ({
+          slug: c.slug,
+          name: c.name,
+          price: Number(c.price),
+          image: Array.isArray(c.images) ? c.images[0] : undefined,
+        })),
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update bundle' });
   }
 });
 

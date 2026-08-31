@@ -19,6 +19,10 @@ export type FullProduct = {
   /** Optional looping product video (MP4) shown in the homepage video carousel. */
   videoUrl?: string;
   attributes?: ProductAttribute[];
+  /** Real per-product "Details & Fit" + "How To Style It" HTML imported from
+   * the reference site (see docs/product-details.sql). Undefined/null for
+   * any product without imported copy — falls back to attributes/material. */
+  detailsHtml?: string;
 };
 
 const img = {

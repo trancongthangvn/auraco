@@ -72,8 +72,15 @@ export type Product = {
   href: string;
   material: string;
   price: string;
+  /** Raw USD amount behind `price`, when the caller has one — ProductCarousel
+   *  reformats from this with the visitor's chosen currency symbol when
+   *  present, falling back to the pre-formatted `price` string otherwise
+   *  (the static demo entries below have no live currency to react to). */
+  priceValue?: number;
   rating: number;
   img: string;
+  /** Second gallery image, shown on hover as the on-model shot. */
+  hoverImg?: string;
 };
 
 export const beachVibeProducts: Product[] = [
@@ -185,6 +192,7 @@ export const testimonials = [
     date: "08/09/2026",
     quote:
       "Really pretty and delicate, I love how it looks on my wrist. The chain is a little thinner than I expected, but overall I’m very happy with it.",
+    photo: "/images/products/imported/09cc71d8476343cca31538ff35842330.webp",
   },
   {
     initials: "DM",
@@ -192,6 +200,7 @@ export const testimonials = [
     date: "08/05/2026",
     quote:
       "Love the mixed gold tones. It goes with everything. I just wish the chain was a little longer.",
+    photo: "/images/products/imported/502c9cd87d1848849d03e79dbaecfe82.webp",
   },
   {
     initials: "ME",
@@ -199,6 +208,7 @@ export const testimonials = [
     date: "08/04/2026",
     quote:
       "Really impressed with the quality. The stones catch the light beautifully and look so elegant",
+    photo: "/images/products/imported/bd4c07cbdf55464f93499767a3e9905e.webp",
   },
   {
     initials: "HO",
@@ -206,6 +216,7 @@ export const testimonials = [
     date: "08/04/2026",
     quote:
       "Obsessed with this! Fits great, looks super high quality, and arrived faster than expected.",
+    photo: "/images/products/imported/b80b434ec6cc425d995b2ecc8767c97c.webp",
   },
   {
     initials: "KM",
@@ -213,6 +224,7 @@ export const testimonials = [
     date: "08/01/2026",
     quote:
       "Love this layered necklace. It makes even a simple outfit look so put together.",
+    photo: "/images/products/imported/35115fb1c6f64907a2c1bcf3597d0cce.webp",
   },
   {
     initials: "SR",
@@ -220,6 +232,7 @@ export const testimonials = [
     date: "07/29/2026",
     quote:
       "Really impressed with the quality. The chain feels delicate but secure and the pendant has such a pretty sparkle.",
+    photo: "/images/products/imported/2103924f79864c16964d7bb16327ca81.webp",
   },
 ];
 
@@ -287,5 +300,6 @@ export const footerLinks = {
     { key: "privacyPolicy" as const, label: "Privacy Policy", href: "/pages/privacy-policy" },
     { key: "returnPolicy" as const, label: "Return Policy", href: "/pages/return-policy" },
     { key: "termsOfService" as const, label: "Terms of Service", href: "/pages/terms-of-service" },
+    { key: "contact" as const, label: "Contact", href: "/pages/contact" },
   ],
 };

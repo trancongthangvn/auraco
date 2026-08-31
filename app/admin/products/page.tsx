@@ -38,6 +38,14 @@ type AdminProduct = {
   sort_order: number;
   attributes?: AdminAttribute[];
   collections?: string[];
+  brand?: string | null;
+  thumbnail_url?: string | null;
+  discount_percent?: number;
+  badge_label?: string | null;
+  sticker_image_url?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  show_at_home?: boolean;
 };
 
 type AdminAttribute = { id?: number; name: string; value: string };
@@ -71,6 +79,14 @@ export default function AdminProductsPage() {
   const [editCollections, setEditCollections] = useState<string[]>([]);
   const [editSortOrder, setEditSortOrder] = useState("0");
   const [editStock, setEditStock] = useState("0");
+  const [editBrand, setEditBrand] = useState("");
+  const [editThumbnail, setEditThumbnail] = useState<string | null>(null);
+  const [editDiscountPercent, setEditDiscountPercent] = useState("0");
+  const [editBadgeLabel, setEditBadgeLabel] = useState("");
+  const [editStickerImage, setEditStickerImage] = useState<string | null>(null);
+  const [editMetaTitle, setEditMetaTitle] = useState("");
+  const [editMetaDescription, setEditMetaDescription] = useState("");
+  const [editShowAtHome, setEditShowAtHome] = useState(false);
   const [editBundleCompanions, setEditBundleCompanions] = useState<string[]>([]);
   const [editBundleDiscount, setEditBundleDiscount] = useState("0");
   const [editVideoUrl, setEditVideoUrl] = useState<string | null>(null);
@@ -176,6 +192,14 @@ export default function AdminProductsPage() {
     setEditCollections(p.collections ?? []);
     setEditSortOrder(String(p.sort_order ?? 0));
     setEditStock(String(p.stock ?? 0));
+    setEditBrand(p.brand ?? "");
+    setEditThumbnail(p.thumbnail_url ?? null);
+    setEditDiscountPercent(String(p.discount_percent ?? 0));
+    setEditBadgeLabel(p.badge_label ?? "");
+    setEditStickerImage(p.sticker_image_url ?? null);
+    setEditMetaTitle(p.meta_title ?? "");
+    setEditMetaDescription(p.meta_description ?? "");
+    setEditShowAtHome(Boolean(p.show_at_home));
     setEditVideoUrl(p.video_url ?? null);
     setEditDescription(p.description ?? "");
     setEditFeatures(p.features ?? []);
@@ -292,6 +316,7 @@ export default function AdminProductsPage() {
       const parsedPrice = Number(editPrice);
       const parsedSortOrder = Number.parseInt(editSortOrder, 10);
       const parsedStock = Number.parseInt(editStock, 10);
+      const parsedDiscountPercent = Number(editDiscountPercent);
       const updated = await apiFetch<AdminProduct>(
         `/api/products/admin/products/${editing.slug}`,
         {
@@ -307,6 +332,14 @@ export default function AdminProductsPage() {
             description: editDescription,
             features: editFeatures.filter((f) => f.trim().length > 0),
             images: editImages.filter((img) => img.trim().length > 0),
+            brand: editBrand.trim() || null,
+            thumbnailUrl: editThumbnail,
+            discountPercent: Number.isFinite(parsedDiscountPercent) ? parsedDiscountPercent : 0,
+            badgeLabel: editBadgeLabel.trim() || null,
+            stickerImageUrl: editStickerImage,
+            metaTitle: editMetaTitle.trim() || null,
+            metaDescription: editMetaDescription.trim() || null,
+            showAtHome: editShowAtHome,
           }),
         }
       );
@@ -714,6 +747,89 @@ export default function AdminProductsPage() {
                 disabled={saving}
                 className="mb-6"
               />
+
+              <details className="mb-6 rounded-lg border border-black/10 group">
+                <summary className="cursor-pointer select-none list-none px-3 py-2.5 text-xs font-semibold text-black/60 flex items-center justify-between">
+                  Nâng cao (Brand, SEO, badge, sticker...)
+                  <span className="text-black/30 group-open:rotate-180 transition-transform">▾</span>
+                </summary>
+                <div className="px-3 pb-4 pt-1 border-t border-black/10">
+                  <Label>Brand (tên nhà thiết kế/bộ sưu tập, tùy chọn)</Label>
+                  <Input
+                    value={editBrand}
+                    onChange={(e) => setEditBrand(e.target.value)}
+                    placeholder="VD: The Sacred Alignment"
+                    className="mb-4"
+                    disabled={saving}
+                  />
+
+                  <div className="mb-4 grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Giảm giá thẻ sản phẩm (%)</Label>
+                      <Input
+                        value={editDiscountPercent}
+                        onChange={(e) => setEditDiscountPercent(e.target.value)}
+                        type="number"
+                        min={0}
+                        max={100}
+                        disabled={saving}
+                      />
+                    </div>
+                    <div>
+                      <Label>Badge (VD: HOT, LIMITED)</Label>
+                      <Input
+                        value={editBadgeLabel}
+                        onChange={(e) => setEditBadgeLabel(e.target.value)}
+                        placeholder="Để trống để ẩn"
+                        disabled={saving}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-4 grid grid-cols-2 gap-3">
+                    <ImageField
+                      label="Thumbnail riêng"
+                      value={editThumbnail}
+                      onChange={setEditThumbnail}
+                      disabled={saving}
+                    />
+                    <ImageField
+                      label="Sticker (góc thẻ sản phẩm)"
+                      value={editStickerImage}
+                      onChange={setEditStickerImage}
+                      disabled={saving}
+                    />
+                  </div>
+
+                  <label className="mb-4 flex items-center gap-2.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={editShowAtHome}
+                      onChange={(e) => setEditShowAtHome(e.target.checked)}
+                      disabled={saving}
+                      className="h-4 w-4 accent-ink"
+                    />
+                    Hiện ở băng video trang chủ
+                  </label>
+
+                  <Label>SEO — Meta title</Label>
+                  <Input
+                    value={editMetaTitle}
+                    onChange={(e) => setEditMetaTitle(e.target.value)}
+                    placeholder="Để trống để dùng tên sản phẩm"
+                    className="mb-4"
+                    disabled={saving}
+                  />
+                  <Label>SEO — Meta description</Label>
+                  <Textarea
+                    value={editMetaDescription}
+                    onChange={(e) => setEditMetaDescription(e.target.value)}
+                    rows={2}
+                    placeholder="Để trống để dùng mô tả sản phẩm"
+                    disabled={saving}
+                  />
+                </div>
+              </details>
 
               <div className="mb-6">
                 <VideoField

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { serverApiFetch } from "@/lib/server-api";
 import {
   Bodoni_Moda,
   Cormorant_Garamond,
@@ -40,25 +41,45 @@ const SITE_TITLE = "AURA & CO | Premium Gold Vermeil & Sterling Silver Jewelry";
 const SITE_DESCRIPTION =
   "Timeless gold and silver, understated luxury. Everyday minimalist jewelry.";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: SITE_TITLE,
-  description: SITE_DESCRIPTION,
-  openGraph: {
-    type: "website",
-    siteName: "AURA & CO",
+const DEFAULT_OG_IMAGE = "/images/brand/opengraph-image.png";
+
+// generateMetadata (not a static `metadata` export) so the admin-set OG
+// image (Cài đặt web > Ảnh chia sẻ mạng xã hội) can override the default —
+// a plain fetch here doesn't opt this layout out of static rendering the
+// way cookies() would (see the note on RootLayout below), so it's safe to
+// do site-wide.
+export async function generateMetadata(): Promise<Metadata> {
+  let ogImage = DEFAULT_OG_IMAGE;
+  try {
+    const settings = await serverApiFetch<{ ogImageUrl?: string | null }>(
+      "/api/content/site-settings"
+    );
+    if (settings.ogImageUrl) ogImage = settings.ogImageUrl;
+  } catch {
+    // Falls back to the default image — a settings-fetch failure shouldn't
+    // break page metadata for every route on the site.
+  }
+
+  return {
+    metadataBase: new URL(SITE_URL),
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    url: SITE_URL,
-    images: ["/images/brand/opengraph-image.png"],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-    images: ["/images/brand/opengraph-image.png"],
-  },
-};
+    openGraph: {
+      type: "website",
+      siteName: "AURA & CO",
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
+      url: SITE_URL,
+      images: [ogImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
+      images: [ogImage],
+    },
+  };
+}
 
 // Intentionally does NOT read cookies() here — that would force every route
 // under this layout (including /admin, which is Vietnamese-only and doesn't

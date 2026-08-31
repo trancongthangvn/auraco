@@ -142,7 +142,7 @@ export default function AdminDiscountCodesPage() {
     <AdminShell>
       <PageHeader>
         <span className="text-xs text-black/50">
-          {codes.length} mã khuyến mãi, thay đổi chỉ lưu tạm trong phiên demo
+          {codes.length} mã khuyến mãi
         </span>
         <Button variant="primary" onClick={() => setCreating(true)}>
           + Thêm mã
@@ -264,8 +264,7 @@ export default function AdminDiscountCodesPage() {
       )}
 
       <p className="text-xs text-black/40 mt-4">
-        Thêm/sửa/xóa và bật/tắt ở đây chỉ minh họa giao diện, chưa kết nối vào
-        cơ chế áp mã thật ở trang thanh toán.
+        Mã tạo/sửa ở đây áp dụng thật ngay tại trang thanh toán.
       </p>
     </AdminShell>
   );

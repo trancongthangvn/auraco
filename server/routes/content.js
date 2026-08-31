@@ -79,6 +79,7 @@ function toPublicSiteSettings(row) {
     shippingFee: extra.shipping_fee ?? null,
     taxPercent: extra.tax_percent ?? null,
     deliveryReturnsItems: extra.delivery_returns_items ?? null,
+    ogImageUrl: extra.og_image_url ?? null,
   };
 }
 
@@ -355,6 +356,12 @@ router.put('/admin/site-settings', authMiddleware, requireAdmin, async (req, res
       return res.status(400).json({ error: 'deliveryReturnsItems must be a non-empty array of non-empty strings' });
     }
     extraPatch.delivery_returns_items = body.deliveryReturnsItems;
+  }
+  if (body.ogImageUrl !== undefined) {
+    if (body.ogImageUrl !== null && typeof body.ogImageUrl !== 'string') {
+      return res.status(400).json({ error: 'ogImageUrl must be a string or null' });
+    }
+    extraPatch.og_image_url = body.ogImageUrl;
   }
   if (Object.keys(extraPatch).length > 0) {
     sets.push(`extra = extra || $${idx++}::jsonb`);

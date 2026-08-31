@@ -7,6 +7,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { useRequireAdmin } from "@/components/admin/useRequireAdmin";
 import Button from "@/components/admin/ui/Button";
 import { Input, Textarea, Label } from "@/components/admin/ui/Field";
+import ImageField from "@/components/admin/ImageField";
 
 // Matches server/routes/content.js toAdminSiteSettings() shape for
 // GET/PUT /api/content/admin/site-settings. seoTitle/seoDescription are
@@ -25,6 +26,7 @@ type SiteSettings = {
     seo_title?: string | null;
     seo_description?: string | null;
     delivery_returns_items?: string[] | null;
+    og_image_url?: string | null;
     [key: string]: unknown;
   };
   updatedAt?: string;
@@ -43,7 +45,7 @@ export default function AdminSiteSettingsPage() {
   useRequireAdmin();
   const [siteTitle, setSiteTitle] = useState("");
   const [siteDescription, setSiteDescription] = useState("");
-  const [ogImage, setOgImage] = useState("");
+  const [ogImage, setOgImage] = useState<string | null>(null);
   const [deliveryReturnsItems, setDeliveryReturnsItems] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export default function AdminSiteSettingsPage() {
         const extra = data.extra || {};
         setSiteTitle((extra.seo_title as string) || "");
         setSiteDescription((extra.seo_description as string) || "");
-        setOgImage("/images/hero/hero-1.webp");
+        setOgImage((extra.og_image_url as string | null) ?? null);
         setDeliveryReturnsItems(
           extra.delivery_returns_items && extra.delivery_returns_items.length > 0
             ? extra.delivery_returns_items
@@ -103,6 +105,7 @@ export default function AdminSiteSettingsPage() {
           seoTitle: siteTitle,
           seoDescription: siteDescription,
           deliveryReturnsItems: items,
+          ogImageUrl: ogImage,
         }),
       });
       setDeliveryReturnsItems(items);
@@ -174,14 +177,13 @@ export default function AdminSiteSettingsPage() {
           </div>
 
           <div>
-            <Label>Ảnh chia sẻ mạng xã hội (Open Graph)</Label>
-            <Input
+            <ImageField
+              label="Ảnh chia sẻ mạng xã hội (Open Graph)"
               value={ogImage}
-              onChange={(e) => setOgImage(e.target.value)}
+              onChange={setOgImage}
             />
             <p className="text-xs text-black/40 mt-2">
-              Đường dẫn ảnh hiển thị khi chia sẻ link website lên Facebook,
-              Zalo, X...
+              Hiển thị khi chia sẻ link website lên Facebook, Zalo, X...
             </p>
           </div>
 
@@ -244,11 +246,6 @@ export default function AdminSiteSettingsPage() {
           </div>
         </form>
       )}
-
-      <p className="text-xs text-black/40 mt-4 max-w-2xl">
-        API cài đặt website hiện chưa có cột riêng cho ảnh Open Graph, nên
-        trường này chỉ minh họa giao diện và chưa được lưu lại.
-      </p>
     </AdminShell>
   );
 }

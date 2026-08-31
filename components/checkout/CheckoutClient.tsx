@@ -239,7 +239,7 @@ export default function CheckoutClient() {
     <>
       {/* Minimal checkout top bar */}
       <header className="border-b border-black/5">
-        <div className="mx-auto max-w-[1400px] flex items-center justify-between px-6 py-4 gap-4">
+        <div className="mx-auto flex items-center justify-between px-6 py-4 gap-4">
           <Link href="/" aria-label="AURA & CO" className="shrink-0">
             <Image
               src="/images/brand/logo-badge.png"
@@ -262,7 +262,7 @@ export default function CheckoutClient() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1200px] px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <main className="mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Left column: checkout form */}
         <div>
           {/* Express checkout */}
@@ -296,8 +296,11 @@ export default function CheckoutClient() {
           <section className="mb-8">
             <h2 className="font-serif-display text-xl mb-4">Contact</h2>
             <div className="mb-3">
-              <label className={labelClass}>Email</label>
+              <label htmlFor="checkout-email" className={labelClass}>
+                Email
+              </label>
               <input
+                id="checkout-email"
                 type="email"
                 required
                 className={inputClass}
@@ -315,8 +318,11 @@ export default function CheckoutClient() {
           <section className="mb-8">
             <h2 className="font-serif-display text-xl mb-4">Delivery</h2>
             <div className="mb-3">
-              <label className={labelClass}>Country</label>
+              <label htmlFor="checkout-country" className={labelClass}>
+                Country
+              </label>
               <select
+                id="checkout-country"
                 className={inputClass}
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
@@ -330,8 +336,11 @@ export default function CheckoutClient() {
             </div>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className={labelClass}>First name</label>
+                <label htmlFor="checkout-first-name" className={labelClass}>
+                  First name
+                </label>
                 <input
+                  id="checkout-first-name"
                   required
                   className={inputClass}
                   value={firstName}
@@ -339,8 +348,11 @@ export default function CheckoutClient() {
                 />
               </div>
               <div>
-                <label className={labelClass}>Last name</label>
+                <label htmlFor="checkout-last-name" className={labelClass}>
+                  Last name
+                </label>
                 <input
+                  id="checkout-last-name"
                   required
                   className={inputClass}
                   value={lastName}
@@ -349,12 +361,17 @@ export default function CheckoutClient() {
               </div>
             </div>
             <div className="mb-3">
-              <label className={labelClass}>Company (optional)</label>
-              <input className={inputClass} />
+              <label htmlFor="checkout-company" className={labelClass}>
+                Company (optional)
+              </label>
+              <input id="checkout-company" className={inputClass} />
             </div>
             <div className="mb-3">
-              <label className={labelClass}>Address</label>
+              <label htmlFor="checkout-address" className={labelClass}>
+                Address
+              </label>
               <input
+                id="checkout-address"
                 required
                 className={inputClass}
                 value={address}
@@ -362,10 +379,11 @@ export default function CheckoutClient() {
               />
             </div>
             <div className="mb-3">
-              <label className={labelClass}>
+              <label htmlFor="checkout-apartment" className={labelClass}>
                 Apartment / suite (optional)
               </label>
               <input
+                id="checkout-apartment"
                 className={inputClass}
                 value={apartment}
                 onChange={(e) => setApartment(e.target.value)}
@@ -373,8 +391,11 @@ export default function CheckoutClient() {
             </div>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className={labelClass}>City</label>
+                <label htmlFor="checkout-city" className={labelClass}>
+                  City
+                </label>
                 <input
+                  id="checkout-city"
                   required
                   className={inputClass}
                   value={city}
@@ -382,8 +403,11 @@ export default function CheckoutClient() {
                 />
               </div>
               <div>
-                <label className={labelClass}>Postal code</label>
+                <label htmlFor="checkout-postal-code" className={labelClass}>
+                  Postal code
+                </label>
                 <input
+                  id="checkout-postal-code"
                   required
                   className={inputClass}
                   value={postalCode}
@@ -392,8 +416,11 @@ export default function CheckoutClient() {
               </div>
             </div>
             <div>
-              <label className={labelClass}>Phone</label>
+              <label htmlFor="checkout-phone" className={labelClass}>
+                Phone
+              </label>
               <input
+                id="checkout-phone"
                 required
                 type="tel"
                 className={inputClass}
@@ -428,7 +455,10 @@ export default function CheckoutClient() {
             <h2 className="font-serif-display text-xl mb-2">Payment</h2>
 
             {paymentMethodsError && (
-              <p className="mb-4 border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <p
+                role="alert"
+                className="mb-4 border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"
+              >
                 {paymentMethodsError}
               </p>
             )}
@@ -548,7 +578,10 @@ export default function CheckoutClient() {
               </button>
 
               {submitError && (
-                <p className="mt-4 border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <p
+                  role="alert"
+                  className="mt-4 border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"
+                >
                   {submitError}
                 </p>
               )}
@@ -590,7 +623,10 @@ export default function CheckoutClient() {
                       {proofUploading ? "UPLOADING..." : "UPLOAD PROOF"}
                     </button>
                     {proofError && (
-                      <p className="border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      <p
+                        role="alert"
+                        className="border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"
+                      >
                         {proofError}
                       </p>
                     )}
@@ -617,7 +653,9 @@ export default function CheckoutClient() {
             {itemsLoading ? (
               <p className="text-sm text-black/50 mb-6">Loading…</p>
             ) : itemsError ? (
-              <p className="text-sm text-red-700 mb-6">{itemsError}</p>
+              <p role="alert" className="text-sm text-red-700 mb-6">
+                {itemsError}
+              </p>
             ) : (
               <div className="space-y-4 mb-6">
                 {items.map((item) => (
@@ -645,6 +683,7 @@ export default function CheckoutClient() {
 
             <div className="flex gap-2 mb-6">
               <input
+                aria-label="Discount code"
                 value={voucherCode}
                 onChange={(e) => setVoucherCode(e.target.value)}
                 placeholder="Discount code"

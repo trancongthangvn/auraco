@@ -134,14 +134,14 @@ export default function PageHeader({ children }: { children?: React.ReactNode })
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3.5 min-w-0">
           <div className="shrink-0 mt-0.5 flex h-11 w-11 items-center justify-center rounded-xl bg-[#2b261f]/5 text-[#2b261f]">
-            <Icon size={20} strokeWidth={2} />
+            <Icon size={20} strokeWidth={1.25} fill="currentColor" />
           </div>
           <div className="min-w-0">
-            <h1 className="font-serif-display text-xl leading-tight">
+            <h1 className="font-serif-display text-xl font-semibold leading-tight">
               {meta.title}
             </h1>
-            <p className="mt-1 flex items-start gap-1.5 text-[13px] leading-relaxed text-black/50 max-w-2xl">
-              <Lightbulb size={13} className="mt-0.5 shrink-0 text-gold" />
+            <p className="mt-1 flex items-start gap-1.5 text-[13px] font-light leading-relaxed text-black/45 max-w-2xl">
+              <Lightbulb size={13} strokeWidth={1.25} fill="currentColor" className="mt-0.5 shrink-0 text-gold" />
               <span>{meta.guide}</span>
             </p>
           </div>

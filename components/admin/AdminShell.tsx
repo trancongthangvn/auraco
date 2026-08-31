@@ -125,14 +125,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 href={href}
                 className={`relative flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] ${
                   active
-                    ? "bg-white/10 text-white font-medium"
-                    : "text-white/60 hover:text-white hover:bg-white/5"
+                    ? "bg-white/10 text-white font-semibold"
+                    : "text-white/55 font-normal hover:text-white hover:bg-white/5"
                 }`}
               >
                 {active && (
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-gold" />
                 )}
-                <Icon size={15} className={active ? "text-gold-light" : "text-white/40"} />
+                <Icon
+                  size={15}
+                  strokeWidth={1.25}
+                  fill="currentColor"
+                  className={active ? "text-gold-light" : "text-white/35"}
+                />
                 {label}
               </Link>
             );
@@ -152,7 +157,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             href="/admin/profile"
             className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-white/60 hover:text-white hover:bg-white/5 rounded-md transition-colors"
           >
-            <KeyRound size={14} className="text-white/40" />
+            <KeyRound size={14} strokeWidth={1.25} fill="currentColor" className="text-white/35" />
             Đổi mật khẩu
           </Link>
           <button
@@ -162,7 +167,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             }}
             className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-white/60 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-colors"
           >
-            <LogOut size={14} className="text-white/40" />
+            <LogOut size={14} strokeWidth={1.25} className="text-white/40" />
             Đăng xuất
           </button>
         </div>

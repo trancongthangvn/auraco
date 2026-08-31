@@ -28,7 +28,7 @@ function renderDisclaimer(text: string) {
 }
 
 const HEADING =
-  "font-ui flex w-full items-center justify-between gap-3 text-[13.6px] font-normal uppercase leading-[21.08px] tracking-[1.632px] text-gold py-[13.6px] md:pointer-events-none md:mb-2 md:py-0";
+  "font-ui flex w-full items-center justify-between gap-3 text-[13.6px] font-normal uppercase leading-[21.08px] tracking-[1.632px] text-gold py-[13.6px] transition-opacity hover:opacity-70 md:pointer-events-none md:mb-2 md:py-0";
 const LINK_LIST = "font-ui space-y-[5.6px] pb-[13.6px] md:pb-0";
 const LINK =
   "text-[12px] font-normal uppercase leading-[18.6px] tracking-[1.44px] text-[#5c554a] transition-colors hover:text-ink";

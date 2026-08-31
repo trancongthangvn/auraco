@@ -176,7 +176,7 @@ export default function CartClient({
           },
           { Icon: ReturnBoxIcon, text: "30-day return window on every order" },
         ].map(({ Icon, text }) => (
-          <li key={text} className="flex items-center gap-3">
+          <li key={text} className="flex items-start gap-3">
             <Icon size={28} className="shrink-0 text-[#a67c3d]" />
             <span className="font-ui text-[13px] leading-[1.4] text-[#403b35]">
               {text}

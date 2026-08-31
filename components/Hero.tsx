@@ -85,7 +85,7 @@ export default function Hero({ slides }: { slides: HeroSlide[] }) {
             key={s.label}
             aria-label={`Go to slide ${i + 1}`}
             onClick={() => setIndex(i)}
-            className={`h-[9px] w-[9px] rounded-full transition-colors ${
+            className={`h-[9px] w-[9px] rounded-full transition-colors hover:bg-white/75 ${
               i === index ? "bg-white" : "bg-white/45"
             }`}
           />

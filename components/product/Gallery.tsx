@@ -59,7 +59,7 @@ export default function Gallery({
         type="button"
         aria-label="View full-size image"
         onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-        className="relative order-1 aspect-square overflow-hidden rounded-lg bg-[#f6f0e6] lg:aspect-auto lg:h-[min(78vh,860px)] lg:cursor-zoom-in"
+        className="group relative order-1 aspect-square overflow-hidden rounded-lg bg-[#f6f0e6] lg:aspect-auto lg:h-[min(78vh,860px)] lg:cursor-zoom-in"
       >
         {effectiveImages[active] && (
           <Image
@@ -68,7 +68,7 @@ export default function Gallery({
             fill
             priority
             sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-contain"
+            className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
           />
         )}
       </button>
@@ -82,7 +82,7 @@ export default function Gallery({
               aria-label={`Show image ${i + 1} of ${effectiveImages.length}`}
               aria-current={active === i ? "true" : undefined}
               onClick={() => setActive(i)}
-              className="relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg bg-[#f6f0e6] lg:aspect-auto lg:w-full lg:basis-[calc(50%_-_6.4px)]"
+              className="relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg bg-[#f6f0e6] opacity-90 transition-opacity hover:opacity-100 lg:aspect-auto lg:w-full lg:basis-[calc(50%_-_6.4px)]"
             >
               <Image
                 src={src}

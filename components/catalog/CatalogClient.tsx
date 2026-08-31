@@ -87,10 +87,12 @@ function FilterSection({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between text-left"
+        className="group flex w-full items-center justify-between text-left"
       >
-        <span className="text-[15px] font-semibold text-[#111]">{title}</span>
-        {isOpen ? <MinusIcon size={14} /> : <PlusIcon size={14} />}
+        <span className="text-[15px] font-semibold text-[#111] transition-colors group-hover:text-gold">{title}</span>
+        <span className="transition-colors group-hover:text-gold">
+          {isOpen ? <MinusIcon size={14} /> : <PlusIcon size={14} />}
+        </span>
       </button>
       {isOpen && (
         <div className="mt-3">

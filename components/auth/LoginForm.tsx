@@ -60,9 +60,14 @@ export default function LoginForm() {
         </button>
       </div>
 
+      {/* border-black here matches the invisible-but-present border on the
+          Google button below (border border-[#2b261f]) — without it this
+          button rendered ~2px shorter (no border box to add to the padding),
+          a mismatch easy to miss reading the classes but visible side by
+          side. */}
       <button
         type="submit"
-        className="w-full rounded-full bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] transition-colors"
+        className="w-full rounded-full border border-black bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:border-[#2b261f] transition-colors"
       >
         {dict.signIn}
       </button>

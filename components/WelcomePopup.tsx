@@ -83,7 +83,7 @@ export default function WelcomePopup() {
           type="button"
           aria-label="Close"
           onClick={dismiss}
-          className="absolute top-3 right-3 z-10 flex h-[30px] w-[30px] items-center justify-center text-[25px] leading-none font-light text-white min-[750px]:top-5 min-[750px]:right-5 min-[750px]:text-[#111]"
+          className="absolute top-3 right-3 z-10 flex h-[30px] w-[30px] items-center justify-center text-[25px] leading-none font-light text-white transition-opacity hover:opacity-70 min-[750px]:top-5 min-[750px]:right-5 min-[750px]:text-[#111]"
         >
           &times;
         </button>

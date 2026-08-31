@@ -77,7 +77,7 @@ export default function RegisterForm() {
 
       <button
         type="submit"
-        className="w-full rounded-full bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] transition-colors"
+        className="w-full rounded-full border border-black bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:border-[#2b261f] transition-colors"
       >
         {dict.createAccount}
       </button>

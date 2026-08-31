@@ -73,14 +73,14 @@ export default function Journal() {
               <button
                 aria-label="Previous journal posts"
                 onClick={() => scrollByPage(-1)}
-                className="hidden sm:flex absolute -left-5 top-[calc(37.5%-18px)] z-20 items-center justify-center h-9 w-9 rounded-full bg-white shadow"
+                className="hidden sm:flex absolute -left-5 top-[calc(37.5%-18px)] z-20 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
               >
                 <ChevronLeftIcon size={16} />
               </button>
               <button
                 aria-label="Next journal posts"
                 onClick={() => scrollByPage(1)}
-                className="hidden sm:flex absolute -right-5 top-[calc(37.5%-18px)] z-20 items-center justify-center h-9 w-9 rounded-full bg-white shadow"
+                className="hidden sm:flex absolute -right-5 top-[calc(37.5%-18px)] z-20 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
               >
                 <ChevronRightIcon size={16} />
               </button>

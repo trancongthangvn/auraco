@@ -231,14 +231,14 @@ export default function ProductCarousel({
           <button
             aria-label="Previous"
             onClick={() => scrollBy(-1)}
-            className="hidden sm:flex absolute -left-4 top-1/3 z-20 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow"
+            className="hidden sm:flex absolute -left-4 top-1/3 z-20 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
           >
             <ChevronLeftIcon size={16} />
           </button>
           <button
             aria-label="Next"
             onClick={() => scrollBy(1)}
-            className="hidden sm:flex absolute -right-4 top-1/3 z-20 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow"
+            className="hidden sm:flex absolute -right-4 top-1/3 z-20 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
           >
             <ChevronRightIcon size={16} />
           </button>
@@ -251,7 +251,7 @@ export default function ProductCarousel({
                   type="button"
                   aria-label={`Go to ${p.name}`}
                   onClick={() => setIndex(count + i)}
-                  className={`h-[10px] w-[10px] rounded-full bg-[#a67c3d] transition-transform duration-300 ${
+                  className={`h-[10px] w-[10px] rounded-full bg-[#a67c3d] transition-[transform,opacity] duration-300 hover:opacity-70 ${
                     i === ((index % count) + count) % count
                       ? "scale-[1.15]"
                       : "scale-100 opacity-[0.28]"

@@ -183,7 +183,7 @@ export default function Header({
         <Link
           href="/"
           aria-label="AURA & CO"
-          className="shrink-0 mx-auto font-serif-display text-[27px] font-normal leading-[27px] tracking-[-0.015em] text-ink"
+          className="shrink-0 mx-auto whitespace-nowrap font-serif-display text-[27px] font-normal leading-[27px] tracking-[-0.015em] text-ink"
         >
           AURA & CO
         </Link>

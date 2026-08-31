@@ -9,6 +9,18 @@
   --color-gold: #a67c3d;
   --color-gold-light: #c9a66b;
   --color-ink: #2b261f;
+  /* Tailwind's own default for every `transition-*` utility that doesn't
+     specify an explicit duration/ease (transition-colors, -opacity,
+     -transform, -shadow, -all...) is 150ms ease-in-out — snappy enough for
+     a UI toggle, but it reads cheap on a hover meant to feel considered
+     (a button darkening, a card's image cross-fading). Slowing the site-
+     wide default to 350ms with a gentler ease-out curve upgrades every one
+     of those hovers at once, with no per-component changes needed. Any
+     component that already sets its own `duration-*`/`ease-*` (product
+     card image swaps, the gallery zoom) is unaffected and keeps its own
+     timing. */
+  --default-transition-duration: 350ms;
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {

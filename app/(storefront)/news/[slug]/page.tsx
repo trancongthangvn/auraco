@@ -141,7 +141,7 @@ export default async function NewsArticlePage({
           )}
 
           {post.excerpt && (
-            <p className="font-serif-display mx-auto mb-10 max-w-[800px] text-xl leading-relaxed text-black/70">
+            <p className="font-serif-display mb-10 text-xl leading-relaxed text-black/70">
               {post.excerpt}
             </p>
           )}
@@ -155,7 +155,7 @@ export default async function NewsArticlePage({
           */}
           {post.content && (
             <div
-              className="article-content prose mx-auto max-w-[800px]
+              className="article-content prose max-w-none
                 prose-headings:font-serif-display prose-headings:font-normal prose-headings:text-ink
                 prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-4
                 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
@@ -173,7 +173,7 @@ export default async function NewsArticlePage({
             />
           )}
 
-          <p className="mx-auto my-4 max-w-[800px]">
+          <p className="my-4">
             <Link
               href="/news"
               className="font-ui inline-flex items-center rounded-full border border-gold-light/35 bg-white px-5 py-[10.4px] text-[12px] leading-[18.6px] font-light tracking-[0.12px] text-[#68625c] transition-colors hover:text-ink"

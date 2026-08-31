@@ -13,6 +13,7 @@ import {
 } from "@/data/site";
 import Button from "@/components/admin/ui/Button";
 import { Input, Textarea, Label } from "@/components/admin/ui/Field";
+import ImageField from "@/components/admin/ImageField";
 import { TableCard, Th, Td, TR_HOVER } from "@/components/admin/ui/Table";
 import {
   ModalBackdrop,
@@ -64,7 +65,7 @@ export default function AdminHomepagePage() {
 
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
   const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
-  const [slideForm, setSlideForm] = useState({ label: "", title: "" });
+  const [slideForm, setSlideForm] = useState({ label: "", title: "", image_url: "" });
   const [savingSlide, setSavingSlide] = useState(false);
 
   // NOTE: content.js's /api/content/homepage endpoint only returns a flat
@@ -139,7 +140,7 @@ export default function AdminHomepagePage() {
 
   const openEditSlide = (slide: HeroSlide) => {
     setEditingSlide(slide);
-    setSlideForm({ label: slide.label, title: slide.title });
+    setSlideForm({ label: slide.label, title: slide.title, image_url: slide.image_url });
   };
 
   const submitEditSlide = async () => {
@@ -147,7 +148,9 @@ export default function AdminHomepagePage() {
     setSavingSlide(true);
     try {
       const next = heroSlides.map((s) =>
-        s === editingSlide ? { ...s, label: slideForm.label, title: slideForm.title } : s
+        s === editingSlide
+          ? { ...s, label: slideForm.label, title: slideForm.title, image_url: slideForm.image_url }
+          : s
       );
       await saveHeroSlides(next);
       setEditingSlide(null);
@@ -460,6 +463,12 @@ export default function AdminHomepagePage() {
                   rows={3}
                 />
               </div>
+              <ImageField
+                label="Ảnh banner"
+                value={slideForm.image_url || null}
+                onChange={(url) => setSlideForm((f) => ({ ...f, image_url: url ?? "" }))}
+                disabled={savingSlide}
+              />
             </div>
             <ModalFooter>
               <Button variant="secondary" onClick={() => setEditingSlide(null)}>

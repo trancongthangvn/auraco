@@ -8,8 +8,9 @@ import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import Button from "@/components/admin/ui/Button";
 import IconButton from "@/components/admin/ui/IconButton";
-import { Input, Label } from "@/components/admin/ui/Field";
+import { Input, Label, Textarea } from "@/components/admin/ui/Field";
 import VideoField from "@/components/admin/VideoField";
+import ImageField from "@/components/admin/ImageField";
 import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
 import {
   ModalBackdrop,
@@ -34,11 +35,21 @@ type AdminProduct = {
   stock: number;
   active: boolean;
   video_url: string | null;
+  sort_order: number;
   attributes?: AdminAttribute[];
   collections?: string[];
 };
 
 type AdminAttribute = { id?: number; name: string; value: string };
+
+type AdminCollection = { id: number; slug: string; name: string };
+
+/** category is a single required value on every product ("Type" in the
+ *  storefront's own filter labels — Necklaces/Bracelets/etc.); collections
+ *  are the optional tags (Quiet Luxury, Best Sellers...) a product can carry
+ *  any number of. Kept in sync with server/routes/products.js's own
+ *  VALID_CATEGORIES allow-list. */
+const CATEGORY_OPTIONS = ["Necklaces", "Bracelets", "Earrings", "Signature Sets"];
 
 export default function AdminProductsPage() {
   const { session } = useAdminAuth();
@@ -46,10 +57,20 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [collections, setCollections] = useState<AdminCollection[]>([]);
+
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editCollections, setEditCollections] = useState<string[]>([]);
+  const [editSortOrder, setEditSortOrder] = useState("0");
+  const [editBundleCompanions, setEditBundleCompanions] = useState<string[]>([]);
+  const [editBundleDiscount, setEditBundleDiscount] = useState("0");
   const [editVideoUrl, setEditVideoUrl] = useState<string | null>(null);
+  const [editDescription, setEditDescription] = useState("");
+  const [editFeatures, setEditFeatures] = useState<string[]>([]);
+  const [editImages, setEditImages] = useState<string[]>([]);
   const [editAttributes, setEditAttributes] = useState<AdminAttribute[]>([]);
   const [originalAttributes, setOriginalAttributes] = useState<AdminAttribute[]>([]);
   const [saving, setSaving] = useState(false);
@@ -65,6 +86,8 @@ export default function AdminProductsPage() {
         setError(null);
         const data = await apiFetch<AdminProduct[]>("/api/products/admin/products");
         if (!cancelled) setProducts(data);
+        const colls = await apiFetch<AdminCollection[]>("/api/collections/admin");
+        if (!cancelled) setCollections(colls);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof ApiError ? err.message : "Không thể tải danh sách sản phẩm");
@@ -92,14 +115,50 @@ export default function AdminProductsPage() {
     setEditAttributes((list) => list.filter((_, i) => i !== index));
   };
 
+  function moveItem<T>(list: T[], index: number, direction: -1 | 1): T[] {
+    const target = index + direction;
+    if (target < 0 || target >= list.length) return list;
+    const next = [...list];
+    [next[index], next[target]] = [next[target], next[index]];
+    return next;
+  }
+
+  const updateFeature = (index: number, value: string) => {
+    setEditFeatures((list) => list.map((f, i) => (i === index ? value : f)));
+  };
+  const removeFeature = (index: number) => {
+    setEditFeatures((list) => list.filter((_, i) => i !== index));
+  };
+  const moveFeature = (index: number, direction: -1 | 1) => {
+    setEditFeatures((list) => moveItem(list, index, direction));
+  };
+
+  const updateImage = (index: number, url: string | null) => {
+    setEditImages((list) => list.map((img, i) => (i === index ? url ?? "" : img)));
+  };
+  const removeImage = (index: number) => {
+    setEditImages((list) => list.filter((_, i) => i !== index));
+  };
+  const moveImage = (index: number, direction: -1 | 1) => {
+    setEditImages((list) => moveItem(list, index, direction));
+  };
+
   const openEdit = async (p: AdminProduct) => {
     setEditing(p);
     setEditName(p.name);
     setEditPrice(String(p.price));
+    setEditCategory(p.category);
+    setEditCollections(p.collections ?? []);
+    setEditSortOrder(String(p.sort_order ?? 0));
     setEditVideoUrl(p.video_url ?? null);
+    setEditDescription(p.description ?? "");
+    setEditFeatures(p.features ?? []);
+    setEditImages(p.images ?? []);
     setModalError(null);
     setEditAttributes(p.attributes ?? []);
     setOriginalAttributes(p.attributes ?? []);
+    setEditBundleCompanions([]);
+    setEditBundleDiscount("0");
     try {
       const attrs = await apiFetch<AdminAttribute[]>(
         `/api/products/admin/products/${p.slug}/attributes`
@@ -108,6 +167,16 @@ export default function AdminProductsPage() {
       setOriginalAttributes(attrs);
     } catch {
       // fall back to the attributes already attached to the product row
+    }
+    try {
+      const bundle = await apiFetch<{
+        discountPercent: number;
+        companions: { slug: string }[];
+      }>(`/api/products/admin/products/${p.slug}/bundle`);
+      setEditBundleCompanions(bundle.companions.map((c) => c.slug));
+      setEditBundleDiscount(String(bundle.discountPercent));
+    } catch {
+      // no bundle configured yet — the fields above stay at their defaults
     }
   };
 
@@ -144,6 +213,7 @@ export default function AdminProductsPage() {
     setModalError(null);
     try {
       const parsedPrice = Number(editPrice);
+      const parsedSortOrder = Number.parseInt(editSortOrder, 10);
       const updated = await apiFetch<AdminProduct>(
         `/api/products/admin/products/${editing.slug}`,
         {
@@ -151,7 +221,13 @@ export default function AdminProductsPage() {
           body: JSON.stringify({
             name: editName,
             price: Number.isFinite(parsedPrice) ? parsedPrice : editing.price,
+            category: editCategory,
+            collections: editCollections,
+            sortOrder: Number.isInteger(parsedSortOrder) ? parsedSortOrder : 0,
             videoUrl: editVideoUrl,
+            description: editDescription,
+            features: editFeatures.filter((f) => f.trim().length > 0),
+            images: editImages.filter((img) => img.trim().length > 0),
           }),
         }
       );
@@ -202,6 +278,15 @@ export default function AdminProductsPage() {
         }
       }
 
+      const parsedBundleDiscount = Number(editBundleDiscount);
+      await apiFetch(`/api/products/admin/products/${editing.slug}/bundle`, {
+        method: "PUT",
+        body: JSON.stringify({
+          companions: editBundleCompanions,
+          discountPercent: Number.isFinite(parsedBundleDiscount) ? parsedBundleDiscount : 0,
+        }),
+      });
+
       setProducts((list) =>
         list.map((p) =>
           p.slug === editing.slug
@@ -238,6 +323,7 @@ export default function AdminProductsPage() {
               <Th>Ảnh</Th>
               <Th>Tên sản phẩm</Th>
               <Th>Danh mục</Th>
+              <Th align="center">Ưu tiên</Th>
               <Th align="right">Giá</Th>
               <Th align="center">Trạng thái</Th>
               <Th align="right">Thao tác</Th>
@@ -246,14 +332,14 @@ export default function AdminProductsPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <EmptyState>Đang tải...</EmptyState>
                 </td>
               </tr>
             )}
             {!loading && products.length === 0 && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <EmptyState>Chưa có sản phẩm nào.</EmptyState>
                 </td>
               </tr>
@@ -269,6 +355,15 @@ export default function AdminProductsPage() {
                 </Td>
                 <Td>{p.name}</Td>
                 <Td>{p.category}</Td>
+                <Td align="center">
+                  {p.sort_order > 0 ? (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-ink px-1.5 text-[11px] font-semibold text-white">
+                      {p.sort_order}
+                    </span>
+                  ) : (
+                    <span className="text-black/25">—</span>
+                  )}
+                </Td>
                 <Td align="right">${Number(p.price).toFixed(2)}</Td>
                 <Td align="center">
                   <button
@@ -329,6 +424,64 @@ export default function AdminProductsPage() {
                 className="mb-6"
               />
 
+              <Label>Danh mục (Brand)</Label>
+              <select
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value)}
+                disabled={saving}
+                className="mb-6 w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-ink"
+              >
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+
+              <Label>Category (bộ sưu tập)</Label>
+              <div className="mb-6 flex flex-wrap gap-2">
+                {collections.length === 0 && (
+                  <p className="text-xs text-black/30 italic">Chưa có bộ sưu tập nào.</p>
+                )}
+                {collections.map((c) => {
+                  const active = editCollections.includes(c.slug);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      disabled={saving}
+                      onClick={() =>
+                        setEditCollections((list) =>
+                          active
+                            ? list.filter((s) => s !== c.slug)
+                            : [...list, c.slug]
+                        )
+                      }
+                      className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                        active
+                          ? "border-ink bg-ink text-white"
+                          : "border-black/15 bg-white text-black/70 hover:border-ink"
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Label>Thứ tự ưu tiên</Label>
+              <Input
+                value={editSortOrder}
+                onChange={(e) => setEditSortOrder(e.target.value)}
+                type="number"
+                disabled={saving}
+                className="mb-1"
+              />
+              <p className="text-xs text-black/40 mb-6">
+                Số càng nhỏ (lớn hơn 0) càng được ưu tiên xuất hiện đầu trang. Để
+                0 nếu không cần ưu tiên.
+              </p>
+
               <div className="mb-6">
                 <VideoField
                   label="Video sản phẩm"
@@ -337,6 +490,151 @@ export default function AdminProductsPage() {
                   onChange={setEditVideoUrl}
                   disabled={saving}
                 />
+              </div>
+
+              <Label>Mô tả sản phẩm</Label>
+              <Textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={5}
+                placeholder="Mô tả hiển thị ở mục &quot;Why You'll Love It&quot; trên trang sản phẩm"
+                className="mb-6"
+                disabled={saving}
+              />
+
+              <div className="flex items-center justify-between mb-2">
+                <Label className="mb-0">Điểm nổi bật (bullet list)</Label>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditFeatures((list) => [...list, ""])}
+                  disabled={saving}
+                >
+                  + Thêm dòng
+                </Button>
+              </div>
+              <div className="space-y-2 mb-6">
+                {editFeatures.length === 0 && (
+                  <p className="text-xs text-black/30 italic">Chưa có điểm nổi bật nào.</p>
+                )}
+                {editFeatures.map((feature, i) => (
+                  <div key={i} className="flex gap-2">
+                    <div className="flex flex-col">
+                      <IconButton
+                        type="button"
+                        tone="default"
+                        aria-label="Di chuyển lên"
+                        disabled={saving || i === 0}
+                        onClick={() => moveFeature(i, -1)}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="5 15.5 12 8.5 19 15.5" />
+                        </svg>
+                      </IconButton>
+                      <IconButton
+                        type="button"
+                        tone="default"
+                        aria-label="Di chuyển xuống"
+                        disabled={saving || i === editFeatures.length - 1}
+                        onClick={() => moveFeature(i, 1)}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="5 8.5 12 15.5 19 8.5" />
+                        </svg>
+                      </IconButton>
+                    </div>
+                    <Input
+                      value={feature}
+                      onChange={(e) => updateFeature(i, e.target.value)}
+                      placeholder="VD: 100% Waterproof & Tarnish-Free Guarantee"
+                      className="flex-1 text-xs"
+                      disabled={saving}
+                    />
+                    <IconButton
+                      type="button"
+                      tone="danger"
+                      className="shrink-0"
+                      aria-label="Xóa dòng"
+                      disabled={saving}
+                      onClick={() => removeFeature(i)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                      </svg>
+                    </IconButton>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between mb-2">
+                <Label className="mb-0">Ảnh sản phẩm</Label>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditImages((list) => [...list, ""])}
+                  disabled={saving}
+                >
+                  + Thêm ảnh
+                </Button>
+              </div>
+              <p className="text-xs text-black/40 mb-3">
+                Ảnh đầu tiên là ảnh bìa trên trang danh mục; ảnh thứ hai hiện khi
+                di chuột qua. Dùng mũi tên để đổi thứ tự.
+              </p>
+              <div className="space-y-3 mb-2">
+                {editImages.length === 0 && (
+                  <p className="text-xs text-black/30 italic">Chưa có ảnh nào.</p>
+                )}
+                {editImages.map((image, i) => (
+                  <div key={i} className="flex gap-2 border border-black/10 p-3">
+                    <div className="flex flex-col shrink-0">
+                      <span className="mb-1 text-[10px] font-semibold text-black/40">
+                        #{i + 1}
+                      </span>
+                      <IconButton
+                        type="button"
+                        tone="default"
+                        aria-label="Di chuyển lên"
+                        disabled={saving || i === 0}
+                        onClick={() => moveImage(i, -1)}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="5 15.5 12 8.5 19 15.5" />
+                        </svg>
+                      </IconButton>
+                      <IconButton
+                        type="button"
+                        tone="default"
+                        aria-label="Di chuyển xuống"
+                        disabled={saving || i === editImages.length - 1}
+                        onClick={() => moveImage(i, 1)}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="5 8.5 12 15.5 19 8.5" />
+                        </svg>
+                      </IconButton>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <ImageField
+                        value={image || null}
+                        onChange={(url) => updateImage(i, url)}
+                        disabled={saving}
+                      />
+                    </div>
+                    <IconButton
+                      type="button"
+                      tone="danger"
+                      className="shrink-0"
+                      aria-label="Xóa ảnh"
+                      disabled={saving}
+                      onClick={() => removeImage(i)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                      </svg>
+                    </IconButton>
+                  </div>
+                ))}
               </div>
 
               <div className="flex items-center justify-between mb-2">
@@ -389,6 +687,62 @@ export default function AdminProductsPage() {
                   </div>
                 ))}
               </div>
+
+              <Label className="mt-6">Mua cùng nhau (Frequently bought together)</Label>
+              <p className="text-xs text-black/40 mb-3">
+                Chọn 1-2 sản phẩm gợi ý mua kèm ở trang chi tiết sản phẩm này.
+              </p>
+              <div className="mb-3 max-h-48 overflow-y-auto rounded-lg border border-black/10 p-2">
+                {products.filter((p) => p.slug !== editing?.slug).length === 0 && (
+                  <p className="text-xs text-black/30 italic px-1 py-1">
+                    Chưa có sản phẩm nào khác.
+                  </p>
+                )}
+                {products
+                  .filter((p) => p.slug !== editing?.slug)
+                  .map((p) => {
+                    const active = editBundleCompanions.includes(p.slug);
+                    return (
+                      <label
+                        key={p.slug}
+                        className="flex items-center gap-2.5 rounded px-1 py-1.5 text-sm hover:bg-black/[0.03]"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={active}
+                          disabled={saving}
+                          onChange={() =>
+                            setEditBundleCompanions((list) =>
+                              active
+                                ? list.filter((s) => s !== p.slug)
+                                : [...list, p.slug]
+                            )
+                          }
+                          className="h-4 w-4 accent-ink"
+                        />
+                        <span className="truncate">{p.name}</span>
+                        <span className="ml-auto shrink-0 text-xs text-black/40">
+                          ${Number(p.price).toFixed(2)}
+                        </span>
+                      </label>
+                    );
+                  })}
+              </div>
+
+              <Label>Giảm giá khi mua cùng nhau (%)</Label>
+              <Input
+                value={editBundleDiscount}
+                onChange={(e) => setEditBundleDiscount(e.target.value)}
+                type="number"
+                min={0}
+                max={100}
+                disabled={saving}
+                className="mb-1"
+              />
+              <p className="text-xs text-black/40 mb-2">
+                Áp dụng lên tổng tiền khi khách chọn đủ tất cả sản phẩm mua kèm ở
+                trên. Để 0 nếu không giảm giá.
+              </p>
             </div>
 
             <ModalFooter>

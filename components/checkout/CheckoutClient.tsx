@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { apiFetch, ApiError } from "@/lib/api";
+import { useCart } from "@/components/cart/CartProvider";
+import { cartItemKey } from "@/lib/cart";
 import {
   ChevronLeftIcon,
   PlusIcon,
@@ -39,15 +41,6 @@ type ApiPaymentMethod = {
   qr_image_url: string | null;
 };
 
-type CheckoutItem = {
-  id: number;
-  slug: string;
-  name: string;
-  material: string;
-  price: number;
-  images: string[];
-};
-
 type CreatedOrder = {
   id: number;
   order_code: string;
@@ -59,14 +52,11 @@ const inputClass = "w-full border border-black/20 px-4 py-3 text-sm";
 const labelClass = "block text-xs tracking-wide uppercase mb-2";
 
 export default function CheckoutClient() {
-  const [items, setItems] = useState<CheckoutItem[]>([]);
-  const [itemsLoading, setItemsLoading] = useState(true);
-  const [itemsError, setItemsError] = useState("");
+  const { items, hydrated, subtotal, clear } = useCart();
+  const itemsLoading = !hydrated;
 
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
   const [paymentMethodsError, setPaymentMethodsError] = useState("");
-
-  const subtotal = items.reduce((sum, p) => sum + p.price, 0);
 
   const [showExpressDemo, setShowExpressDemo] = useState(false);
 
@@ -105,21 +95,6 @@ export default function CheckoutClient() {
   const total = Math.max(0, subtotal - discountAmount);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const data = await apiFetch<CheckoutItem[]>("/api/products");
-        setItems(
-          data.slice(0, 2).map((p) => ({ ...p, price: Number(p.price) }))
-        );
-      } catch (err) {
-        setItemsError(
-          err instanceof ApiError ? err.message : "Failed to load your bag"
-        );
-      } finally {
-        setItemsLoading(false);
-      }
-    })();
-
     (async () => {
       try {
         const data = await apiFetch<ApiPaymentMethod[]>("/api/payment-methods");
@@ -186,6 +161,21 @@ export default function CheckoutClient() {
 
     setSubmitting(true);
     try {
+      // Most cart lines already carry the numeric product id from the page
+      // that added them; any that don't (added via a product-card mapper
+      // that only has the slug) get it resolved here, right before the
+      // order is submitted.
+      const orderItems = await Promise.all(
+        items.map(async (item) => {
+          const productId =
+            item.productId ??
+            (await apiFetch<{ id: number }>(
+              `/api/products/${encodeURIComponent(item.slug)}`
+            ).then((p) => p.id));
+          return { product_id: productId, qty: item.qty };
+        })
+      );
+
       const data = await apiFetch<CreatedOrder>("/api/orders", {
         method: "POST",
         body: JSON.stringify({
@@ -200,10 +190,11 @@ export default function CheckoutClient() {
           payment_method: payment,
           shipping_fee: 0,
           discount_code: appliedCode || undefined,
-          items: items.map((item) => ({ product_id: item.id, qty: 1 })),
+          items: orderItems,
         }),
       });
       setOrder(data);
+      clear();
     } catch (err) {
       setSubmitError(
         err instanceof ApiError ? err.message : "Failed to place order"
@@ -652,18 +643,16 @@ export default function CheckoutClient() {
 
             {itemsLoading ? (
               <p className="text-sm text-black/50 mb-6">Loading…</p>
-            ) : itemsError ? (
-              <p role="alert" className="text-sm text-red-700 mb-6">
-                {itemsError}
-              </p>
+            ) : items.length === 0 ? (
+              <p className="text-sm text-black/50 mb-6">Your bag is empty.</p>
             ) : (
               <div className="space-y-4 mb-6">
                 {items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4">
+                  <div key={cartItemKey(item)} className="flex items-center gap-4">
                     <div className="relative w-16 h-16 shrink-0 border border-black/10 bg-white">
-                      {item.images[0] && (
+                      {item.image && (
                         <Image
-                          src={item.images[0]}
+                          src={item.image}
                           alt={item.name}
                           fill
                           sizes="64px"
@@ -673,9 +662,14 @@ export default function CheckoutClient() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm">{item.name}</p>
-                      <p className="text-xs text-black/50">{item.material}</p>
+                      <p className="text-xs text-black/50">
+                        {item.variantLabel || item.material}
+                        {item.qty > 1 ? ` · Qty ${item.qty}` : ""}
+                      </p>
                     </div>
-                    <p className="text-sm">${item.price.toFixed(2)}</p>
+                    <p className="text-sm">
+                      ${(item.price * item.qty).toFixed(2)}
+                    </p>
                   </div>
                 ))}
               </div>

@@ -117,6 +117,7 @@ export default function AdminProductsPage() {
   const [editVariants, setEditVariants] = useState<AdminVariant[]>([]);
   const [originalVariants, setOriginalVariants] = useState<AdminVariant[]>([]);
   const [editBundleCompanions, setEditBundleCompanions] = useState<string[]>([]);
+  const [bundleSearch, setBundleSearch] = useState("");
   const [editBundleDiscount, setEditBundleDiscount] = useState("0");
   const [editVideoUrl, setEditVideoUrl] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState("");
@@ -259,6 +260,7 @@ export default function AdminProductsPage() {
     setOriginalAttributes(p.attributes ?? []);
     setEditBundleCompanions([]);
     setEditBundleDiscount("0");
+    setBundleSearch("");
     setEditVariants([]);
     setOriginalVariants([]);
     try {
@@ -393,6 +395,10 @@ export default function AdminProductsPage() {
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.trim().toLowerCase())
   );
+
+  const bundleCandidates = products
+    .filter((p) => p.slug !== editing?.slug)
+    .filter((p) => p.name.toLowerCase().includes(bundleSearch.trim().toLowerCase()));
 
   const saveEdit = async () => {
     if (!editing) return;
@@ -1300,15 +1306,22 @@ export default function AdminProductsPage() {
               <p className="text-xs text-black/40 mb-3">
                 Chọn 1-2 sản phẩm gợi ý mua kèm ở trang chi tiết sản phẩm này.
               </p>
+              <Input
+                value={bundleSearch}
+                onChange={(e) => setBundleSearch(e.target.value)}
+                placeholder="Tìm sản phẩm theo tên..."
+                className="mb-2 text-xs"
+                disabled={saving}
+              />
               <div className="mb-3 max-h-48 overflow-y-auto rounded-lg border border-black/10 p-2">
-                {products.filter((p) => p.slug !== editing?.slug).length === 0 && (
+                {bundleCandidates.length === 0 && (
                   <p className="text-xs text-black/30 italic px-1 py-1">
-                    Chưa có sản phẩm nào khác.
+                    {bundleSearch.trim()
+                      ? `Không tìm thấy sản phẩm nào khớp "${bundleSearch}".`
+                      : "Chưa có sản phẩm nào khác."}
                   </p>
                 )}
-                {products
-                  .filter((p) => p.slug !== editing?.slug)
-                  .map((p) => {
+                {bundleCandidates.map((p) => {
                     const active = editBundleCompanions.includes(p.slug);
                     return (
                       <label

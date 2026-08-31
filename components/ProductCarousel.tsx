@@ -97,6 +97,10 @@ export default function ProductCarousel({
   // same treatment the video strip below it uses.
   const boxed = layout === "carousel";
 
+  // `Product` (data/site.ts) only carries `href` — every caller here points
+  // it at a product page, so the slug is just its last path segment.
+  const slugFromHref = (href: string) => href.split("/").filter(Boolean).pop() || "";
+
   const card = (p: Product) => (
     <Link
       href={p.href}
@@ -136,7 +140,15 @@ export default function ProductCarousel({
             className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
           />
         )}
-        <AddToBagButton productName={p.name} />
+        <AddToBagButton
+          item={{
+            slug: slugFromHref(p.href),
+            name: p.name,
+            price: p.priceValue ?? (Number(p.price.replace(/[^0-9.]/g, "")) || 0),
+            image: p.img ?? null,
+            material: p.material,
+          }}
+        />
       </div>
       <div className={boxed ? "px-4 pb-4 pt-3" : ""}>
         <p className="mb-1 flex items-center"><StarRating rating={p.rating} size={16} /></p>

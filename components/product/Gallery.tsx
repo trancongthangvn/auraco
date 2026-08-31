@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Lightbox from "./Lightbox";
+import { useVariant } from "./VariantProvider";
 
 /**
  * Product gallery: one large frame plus a thumbnail rail.
@@ -28,8 +29,27 @@ export default function Gallery({
   images: string[];
   name: string;
 }) {
+  const { selectedVariant } = useVariant();
+  const variantImages = selectedVariant
+    ? [selectedVariant.frontImage, ...selectedVariant.hoverImages].filter(
+        (src): src is string => !!src
+      )
+    : [];
+  const effectiveImages = variantImages.length > 0 ? variantImages : images;
+
   const [active, setActive] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // Reset the active index whenever the variant changes, so a variant with
+  // fewer images than the previous one never leaves the frame on an
+  // out-of-range/undefined image. Adjusted during render (React's own
+  // pattern for resetting state when a prop changes) rather than in an
+  // effect, which would cause an extra cascading render.
+  const [prevVariantId, setPrevVariantId] = useState(selectedVariant?.id);
+  if (prevVariantId !== selectedVariant?.id) {
+    setPrevVariantId(selectedVariant?.id);
+    setActive(0);
+  }
 
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,68fr)_minmax(150px,32fr)] lg:gap-[clamp(0.65rem,1vw,1rem)]">
@@ -38,12 +58,12 @@ export default function Gallery({
       <button
         type="button"
         aria-label="View full-size image"
-        onClick={() => images[active] && setLightboxOpen(true)}
+        onClick={() => effectiveImages[active] && setLightboxOpen(true)}
         className="relative order-1 aspect-square overflow-hidden rounded-lg bg-[#f6f0e6] lg:aspect-auto lg:h-[min(78vh,860px)] lg:cursor-zoom-in"
       >
-        {images[active] && (
+        {effectiveImages[active] && (
           <Image
-            src={images[active]}
+            src={effectiveImages[active]}
             alt={name}
             fill
             priority
@@ -53,13 +73,13 @@ export default function Gallery({
         )}
       </button>
 
-      {images.length > 1 && (
+      {effectiveImages.length > 1 && (
         <div className="order-2 flex flex-row gap-2 overflow-x-auto lg:h-[min(78vh,860px)] lg:flex-col lg:gap-[0.8vw] lg:overflow-x-visible lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {images.map((src, i) => (
+          {effectiveImages.map((src, i) => (
             <button
               key={src}
               type="button"
-              aria-label={`Show image ${i + 1} of ${images.length}`}
+              aria-label={`Show image ${i + 1} of ${effectiveImages.length}`}
               aria-current={active === i ? "true" : undefined}
               onClick={() => setActive(i)}
               className="relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg bg-[#f6f0e6] lg:aspect-auto lg:w-full lg:basis-[calc(50%_-_6.4px)]"
@@ -77,7 +97,7 @@ export default function Gallery({
       )}
       {lightboxOpen && (
         <Lightbox
-          images={images}
+          images={effectiveImages}
           name={name}
           index={active}
           onIndexChange={setActive}

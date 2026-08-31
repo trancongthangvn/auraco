@@ -2,26 +2,35 @@
 
 import { useState } from "react";
 import { BagIcon, CheckIcon } from "@/components/icons";
+import { useCart } from "@/components/cart/CartProvider";
+
+type CartLineInput = {
+  slug: string;
+  name: string;
+  price: number;
+  image: string | null;
+  material?: string;
+};
 
 /**
  * Small add-to-bag control that sits on a product card's image, the way the
  * reference site's `.shop-product-card__cart-btn` does.
  *
  * The card itself is a link to the product, so the click has to be stopped
- * here or the page would navigate away instead. There is no persisted cart
- * yet — as with the product page's own button, this acknowledges the click
- * and leaves the bag itself for when that lands.
+ * here or the page would navigate away instead.
  */
-export default function AddToBagButton({ productName }: { productName: string }) {
+export default function AddToBagButton({ item }: { item: CartLineInput }) {
+  const { addItem } = useCart();
   const [added, setAdded] = useState(false);
 
   return (
     <button
       type="button"
-      aria-label={`Add ${productName} to bag`}
+      aria-label={`Add ${item.name} to bag`}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        addItem(item);
         setAdded(true);
         setTimeout(() => setAdded(false), 1600);
       }}

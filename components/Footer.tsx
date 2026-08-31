@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { footerLinks } from "@/data/site";
 import { ChevronDownIcon } from "@/components/icons";
 import { useDictionary } from "@/components/i18n/LanguageProvider";
 import PaymentIcons from "@/components/PaymentIcons";
+import { apiFetch } from "@/lib/api";
 
 /** Turns the literal words "Security"/"Privacy" in the disclaimer sentence
  *  into links to those policy pages, leaving the rest of the (translated)
@@ -38,6 +39,31 @@ export default function Footer() {
   const [agreed, setAgreed] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [policiesOpen, setPoliciesOpen] = useState(false);
+  const [contact, setContact] = useState<{ email: string | null; phone: string | null }>({
+    email: null,
+    phone: null,
+  });
+
+  // Site-wide contact address, admin-editable in app/admin/cai-dat-web —
+  // shown only once an admin has actually set one (public endpoint returns
+  // null for either field until then), same as the OG image fetch in
+  // app/layout.tsx's generateMetadata.
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<{ contactEmail?: string | null; contactPhone?: string | null }>(
+      "/api/content/site-settings"
+    )
+      .then((data) => {
+        if (cancelled) return;
+        setContact({ email: data.contactEmail ?? null, phone: data.contactPhone ?? null });
+      })
+      .catch(() => {
+        // Decorative — a failed fetch just leaves the contact line hidden.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <footer className="mt-8 border-t border-black/35 bg-white px-4 pt-8 pb-10 text-ink">
@@ -131,6 +157,26 @@ export default function Footer() {
       <div className="mx-auto mt-5 max-w-[1100px]">
         <PaymentIcons />
       </div>
+
+      {(contact.email || contact.phone) && (
+        <p className="font-ui mx-auto mt-4 max-w-[1100px] text-[13px] font-light leading-[20px] tracking-[0.13px] text-[#6e6963]">
+          {dict.footer.contact}:{" "}
+          {contact.email && (
+            <a
+              href={`mailto:${contact.email}`}
+              className="underline underline-offset-2 hover:text-gold"
+            >
+              {contact.email}
+            </a>
+          )}
+          {contact.email && contact.phone && " · "}
+          {contact.phone && (
+            <a href={`tel:${contact.phone}`} className="underline underline-offset-2 hover:text-gold">
+              {contact.phone}
+            </a>
+          )}
+        </p>
+      )}
 
       <p className="font-ui mx-auto mt-6 max-w-[1100px] text-[14px] font-light leading-[21px] tracking-[0.14px] text-[#6e6963]">
         {dict.footer.copyright}

@@ -7,6 +7,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { navLinks, ourStoryLinks, collections } from "@/data/site";
 import { useDictionary } from "@/components/i18n/LanguageProvider";
 import CurrencyPicker from "@/components/currency/CurrencyPicker";
+import { useCart } from "@/components/cart/CartProvider";
 import { apiFetch } from "@/lib/api";
 import { toFullProduct, type ApiProduct } from "@/lib/catalog-mappers";
 import type { FullProduct } from "@/data/products";
@@ -48,6 +49,7 @@ export default function Header({
   activeNavKey?: string | null;
 } = {}) {
   const dict = useDictionary();
+  const { totalQty } = useCart();
   const [storyOpen, setStoryOpen] = useState(false);
   const [openMega, setOpenMega] = useState<string | null>(null);
   const [mobileOpenMega, setMobileOpenMega] = useState<string | null>(null);
@@ -455,7 +457,7 @@ export default function Header({
           >
             <BagIcon size={22.4} />
             <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-[9px] leading-none text-white">
-              0
+              {totalQty}
             </span>
           </Link>
         </div>

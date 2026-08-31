@@ -722,7 +722,15 @@ export default function CatalogClient({
                       className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                     />
                   )}
-                  <AddToBagButton productName={p.name} />
+                  <AddToBagButton
+                    item={{
+                      slug: p.slug,
+                      name: p.name,
+                      price: p.price,
+                      image: p.images[0] ?? null,
+                      material: p.material,
+                    }}
+                  />
                 </div>
                 <p className="mb-1 flex items-center"><StarRating rating={p.rating} size={16} /></p>
                 {/* Two lines are reserved for the name: a one-line name would

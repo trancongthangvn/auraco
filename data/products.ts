@@ -2,6 +2,27 @@ export type Category = "Necklaces" | "Bracelets" | "Earrings" | "Signature Sets"
 
 export type ProductAttribute = { name: string; value: string };
 
+/** A single color/size SKU of a product, from the product_variants table.
+ *  Only active variants are ever sent to the storefront (see the API route),
+ *  so there's no `active` field to check here. */
+export type ProductVariant = {
+  id: number;
+  productId: number;
+  colorName: string;
+  /** CSS color (hex/name) for the swatch dot — same convention as the
+   *  material-parsed metal swatches this replaces when variants exist. */
+  colorSwatch: string | null;
+  size: string | null;
+  price: number;
+  compareAtPrice?: number;
+  stock: number;
+  sku: string | null;
+  frontImage: string | null;
+  hoverImages: string[];
+  isDefault: boolean;
+  sortOrder: number;
+};
+
 export type FullProduct = {
   slug: string;
   name: string;
@@ -23,6 +44,9 @@ export type FullProduct = {
    * the reference site (see docs/product-details.sql). Undefined/null for
    * any product without imported copy — falls back to attributes/material. */
   detailsHtml?: string;
+  /** Optional — absent/undefined for the static demo entries below, always
+   *  an array (possibly empty) for real API-backed products. */
+  variants?: ProductVariant[];
 };
 
 const img = {

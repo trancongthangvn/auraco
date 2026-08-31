@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Gallery from "@/components/product/Gallery";
 import AddToBag from "@/components/product/AddToBag";
+import VariantProvider from "@/components/product/VariantProvider";
 import Description from "@/components/product/Description";
 import Accordion from "@/components/product/Accordion";
 import Reviews from "@/components/product/Reviews";
@@ -186,6 +187,7 @@ export default async function ProductPage({
           <span className="text-black">{product.name}</span>
         </nav>
 
+        <VariantProvider variants={product.variants ?? []}>
         <div className="px-4 pt-6 pb-12 grid items-start gap-6 lg:gap-[clamp(2rem,3vw,4.5rem)] lg:grid-cols-[minmax(0,65fr)_minmax(300px,35fr)]">
           <Gallery images={product.images} name={product.name} />
 
@@ -271,6 +273,7 @@ export default async function ProductPage({
             />
           </div>
         </div>
+        </VariantProvider>
 
         {bestSellers.length > 0 && (
           <ProductCarousel title={dict.product.bestSellers} products={bestSellers} />

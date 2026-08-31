@@ -17,6 +17,12 @@ type CartContextValue = {
   removeItem: (key: string) => void;
   updateQty: (key: string, qty: number) => void;
   clear: () => void;
+  /** The slide-out mini-cart (CartDrawer, mounted once in the storefront
+   *  layout) — opened automatically after an add-to-cart, or by clicking
+   *  the header bag icon. */
+  drawerOpen: boolean;
+  openDrawer: () => void;
+  closeDrawer: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -49,6 +55,7 @@ export default function CartProvider({
 }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -88,6 +95,7 @@ export default function CartProvider({
       }
       return [...list, { ...input, qty }];
     });
+    setDrawerOpen(true);
   };
 
   const removeItem = (key: string) =>
@@ -116,6 +124,9 @@ export default function CartProvider({
         removeItem,
         updateQty,
         clear,
+        drawerOpen,
+        openDrawer: () => setDrawerOpen(true),
+        closeDrawer: () => setDrawerOpen(false),
       }}
     >
       {children}

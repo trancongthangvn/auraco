@@ -49,7 +49,7 @@ export default function Header({
   activeNavKey?: string | null;
 } = {}) {
   const dict = useDictionary();
-  const { totalQty } = useCart();
+  const { totalQty, openDrawer } = useCart();
   const [storyOpen, setStoryOpen] = useState(false);
   const [openMega, setOpenMega] = useState<string | null>(null);
   const [mobileOpenMega, setMobileOpenMega] = useState<string | null>(null);
@@ -450,8 +450,9 @@ export default function Header({
               <SearchIcon size={22.4} />
             </button>
           )}
-          <Link
-            href="/cart"
+          <button
+            type="button"
+            onClick={openDrawer}
             aria-label={dict.nav.cart}
             className="relative inline-flex h-10 w-10 items-center justify-center hover:text-gold"
           >
@@ -459,7 +460,7 @@ export default function Header({
             <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-[9px] leading-none text-white">
               {totalQty}
             </span>
-          </Link>
+          </button>
         </div>
       </div>
 

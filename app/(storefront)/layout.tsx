@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import LanguageProvider from "@/components/i18n/LanguageProvider";
 import CurrencyProvider from "@/components/currency/CurrencyProvider";
 import CartProvider from "@/components/cart/CartProvider";
+import CartDrawer from "@/components/cart/CartDrawer";
 import { getLocale } from "@/lib/i18n/server";
 import { serverApiFetch } from "@/lib/server-api";
 
@@ -44,7 +45,10 @@ export default async function StorefrontLayout({
   return (
     <LanguageProvider locale={locale}>
       <CurrencyProvider>
-        <CartProvider>{children}</CartProvider>
+        <CartProvider>
+          {children}
+          <CartDrawer />
+        </CartProvider>
       </CurrencyProvider>
     </LanguageProvider>
   );

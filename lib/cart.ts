@@ -23,9 +23,11 @@ export const CART_STORAGE_KEY = "aura-cart";
 
 /** Two lines are "the same" (and should merge qty rather than duplicate) when
  *  they share a product AND a variant — a plain product and one of its
- *  variants are different lines. */
-export function cartItemKey(item: Pick<CartItem, "productId" | "variantId">) {
-  return item.variantId != null
-    ? `${item.productId}:${item.variantId}`
-    : `${item.productId}`;
+ *  variants are different lines. Keyed by `slug`, not `productId`: every
+ *  add-to-cart call site has a slug on hand, but none currently carries a
+ *  numeric id (FullProduct/Product don't expose one anywhere) — keying on
+ *  productId meant every item's key collapsed to the same "undefined"
+ *  string, silently merging unrelated products into one cart line. */
+export function cartItemKey(item: Pick<CartItem, "slug" | "variantId">) {
+  return item.variantId != null ? `${item.slug}:${item.variantId}` : item.slug;
 }

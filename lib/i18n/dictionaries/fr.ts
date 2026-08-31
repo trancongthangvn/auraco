@@ -37,6 +37,7 @@ const dictionary = {
     privacyPolicy: "Politique de confidentialité",
     returnPolicy: "Politique de retour",
     termsOfService: "Conditions d'utilisation",
+    contact: "Contact",
     copyright: "© 2026 AURA & CO. Tous droits réservés.",
   },
   common: {
@@ -89,11 +90,18 @@ const dictionary = {
     whyLoveIt: "Pourquoi vous allez adorer :",
     details: "Détails",
     material: "Matériau",
+    metal: "Métal",
     handFinishedNote:
       "Chaque pièce est finie à la main et inspectée pour sa qualité avant expédition.",
     deliveryReturns: "Livraison et retours",
-    deliveryReturnsText:
-      "Livraison gratuite pour les commandes de plus de 120 $. Retours faciles sous 30 jours pour les articles non portés dans leur emballage d'origine. Toutes les pièces sont garanties 2 ans.",
+    deliveryReturnsItems: [
+      "Livraison gratuite dès 120 $, plus retours faciles sous 30 jours",
+      "Vermeil or 18 carats / argent sterling 925",
+      "100% imperméable et anti-ternissure, garanti",
+      "Retours possibles sous 30 jours",
+      "Emballage cadeau disponible au moment du paiement",
+    ],
+    bestSellers: "Meilleures ventes",
     youMayAlsoLike: "Vous aimerez aussi",
     quantity: "Quantité",
     decreaseQuantity: "Diminuer la quantité",

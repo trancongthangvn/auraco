@@ -107,25 +107,29 @@ export default async function NewsArticlePage({
     <>
       <Announcement />
       <Header />
-      <main>
-        <article className="mx-auto max-w-[800px] px-6 py-16">
-          <p className="text-xs uppercase tracking-wide text-gold mb-3">
-            {post.category_name || dict.nav.news}
-          </p>
-          <h1 className="font-serif-display text-4xl mb-3">{post.title}</h1>
-          <p className="text-xs text-black/50 mb-8">
-            {post.published_at &&
-              new Date(post.published_at).toLocaleDateString(dateLocale(locale))}
-            {views > 0 && (
-              <>
-                {post.published_at && " · "}
-                {views.toLocaleString(dateLocale(locale))} {dict.news.views}
-              </>
-            )}
-          </p>
+      <main className="px-4 pt-6 pb-12">
+        <article>
+          <header className="mx-auto max-w-[543px] px-6 pt-12 pb-6">
+            <p className="mb-2 text-[11.52px] leading-[17.856px] tracking-[0.18em] text-gold uppercase">
+              {post.category_name || dict.nav.news}
+            </p>
+            <h1 className="font-serif-display mb-2 text-[38px] leading-[39.9px] font-normal tracking-[0.02em] text-[#2f2925]">
+              {post.title}
+            </h1>
+            <p className="font-ui text-[14px] leading-[22.4px] font-light tracking-[0.21px] text-[#70675f]">
+              {post.published_at &&
+                new Date(post.published_at).toLocaleDateString(dateLocale(locale))}
+              {views > 0 && (
+                <>
+                  {post.published_at && " · "}
+                  {views.toLocaleString(dateLocale(locale))} {dict.news.views}
+                </>
+              )}
+            </p>
+          </header>
 
           {post.image_url && (
-            <div className="relative aspect-[16/9] overflow-hidden mb-10 bg-[#f7f4f0]">
+            <div className="relative mb-10 aspect-[16/9] min-h-[440px] overflow-hidden bg-[#f7f4f0]">
               <Image
                 src={post.image_url}
                 alt={post.title}
@@ -137,7 +141,7 @@ export default async function NewsArticlePage({
           )}
 
           {post.excerpt && (
-            <p className="font-serif-display text-xl leading-relaxed text-black/70 mb-10">
+            <p className="font-serif-display mx-auto mb-10 max-w-[800px] text-xl leading-relaxed text-black/70">
               {post.excerpt}
             </p>
           )}
@@ -151,7 +155,7 @@ export default async function NewsArticlePage({
           */}
           {post.content && (
             <div
-              className="article-content prose max-w-none
+              className="article-content prose mx-auto max-w-[800px]
                 prose-headings:font-serif-display prose-headings:font-normal prose-headings:text-ink
                 prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-4
                 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
@@ -169,28 +173,30 @@ export default async function NewsArticlePage({
             />
           )}
 
-          <Link
-            href="/news"
-            className="inline-block mt-10 text-xs tracking-wide text-gold"
-          >
-            ← {dict.news.backToJournal}
-          </Link>
+          <p className="mx-auto my-4 max-w-[800px]">
+            <Link
+              href="/news"
+              className="font-ui inline-flex items-center rounded-full border border-gold-light/35 bg-white px-5 py-[10.4px] text-[12px] leading-[18.6px] font-light tracking-[0.12px] text-[#68625c] transition-colors hover:text-ink"
+            >
+              ← {dict.news.backToJournal}
+            </Link>
+          </p>
         </article>
 
         {related.length > 0 && (
           <section className="border-t border-black/10 bg-[#f7f4f0]">
-            <div className="mx-auto max-w-[1400px] px-6 py-16">
+            <div className="mx-auto px-6 py-16">
               <h2 className="font-serif-display text-2xl mb-8 text-center">
                 {dict.news.relatedTitle}
               </h2>
-              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
                 {related.map((item) => (
                   <Link
                     key={item.slug}
                     href={`/news/${item.slug}`}
-                    className="group block"
+                    className="group block overflow-hidden rounded-[14px] border border-gold-light/35 bg-white shadow-[0_18px_40px_rgba(43,38,31,0.08)]"
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden mb-4 bg-white">
+                    <div className="relative aspect-[5/3] overflow-hidden bg-white">
                       {item.image_url && (
                         <Image
                           src={item.image_url}
@@ -201,17 +207,19 @@ export default async function NewsArticlePage({
                         />
                       )}
                     </div>
-                    <p className="text-xs text-black/50 mb-2">
-                      {item.category_name && (
-                        <span className="text-gold uppercase tracking-wide">
-                          {item.category_name}
-                        </span>
-                      )}
-                      {item.category_name && item.published_at && " · "}
-                      {item.published_at &&
-                        new Date(item.published_at).toLocaleDateString(dateLocale(locale))}
-                    </p>
-                    <h3 className="text-lg leading-snug">{item.title}</h3>
+                    <div className="px-[17.6px] pt-4 pb-[18.4px]">
+                      <p className="font-ui mb-[5.6px] text-[10px] leading-[15.5px] font-light tracking-[0.2px] text-[rgba(40,36,31,0.52)]">
+                        {item.category_name && (
+                          <span className="text-gold uppercase">{item.category_name}</span>
+                        )}
+                        {item.category_name && item.published_at && " · "}
+                        {item.published_at &&
+                          new Date(item.published_at).toLocaleDateString(dateLocale(locale))}
+                      </p>
+                      <h3 className="font-serif-display text-[19.2px] leading-[29.76px] font-bold text-ink">
+                        {item.title}
+                      </h3>
+                    </div>
                   </Link>
                 ))}
               </div>

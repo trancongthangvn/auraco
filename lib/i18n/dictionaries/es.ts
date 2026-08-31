@@ -37,6 +37,7 @@ const dictionary = {
     privacyPolicy: "Política de privacidad",
     returnPolicy: "Política de devoluciones",
     termsOfService: "Términos de servicio",
+    contact: "Contacto",
     copyright: "© 2026 AURA & CO. Todos los derechos reservados.",
   },
   common: {
@@ -89,11 +90,18 @@ const dictionary = {
     whyLoveIt: "Por qué te encantará:",
     details: "Detalles",
     material: "Material",
+    metal: "Metal",
     handFinishedNote:
       "Cada pieza se termina a mano y se inspecciona en calidad antes de enviarse.",
     deliveryReturns: "Envío y devoluciones",
-    deliveryReturnsText:
-      "Envío gratis en pedidos superiores a $120. Devoluciones fáciles en 30 días para artículos sin usar en su empaque original. Todas las piezas cuentan con garantía de 2 años.",
+    deliveryReturnsItems: [
+      "Envío gratis en pedidos superiores a $120, más devoluciones fáciles en 30 días",
+      "Baño de oro vermeil 18K / plata de ley 925",
+      "100% impermeable y resistente al deslustre, garantizado",
+      "30 días para devoluciones",
+      "Envoltorio de regalo disponible al pagar",
+    ],
+    bestSellers: "Más vendidos",
     youMayAlsoLike: "También te puede gustar",
     quantity: "Cantidad",
     decreaseQuantity: "Disminuir cantidad",

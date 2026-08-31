@@ -48,14 +48,17 @@ export default function ContactForm() {
   };
 
   const field =
-    "w-full border border-black/20 px-4 py-3 text-sm focus:border-[#2b261f] focus:outline-none disabled:bg-black/[0.03]";
+    "w-full border border-black/20 px-4 py-3 text-sm focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f] disabled:bg-black/[0.03]";
   const label = "block text-xs tracking-wide uppercase mb-2";
 
   return (
     <form onSubmit={submit} className="mx-auto max-w-[560px] px-6 py-16 space-y-5">
       <div>
-        <label className={label}>{dict.fullName}</label>
+        <label htmlFor="contact-name" className={label}>
+          {dict.fullName}
+        </label>
         <input
+          id="contact-name"
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -64,8 +67,11 @@ export default function ContactForm() {
         />
       </div>
       <div>
-        <label className={label}>{dict.email}</label>
+        <label htmlFor="contact-email" className={label}>
+          {dict.email}
+        </label>
         <input
+          id="contact-email"
           required
           type="email"
           value={email}
@@ -75,8 +81,11 @@ export default function ContactForm() {
         />
       </div>
       <div>
-        <label className={label}>{dict.phone}</label>
+        <label htmlFor="contact-phone" className={label}>
+          {dict.phone}
+        </label>
         <input
+          id="contact-phone"
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
@@ -85,8 +94,11 @@ export default function ContactForm() {
         />
       </div>
       <div>
-        <label className={label}>{dict.product}</label>
+        <label htmlFor="contact-product" className={label}>
+          {dict.product}
+        </label>
         <input
+          id="contact-product"
           value={product}
           onChange={(e) => setProduct(e.target.value)}
           disabled={sending || sent}
@@ -94,8 +106,11 @@ export default function ContactForm() {
         />
       </div>
       <div>
-        <label className={label}>{dict.message}</label>
+        <label htmlFor="contact-message" className={label}>
+          {dict.message}
+        </label>
         <textarea
+          id="contact-message"
           required
           rows={5}
           value={message}
@@ -106,7 +121,7 @@ export default function ContactForm() {
       </div>
 
       {error && (
-        <p className="border border-red-700/30 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+        <p role="alert" className="border border-red-700/30 bg-red-50 px-4 py-2.5 text-sm text-red-700">
           {error}
         </p>
       )}

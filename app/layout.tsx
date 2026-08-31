@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
+import {
+  Bodoni_Moda,
+  Cormorant_Garamond,
+  Jost,
+  Source_Sans_3,
+} from "next/font/google";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -12,6 +17,22 @@ const sourceSans = Source_Sans_3({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+});
+
+// The reference site's UI face: nav, prices, review quotes, the trust-band
+// labels and every small caps-y label are Jost, not the body serif or the
+// body sans. Without it those all fell back to Source Sans 3 and read wrong.
+const jost = Jost({
+  variable: "--font-ui",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+// Used by the reference for one thing only: the collection tile captions.
+const bodoni = Bodoni_Moda({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 const SITE_URL = "https://aura.maxmin.vn";
@@ -48,7 +69,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${cormorant.variable} ${sourceSans.variable} h-full antialiased`}
+      className={`${cormorant.variable} ${sourceSans.variable} ${jost.variable} ${bodoni.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-[#2b261f] font-sans">
         {children}

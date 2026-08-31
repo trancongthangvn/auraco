@@ -1,4 +1,5 @@
 import LanguageProvider from "@/components/i18n/LanguageProvider";
+import CurrencyProvider from "@/components/currency/CurrencyProvider";
 import { getLocale } from "@/lib/i18n/server";
 
 /**
@@ -12,5 +13,9 @@ export default async function StorefrontLayout({
   children: React.ReactNode;
 }) {
   const locale = await getLocale();
-  return <LanguageProvider locale={locale}>{children}</LanguageProvider>;
+  return (
+    <LanguageProvider locale={locale}>
+      <CurrencyProvider>{children}</CurrencyProvider>
+    </LanguageProvider>
+  );
 }

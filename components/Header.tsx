@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { navLinks, ourStoryLinks } from "@/data/site";
+import { useRouter, usePathname } from "next/navigation";
+import { navLinks, ourStoryLinks, collections } from "@/data/site";
 import { useDictionary } from "@/components/i18n/LanguageProvider";
-import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import CurrencyPicker from "@/components/currency/CurrencyPicker";
 import { apiFetch } from "@/lib/api";
 import { toFullProduct, type ApiProduct } from "@/lib/catalog-mappers";
 import type { FullProduct } from "@/data/products";
@@ -30,13 +30,23 @@ const megaCategories: Record<string, string> = {
 };
 
 /**
- * Nav keys whose mega-menu shows the whole category (sorted A-Z, scrollable)
- * with the reference site's row styling, instead of the five-item preview.
- * Currently only Necklaces, by the site owner's explicit choice.
+ * Nav keys whose mega-menu shows the whole category (sorted A-Z), instead of
+ * the five-item preview — matches the reference site's dropdowns, which list
+ * every product in the category, not just a handful.
  */
-const FULL_LIST_MEGA = new Set(["necklaces"]);
+const FULL_LIST_MEGA = new Set(["necklaces", "bracelets", "earrings"]);
 
-export default function Header() {
+/** Slug used by `/api/products?collection=<slug>` and `/catalog/<slug>`, derived from the collection's own href (e.g. "/catalog/QUIET-LUXURY" -> "QUIET-LUXURY"). */
+const collectionSlug = (href: string) => href.split("/").filter(Boolean).pop() || "";
+
+export default function Header({
+  activeNavKey,
+}: {
+  /** Set by pages that already know which nav item is current (the catalog
+   *  knows its ?brand= server-side). Pages that don't pass it fall back to
+   *  reading the URL below. */
+  activeNavKey?: string | null;
+} = {}) {
   const dict = useDictionary();
   const [storyOpen, setStoryOpen] = useState(false);
   const [openMega, setOpenMega] = useState<string | null>(null);
@@ -44,12 +54,59 @@ export default function Header() {
   const [megaProducts, setMegaProducts] = useState<
     Record<string, FullProduct[] | "loading" | "error">
   >({});
+  // "Collections" nav item: one product-preview list per collection group
+  // (QUIET LUXURY, MINIMALIST, ...), keyed by collection slug rather than
+  // nav key since each group loads independently inside its own <details>.
+  const [collectionProducts, setCollectionProducts] = useState<
+    Record<string, FullProduct[] | "loading" | "error">
+  >({});
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileStoryOpen, setMobileStoryOpen] = useState(false);
   const [query, setQuery] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Which nav item the customer is currently on, so it can be highlighted.
+  // usePathname() alone can't tell the catalog brand filters apart (they all
+  // share "/catalog", differing only by ?brand=), and useSearchParams() is
+  // banned in this codebase (it broke the whole /catalog tree in production
+  // once — see DEPLOYMENT.md). So this reads location.search directly,
+  // re-computed on every pathname change and on browser back/forward; the
+  // Link onClick handlers below cover the one gap that misses (clicking
+  // between two ?brand= links, which doesn't change the pathname).
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const compute = () => {
+      if (pathname === "/catalog/BEST-SELLERS") {
+        setActiveKey("bestSellers");
+        return;
+      }
+      if (pathname === "/catalog") {
+        const brand = new URLSearchParams(window.location.search).get("brand");
+        const brandKey: Record<string, string> = {
+          Necklaces: "necklaces",
+          Bracelets: "bracelets",
+          Earrings: "earrings",
+          "Signature-Sets": "signatureSets",
+        };
+        setActiveKey(brand ? brandKey[brand] ?? null : "collections");
+        return;
+      }
+      const story = ourStoryLinks.find((l) => l.href === pathname);
+      setActiveKey(story ? story.key : null);
+    };
+    compute();
+    window.addEventListener("popstate", compute);
+    return () => window.removeEventListener("popstate", compute);
+  }, [pathname]);
+
+  const currentKey = activeNavKey !== undefined ? activeNavKey : activeKey;
+
+  const navLinkClass = (key: string) =>
+    `whitespace-nowrap hover:text-gold transition-colors ${currentKey === key ? "text-gold" : ""}`;
 
   const loadMega = (key: string) => {
     const category = megaCategories[key];
@@ -60,9 +117,9 @@ export default function Header() {
         const mapped = rows.map(toFullProduct);
         setMegaProducts((prev) => ({
           ...prev,
-          // Necklaces mirrors the reference site: the full category, sorted
-          // A-Z, in a scrollable panel. The other three menus keep the short
-          // five-item preview — deliberate, confirmed with the site owner.
+          // Necklaces, Bracelets and Earrings mirror the reference site: the
+          // whole category, sorted A-Z. Signature Sets keeps the short
+          // five-item preview.
           [key]: FULL_LIST_MEGA.has(key)
             ? mapped.sort((a, b) => a.name.localeCompare(b.name))
             : mapped.slice(0, 5),
@@ -70,6 +127,19 @@ export default function Header() {
       })
       .catch(() => {
         setMegaProducts((prev) => ({ ...prev, [key]: "error" }));
+      });
+  };
+
+  const loadCollectionProducts = (slug: string) => {
+    if (!slug || collectionProducts[slug]) return;
+    setCollectionProducts((prev) => ({ ...prev, [slug]: "loading" }));
+    apiFetch<ApiProduct[]>(`/api/products?collection=${encodeURIComponent(slug)}`)
+      .then((rows) => {
+        const mapped = rows.map(toFullProduct).slice(0, 8);
+        setCollectionProducts((prev) => ({ ...prev, [slug]: mapped }));
+      })
+      .catch(() => {
+        setCollectionProducts((prev) => ({ ...prev, [slug]: "error" }));
       });
   };
 
@@ -93,12 +163,12 @@ export default function Header() {
   };
 
   return (
-    <header className="border-b border-black/5 relative z-40">
-      <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-2 px-4 py-4 sm:px-6">
+    <header className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-2 px-4 py-3 sm:px-4 lg:min-h-[64px] lg:grid lg:grid-cols-[auto_1fr_auto] lg:justify-normal lg:gap-x-[20px]">
         <button
           aria-label={mobileOpen ? dict.nav.closeMenu : dict.nav.openMenu}
           onClick={() => setMobileOpen((v) => !v)}
-          className="lg:hidden shrink-0 -ml-1 p-1 hover:text-gold"
+          className="lg:hidden lg:col-start-1 shrink-0 -ml-1 p-1 hover:text-gold"
         >
           {mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}
         </button>
@@ -106,20 +176,108 @@ export default function Header() {
         <Link
           href="/"
           aria-label="AURA & CO"
-          className="shrink-0 mx-auto lg:mx-0 font-serif-display text-[27px] leading-none tracking-[-0.015em] text-ink"
+          className="shrink-0 mx-auto lg:col-start-1 lg:mx-0 font-serif-display text-[27px] font-normal leading-[27px] tracking-[-0.015em] text-ink"
         >
           AURA & CO
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-8 text-sm tracking-wide uppercase">
+        <nav className="font-ui hidden lg:col-start-2 lg:flex items-center justify-center gap-6 text-[13.2px] font-normal uppercase tracking-[0.055em] leading-[1.2] text-[#2b261f] lg:translate-y-[1.5px]">
           {navLinks.map((link) => {
+            if (link.key === "collections") {
+              return (
+                <div
+                  key={link.key}
+                  className="relative"
+                  onMouseEnter={() => openMegaMenu(link.key)}
+                  onMouseLeave={scheduleCloseMega}
+                >
+                  <Link
+                    href={link.href}
+                    className={navLinkClass(link.key)}
+                    onFocus={() => openMegaMenu(link.key)}
+                    onClick={() => setActiveKey(link.key)}
+                  >
+                    {dict.nav[link.key]}
+                  </Link>
+                  {openMega === link.key && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-[30px] z-50">
+                      <div className="bg-white border border-black/10 shadow-[0_14px_40px_rgba(32,27,22,0.08)] w-[320px] max-h-[75vh] overflow-y-auto">
+                        <div className="px-5 py-2">
+                          {collections.map((c) => {
+                            const slug = collectionSlug(c.href);
+                            const products = collectionProducts[slug];
+                            return (
+                              <details
+                                key={c.name}
+                                className="group border-b border-black/10 last:border-b-0"
+                                onToggle={(e) => {
+                                  if (e.currentTarget.open) loadCollectionProducts(slug);
+                                }}
+                              >
+                                <summary className="list-none cursor-pointer flex items-center justify-between gap-2 py-2.5 text-xs font-semibold tracking-wide text-ink hover:text-gold [&::-webkit-details-marker]:hidden">
+                                  {c.name}
+                                  <ChevronDownIcon
+                                    size={14}
+                                    className="shrink-0 transition-transform group-open:rotate-180"
+                                  />
+                                </summary>
+                                <div className="pb-3">
+                                  <Link
+                                    href={c.href}
+                                    className="block pb-2 text-xs font-semibold tracking-wide text-gold hover:underline"
+                                  >
+                                    View all {c.name}
+                                  </Link>
+                                  {products === "loading" || products === undefined ? (
+                                    <p className="py-2 text-xs normal-case text-black/40">
+                                      Loading…
+                                    </p>
+                                  ) : products === "error" || products.length === 0 ? (
+                                    <p className="py-2 text-xs normal-case text-black/40">
+                                      No products found.
+                                    </p>
+                                  ) : (
+                                    products.map((p) => (
+                                      <Link
+                                        key={p.slug}
+                                        href={`/product/${p.slug}`}
+                                        className="flex items-center gap-3 py-2 normal-case text-[13px] text-ink/70 border-b border-black/5 last:border-b-0 hover:text-gold"
+                                      >
+                                        <span className="relative shrink-0 w-9 h-9 overflow-hidden bg-[#f5f2ee] border border-black/5">
+                                          {p.images[0] && (
+                                            <Image
+                                              src={p.images[0]}
+                                              alt=""
+                                              fill
+                                              sizes="36px"
+                                              className="object-cover"
+                                            />
+                                          )}
+                                        </span>
+                                        <span className="truncate">{p.name}</span>
+                                      </Link>
+                                    ))
+                                  )}
+                                </div>
+                              </details>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             const isMega = link.key in megaCategories;
             if (!isMega) {
               return (
                 <Link
                   key={link.key}
                   href={link.href}
-                  className="hover:text-gold transition-colors"
+                  className={navLinkClass(link.key)}
+                  onClick={() => setActiveKey(link.key)}
                 >
                   {dict.nav[link.key]}
                 </Link>
@@ -130,14 +288,15 @@ export default function Header() {
             return (
               <div
                 key={link.key}
-                className="relative"
+                className={`relative ${link.key === "bestSellers" ? "hidden xl:block" : ""}`}
                 onMouseEnter={() => openMegaMenu(link.key)}
                 onMouseLeave={scheduleCloseMega}
               >
                 <Link
                   href={link.href}
-                  className="hover:text-gold transition-colors"
+                  className={navLinkClass(link.key)}
                   onFocus={() => openMegaMenu(link.key)}
+                  onClick={() => setActiveKey(link.key)}
                 >
                   {dict.nav[link.key]}
                 </Link>
@@ -146,10 +305,12 @@ export default function Header() {
                     <div
                       className={`bg-white border border-black/10 shadow-[0_14px_40px_rgba(32,27,22,0.08)] max-w-[92vw] ${
                         FULL_LIST_MEGA.has(link.key)
-                          ? // Full category, shown in one go — no inner scroll,
-                            // by the site owner's request. The reference site
-                            // caps this at 210px and scrolls; we do not.
-                            "w-[440px]"
+                          ? // Full category in one go, no inner scroll, at the
+                            // site owner's request — the reference site caps
+                            // this height and scrolls; we do not. Wide enough
+                            // for two columns so a long category (12+ items)
+                            // reads as ~5-6 per column instead of one long list.
+                            "w-[640px]"
                           : "w-[420px] max-h-[75vh] overflow-y-auto"
                       }`}
                     >
@@ -165,7 +326,11 @@ export default function Header() {
                           View all {dict.nav[link.key]}
                         </Link>
                       </div>
-                      <div className="px-5 pb-4">
+                      <div
+                        className={`px-5 pb-4 ${
+                          FULL_LIST_MEGA.has(link.key) ? "columns-2 gap-x-6" : ""
+                        }`}
+                      >
                         {products === "loading" || products === undefined ? (
                           <p className="py-3 text-xs normal-case text-black/40">
                             Loading…
@@ -181,7 +346,7 @@ export default function Header() {
                               href={`/product/${p.slug}`}
                               className={`flex items-center gap-3 border-b border-black/10 last:border-b-0 hover:text-gold ${
                                 FULL_LIST_MEGA.has(link.key)
-                                  ? "py-2 uppercase text-xs tracking-[0.055em] text-ink"
+                                  ? "break-inside-avoid py-2 uppercase text-xs tracking-[0.055em] text-ink"
                                   : "py-2 normal-case text-[13px] text-ink/70 border-black/5"
                               }`}
                             >
@@ -215,11 +380,15 @@ export default function Header() {
             );
           })}
           <div
-            className="relative"
+            className="relative hidden xl:block"
             onMouseEnter={() => setStoryOpen(true)}
             onMouseLeave={() => setStoryOpen(false)}
           >
-            <button className="hover:text-gold transition-colors">
+            <button
+              className={`whitespace-nowrap uppercase hover:text-gold transition-colors ${
+                ourStoryLinks.some((l) => l.key === currentKey) ? "text-gold" : ""
+              }`}
+            >
               {dict.nav.ourStory}
             </button>
             {storyOpen && (
@@ -229,7 +398,10 @@ export default function Header() {
                     <Link
                       key={l.key}
                       href={l.href}
-                      className="block px-4 py-2 text-xs normal-case hover:bg-black/5"
+                      onClick={() => setActiveKey(l.key)}
+                      className={`block px-4 py-2 text-xs normal-case hover:bg-black/5 ${
+                        currentKey === l.key ? "text-gold" : ""
+                      }`}
                     >
                       {dict.nav[l.key]}
                     </Link>
@@ -240,8 +412,15 @@ export default function Header() {
           </div>
         </nav>
 
-        <div className="flex items-center gap-3 sm:gap-4 lg:gap-5 text-sm shrink-0">
-          <LanguageSwitcher />
+        <div className="flex items-center gap-1 text-sm shrink-0 lg:col-start-3 lg:gap-[5.6px]">
+          <CurrencyPicker />
+          <Link
+            href="/login"
+            aria-label={dict.nav.account}
+            className="hidden sm:inline-flex h-10 w-10 items-center justify-center hover:text-gold"
+          >
+            <UserIcon size={22.4} />
+          </Link>
           {searchOpen ? (
             <form onSubmit={submitSearch} className="flex items-center">
               <input
@@ -257,36 +436,126 @@ export default function Header() {
             <button
               aria-label={dict.nav.search}
               onClick={() => setSearchOpen(true)}
-              className="hover:text-gold"
+              className="inline-flex h-10 w-10 items-center justify-center hover:text-gold"
             >
-              <SearchIcon size={18} />
+              <SearchIcon size={22.4} />
             </button>
           )}
           <Link
-            href="/login"
-            aria-label={dict.nav.account}
-            className="hidden sm:inline-flex hover:text-gold"
+            href="/cart"
+            aria-label={dict.nav.cart}
+            className="relative inline-flex h-10 w-10 items-center justify-center hover:text-gold"
           >
-            <UserIcon size={18} />
-          </Link>
-          <Link href="/cart" aria-label={dict.nav.cart} className="hover:text-gold">
-            <BagIcon size={18} />
+            <BagIcon size={22.4} />
+            <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-[9px] leading-none text-white">
+              0
+            </span>
           </Link>
         </div>
       </div>
 
       {mobileOpen && (
         <div className="lg:hidden border-t border-black/5 bg-white">
-          <nav className="flex flex-col px-4 py-2 text-sm tracking-wide uppercase">
+          <nav className="font-ui flex flex-col px-4 py-2 text-sm tracking-wide uppercase">
             {navLinks.map((link) => {
+              if (link.key === "collections") {
+                const isOpen = mobileOpenMega === link.key;
+                return (
+                  <div key={link.key} className="border-b border-black/5">
+                    <button
+                      onClick={() => setMobileOpenMega(isOpen ? null : link.key)}
+                      className={`w-full py-3 uppercase flex items-center justify-between hover:text-gold ${
+                        currentKey === link.key ? "text-gold" : ""
+                      }`}
+                    >
+                      {dict.nav[link.key]}
+                      <ChevronDownIcon
+                        size={16}
+                        className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="pl-2 pb-2">
+                        {collections.map((c) => {
+                          const slug = collectionSlug(c.href);
+                          const products = collectionProducts[slug];
+                          return (
+                            <details
+                              key={c.name}
+                              className="group border-b border-black/5 last:border-b-0"
+                              onToggle={(e) => {
+                                if (e.currentTarget.open) loadCollectionProducts(slug);
+                              }}
+                            >
+                              <summary className="list-none cursor-pointer flex items-center justify-between py-2.5 text-xs font-semibold tracking-wide text-ink [&::-webkit-details-marker]:hidden">
+                                {c.name}
+                                <ChevronDownIcon
+                                  size={14}
+                                  className="shrink-0 transition-transform group-open:rotate-180"
+                                />
+                              </summary>
+                              <div className="pl-2 pb-3">
+                                <Link
+                                  href={c.href}
+                                  onClick={() => setMobileOpen(false)}
+                                  className="block py-2 text-xs normal-case text-gold font-semibold"
+                                >
+                                  View all {c.name}
+                                </Link>
+                                {products === "loading" || products === undefined ? (
+                                  <p className="py-2 text-xs normal-case text-black/40">
+                                    Loading…
+                                  </p>
+                                ) : products === "error" || products.length === 0 ? (
+                                  <p className="py-2 text-xs normal-case text-black/40">
+                                    No products found.
+                                  </p>
+                                ) : (
+                                  products.map((p) => (
+                                    <Link
+                                      key={p.slug}
+                                      href={`/product/${p.slug}`}
+                                      onClick={() => setMobileOpen(false)}
+                                      className="flex items-center gap-3 py-2 normal-case text-[13px] text-ink/70 hover:text-gold"
+                                    >
+                                      <span className="relative shrink-0 w-8 h-8 overflow-hidden bg-[#f5f2ee] border border-black/5">
+                                        {p.images[0] && (
+                                          <Image
+                                            src={p.images[0]}
+                                            alt=""
+                                            fill
+                                            sizes="32px"
+                                            className="object-cover"
+                                          />
+                                        )}
+                                      </span>
+                                      <span className="truncate">{p.name}</span>
+                                    </Link>
+                                  ))
+                                )}
+                              </div>
+                            </details>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               const isMega = link.key in megaCategories;
               if (!isMega) {
                 return (
                   <Link
                     key={link.key}
                     href={link.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="py-3 border-b border-black/5 hover:text-gold"
+                    onClick={() => {
+                      setActiveKey(link.key);
+                      setMobileOpen(false);
+                    }}
+                    className={`py-3 border-b border-black/5 hover:text-gold ${
+                      currentKey === link.key ? "text-gold" : ""
+                    }`}
                   >
                     {dict.nav[link.key]}
                   </Link>
@@ -303,7 +572,9 @@ export default function Header() {
                       setMobileOpenMega(next);
                       if (next) loadMega(next);
                     }}
-                    className="w-full py-3 flex items-center justify-between hover:text-gold"
+                    className={`w-full py-3 uppercase flex items-center justify-between hover:text-gold ${
+                      currentKey === link.key ? "text-gold" : ""
+                    }`}
                   >
                     {dict.nav[link.key]}
                     <ChevronDownIcon
@@ -315,7 +586,10 @@ export default function Header() {
                     <div className="pl-2 pb-2">
                       <Link
                         href={link.href}
-                        onClick={() => setMobileOpen(false)}
+                        onClick={() => {
+                          setActiveKey(link.key);
+                          setMobileOpen(false);
+                        }}
                         className="block py-2 text-xs normal-case text-gold font-semibold"
                       >
                         View all {dict.nav[link.key]}
@@ -356,7 +630,9 @@ export default function Header() {
             })}
             <button
               onClick={() => setMobileStoryOpen((v) => !v)}
-              className="py-3 border-b border-black/5 flex items-center justify-between hover:text-gold"
+              className={`py-3 border-b border-black/5 uppercase flex items-center justify-between hover:text-gold ${
+                ourStoryLinks.some((l) => l.key === currentKey) ? "text-gold" : ""
+              }`}
             >
               {dict.nav.ourStory}
               <ChevronDownIcon
@@ -372,8 +648,13 @@ export default function Header() {
                   <Link
                     key={l.key}
                     href={l.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="block py-2.5 text-xs normal-case border-b border-black/5 hover:text-gold"
+                    onClick={() => {
+                      setActiveKey(l.key);
+                      setMobileOpen(false);
+                    }}
+                    className={`block py-2.5 text-xs normal-case border-b border-black/5 hover:text-gold ${
+                      currentKey === l.key ? "text-gold" : ""
+                    }`}
                   >
                     {dict.nav[l.key]}
                   </Link>

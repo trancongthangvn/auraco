@@ -28,7 +28,7 @@ export default function Hero({ slides }: { slides: HeroSlide[] }) {
   return (
     <section
       ref={revealRef}
-      className={`relative w-full aspect-[1400/788] min-h-[420px] max-h-[85vh] overflow-hidden ${revealClass}`}
+      className={`group/banner relative w-full aspect-[1400/788] min-h-[420px] max-h-[85vh] overflow-hidden ${revealClass}`}
     >
       {/* Guard an empty image_url so a half-configured slide degrades to the
           dark overlay rather than a broken image. */}
@@ -39,7 +39,7 @@ export default function Hero({ slides }: { slides: HeroSlide[] }) {
           fill
           priority
           sizes="100vw"
-          className="object-cover"
+          className="object-cover transition-transform duration-700 ease-out group-hover/banner:scale-[1.04]"
         />
       )}
 
@@ -50,15 +50,15 @@ export default function Hero({ slides }: { slides: HeroSlide[] }) {
             "linear-gradient(100deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.22) 48%, rgba(0,0,0,0.08) 100%)",
         }}
       >
-        <h1 className="font-serif-display uppercase text-white text-[2rem] sm:text-[3.25rem] font-normal leading-[1.05] tracking-[0.045em]">
+        <h1 className="font-serif-display text-[clamp(2rem,8vw,3.25rem)] font-normal uppercase leading-[1.05] tracking-[0.045em] text-white">
           {slide.label}
         </h1>
-        <p className="max-w-[310px] text-white/90 text-[15px] uppercase leading-[1.48] tracking-[0.075em]">
+        <p className="font-ui max-w-[310px] text-[15px] font-normal uppercase leading-[22.2px] tracking-[1.125px] text-white/[0.92]">
           {slide.title}
         </p>
         <Link
           href={slide.href}
-          className="group relative mt-1 inline-block w-fit border-b border-white/75 pb-1.5 pt-1 text-xs uppercase tracking-[0.1em] text-white transition-[letter-spacing] duration-300 hover:tracking-[0.13em]"
+          className="font-ui group relative mt-1 inline-block w-fit border-b border-white/75 pb-1.5 pt-1 text-[12px] font-normal uppercase leading-[12px] tracking-[1.2px] text-white transition-[letter-spacing] duration-300 hover:tracking-[0.13em]"
         >
           DISCOVER NOW
         </Link>

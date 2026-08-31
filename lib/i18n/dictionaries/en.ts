@@ -40,6 +40,7 @@ const dictionary: Dictionary = {
     privacyPolicy: "Privacy Policy",
     returnPolicy: "Return Policy",
     termsOfService: "Terms of Service",
+    contact: "Contact",
     copyright: "© 2026 AURA & CO. All rights reserved.",
   },
   common: {
@@ -91,11 +92,18 @@ const dictionary: Dictionary = {
     whyLoveIt: "Why You'll Love It:",
     details: "Details",
     material: "Material",
+    metal: "Metal",
     handFinishedNote:
       "Every piece is finished by hand and inspected for quality before it ships.",
     deliveryReturns: "Delivery & Returns",
-    deliveryReturnsText:
-      "Free delivery on orders over $120. Easy 30-day returns on unworn items in original packaging. All pieces are backed by our 2-year warranty.",
+    deliveryReturnsItems: [
+      "Free shipping on orders over $120, plus easy 30-day returns",
+      "18K Gold Vermeil / 925 Sterling Silver",
+      "100% waterproof and tarnish-resistant, guaranteed",
+      "30-day return window",
+      "Gift wrap available at checkout",
+    ],
+    bestSellers: "Best sellers",
     youMayAlsoLike: "You may also like",
     quantity: "Quantity",
     decreaseQuantity: "Decrease quantity",

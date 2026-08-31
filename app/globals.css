@@ -4,6 +4,8 @@
 @theme inline {
   --font-serif: var(--font-serif);
   --font-sans: var(--font-sans);
+  --font-ui: var(--font-ui);
+  --font-display: var(--font-display);
   --color-gold: #a67c3d;
   --color-gold-light: #c9a66b;
   --color-ink: #2b261f;
@@ -15,6 +17,25 @@ body {
 
 .font-serif-display {
   font-family: var(--font-serif), Georgia, serif;
+  /* Cormorant Garamond defaults to oldstyle figures — digits drop below the
+     baseline and read as broken/misaligned in an uppercase heading ("10%"
+     looks like "ı0%"). The reference forces lining figures wherever a number
+     sits in this face (its `.promo-numeric` span); we do it face-wide since
+     every Cormorant instance that carries a digit wants the same fix. */
+  font-variant-numeric: lining-nums proportional-nums;
+}
+
+/* The reference's UI face — nav links, prices and materials, review quotes,
+   trust-band labels, footer headings. Distinct from the body sans. */
+.font-ui {
+  font-family: var(--font-ui), system-ui, sans-serif;
+}
+
+/* The reference's collection-tile face. Higher contrast and a larger
+   x-height than the Cormorant used for headings, so it reads bigger at the
+   same 19px. */
+.font-display-serif {
+  font-family: var(--font-display), Georgia, serif;
 }
 
 /* Scroll-reveal, matching auracojewelry.com's own .reveal-on-scroll timing
@@ -70,6 +91,30 @@ body {
   animation-play-state: paused;
 }
 
+/* Fallback strip for visitors whose OS asks for reduced motion: the marquee
+   animation is off for them, so they scroll it by hand and need to SEE that
+   they can. Deliberately a visible track, unlike the hidden scrollbars used
+   elsewhere in the site. */
+.press-strip-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: #b9b1a5 #ece7df;
+  scroll-behavior: smooth;
+}
+.press-strip-scroller::-webkit-scrollbar {
+  height: 10px;
+}
+.press-strip-scroller::-webkit-scrollbar-track {
+  background: #ece7df;
+  border-radius: 999px;
+}
+.press-strip-scroller::-webkit-scrollbar-thumb {
+  background: #b9b1a5;
+  border-radius: 999px;
+}
+.press-strip-scroller::-webkit-scrollbar-thumb:hover {
+  background: #9c9384;
+}
+
 @keyframes home-certificates-scroll {
   from {
     transform: translateX(0);
@@ -115,4 +160,36 @@ body {
   height: 0;
   pointer-events: none;
   color: rgba(43, 38, 31, 0.4);
+}
+
+/* Homepage/section headings. Values measured off the reference site's
+   `.section__title.section__title--center` so every band matches it. */
+.section-title {
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #28241f;
+  /* 400, not bold: the reference switches its section titles to regular
+     weight once the band scrolls into view, which is the state visitors
+     actually see. */
+  font-weight: 400;
+  margin: 0 0 1rem 0;
+}
+
+/* Homepage bands. The reference renders each one as a rounded white card
+   with a soft shadow and a small gap between them, rather than as one
+   continuous page. Values measured off its `.home-section`. */
+.home-block {
+  background: #fff;
+  /* Measured on .home-section--reviews (auracojewelry.com): 18px radius,
+     a softer/wider shadow than what was here before (12px / 8px-20px-.07),
+     which read visibly flatter than the reference's own card framing. */
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(31, 26, 20, 0.08);
+  /* Reference metric, shared by every home section. */
+  padding: 25.12px 24px;
+  margin-top: 28.8px;
+  margin-bottom: 28.8px;
 }

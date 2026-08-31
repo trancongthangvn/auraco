@@ -1,89 +1,255 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+/** Gap between carousel cards, in px — must match the `gap-6` class below. */
+const CAROUSEL_GAP = 24;
+/** Card width, in px — must match the `w-[320px]` class below. */
+const CAROUSEL_CARD = 320;
+/** Slide transition, in ms — must match the `duration-[520ms]` class below. */
+const CAROUSEL_DURATION = 520;
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/data/site";
 import { ChevronLeftIcon, ChevronRightIcon, StarRating } from "@/components/icons";
+import AddToBagButton from "@/components/AddToBagButton";
+import CategoryFeature from "@/components/CategoryFeature";
 import { useRevealOnScroll } from "@/components/useRevealOnScroll";
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { formatPrice } from "@/lib/currency";
 
 export default function ProductCarousel({
   title,
   subtitle,
   products,
+  layout = "carousel",
+  feature,
 }: {
   title: string;
   subtitle?: string;
   products: Product[];
-}) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const [revealRef, revealClass] = useRevealOnScroll<HTMLElement>();
-
-  const scrollBy = (dir: 1 | -1) => {
-    scrollerRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
+  /** Optional collection banner shown between the heading and the products,
+   *  as the reference site does under NEW ARRIVALS. */
+  feature?: {
+    href: string;
+    title: string;
+    description: string;
+    image: string;
   };
+  /** "grid" lays every product out in a fixed, evenly-spaced 3-column grid
+   *  (2 rows for 6 products) that fills the section width and reflows with
+   *  it, instead of the default horizontal scroll-with-arrows carousel. */
+  layout?: "carousel" | "grid";
+}) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [revealRef, revealClass] = useRevealOnScroll<HTMLElement>();
+  const { currency } = useCurrency();
+
+  // The strip is driven by an index into a tripled product list and moved
+  // with a CSS transform, not by scrolling. Scroll-based looping fought the
+  // browser's own smooth-scroll animation (it kept driving towards a position
+  // the loop had already shifted, so the strip walked to the end and stuck).
+  // A transform is deterministic: the wrap is a single jump with the
+  // transition switched off for one tick, which the eye never catches.
+  const count = products.length;
+  const [index, setIndex] = useState(count);
+  const [animate, setAnimate] = useState(true);
+  const [viewportWidth, setViewportWidth] = useState(0);
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const sync = () => setViewportWidth(el.clientWidth);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Snap back into the middle copy whenever the index leaves it, so the list
+  // can be stepped through forever in either direction.
+  useEffect(() => {
+    if (count === 0) return;
+    if (index >= count * 2 || index < count) {
+      const id = setTimeout(() => {
+        setAnimate(false);
+        setIndex((i) => (i >= count * 2 ? i - count : i + count));
+      }, CAROUSEL_DURATION);
+      return () => clearTimeout(id);
+    }
+  }, [index, count]);
+
+  // Re-enable the transition on the tick after a wrap.
+  useEffect(() => {
+    if (animate) return;
+    const id = setTimeout(() => setAnimate(true), 20);
+    return () => clearTimeout(id);
+  }, [animate]);
+
+  const step = CAROUSEL_CARD + CAROUSEL_GAP;
+  // Offset that parks card `index` in the middle of the viewport.
+  const offset = index * step - (viewportWidth - CAROUSEL_CARD) / 2;
+
+  const scrollBy = (dir: 1 | -1) => setIndex((i) => i + dir);
+
+  // In carousel mode each tile is a distinct white card (rounded, shadowed),
+  // so the row reads as separate panels rather than a continuous band — the
+  // same treatment the video strip below it uses.
+  const boxed = layout === "carousel";
+
+  const card = (p: Product) => (
+    <Link
+      href={p.href}
+      className={`group relative block transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04] ${
+        boxed
+          ? "overflow-hidden rounded-xl bg-white shadow-[0_10px_30px_rgba(43,38,31,0.14)] ring-1 ring-black/10"
+          : ""
+      }`}
+    >
+      {/* A product saved without any image gives an empty src, which
+          renders as a broken image icon — fall back to the tinted box. */}
+      <div
+        className={`relative aspect-square overflow-hidden bg-[#f5f2ee] ${
+          boxed ? "" : "mb-3"
+        }`}
+      >
+        {p.img && (
+          <Image
+            src={p.img}
+            alt={p.name}
+            fill
+            sizes={layout === "grid" ? "(min-width: 640px) 33vw, 50vw" : "320px"}
+            className={`object-cover transition-opacity duration-500 ${
+              p.hoverImg
+                ? "group-hover:opacity-0"
+                : "transition-transform group-hover:scale-105"
+            }`}
+          />
+        )}
+        {/* On-model shot revealed on hover, matching the catalog cards. */}
+        {p.hoverImg && (
+          <Image
+            src={p.hoverImg}
+            alt=""
+            fill
+            sizes={layout === "grid" ? "(min-width: 640px) 33vw, 50vw" : "320px"}
+            className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+          />
+        )}
+        <AddToBagButton productName={p.name} />
+      </div>
+      <div className={boxed ? "px-4 pb-4 pt-3" : ""}>
+        <p className="mb-1 flex items-center"><StarRating rating={p.rating} size={16} /></p>
+        {/* Two reserved lines keep material and price aligned across the row. */}
+        <h3 className="font-serif-display mb-1 line-clamp-2 min-h-[30px] text-[20px] font-normal leading-[23px] text-[#28241f]">
+          {p.name}
+        </h3>
+        <p className="font-ui mb-1 text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
+          {p.material}
+        </p>
+        <p className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">
+          {p.priceValue !== undefined ? formatPrice(p.priceValue, currency) : p.price}
+        </p>
+      </div>
+    </Link>
+  );
 
   return (
     <section
       ref={revealRef}
-      className={`mx-auto max-w-[1400px] px-6 py-16 ${revealClass}`}
+      className={
+        boxed
+          ? `home-block mx-auto ${revealClass}`
+          : `home-block mx-auto ${revealClass}`
+      }
     >
-      <div className="text-center mb-5">
-        <h2 className="font-serif-display text-[26px] font-semibold mb-2">{title}</h2>
-        {subtitle && (
-          <p className="text-sm text-black/60 max-w-xl mx-auto">{subtitle}</p>
-        )}
-      </div>
+      <div>
+      {/* An empty title means the section is headed by something else. */}
+      {(title || subtitle) && (
+        <div className="text-center mb-5">
+          {title && (
+            <h2 className="font-serif-display section-title">
+              {title}
+            </h2>
+          )}
+          {subtitle && (
+            <p className="text-sm text-black/60 max-w-xl mx-auto">{subtitle}</p>
+          )}
+        </div>
+      )}
 
-      <div className="relative">
-        <div
-          ref={scrollerRef}
-          className="flex gap-6 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
+
+      {feature && (
+        <div className="mb-6">
+          <CategoryFeature {...feature} />
+        </div>
+      )}
+
+      {layout === "grid" ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6">
           {products.map((p) => (
-            <Link
-              key={p.name}
-              href={p.href}
-              className="group shrink-0 w-[260px]"
-            >
-              {/* A product saved without any image gives an empty src, which
-                  renders as a broken image icon — fall back to the tinted box. */}
-              <div className="relative aspect-square overflow-hidden bg-[#f5f2ee] mb-3">
-                {p.img && (
-                  <Image
-                    src={p.img}
-                    alt={p.name}
-                    fill
-                    sizes="260px"
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                )}
-              </div>
-              <p className="flex items-center gap-1 mb-1">
-                <StarRating rating={p.rating} size={12} />
-                <span className="text-xs text-black/50">({p.rating})</span>
-              </p>
-              <h3 className="text-[19px] font-medium mb-1">{p.name}</h3>
-              <p className="text-xs text-black/50 mb-1">{p.material}</p>
-              <p className="text-base">{p.price}</p>
-            </Link>
+            <div key={p.name}>{card(p)}</div>
           ))}
         </div>
+      ) : (
+        <div className="relative">
+          <div ref={viewportRef} className="overflow-hidden py-6">
+            <div
+              className={`flex items-start gap-6 ${
+                animate
+                  ? "transition-transform duration-[520ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                  : ""
+              }`}
+              style={{ transform: `translate3d(${-offset}px, 0, 0)` }}
+            >
+              {[0, 1, 2].flatMap((copy) =>
+                products.map((p) => (
+                  <div
+                    key={`${copy}-${p.name}`}
+                    aria-hidden={copy === 1 ? undefined : true}
+                    className="w-[320px] shrink-0"
+                  >
+                    {card(p)}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
-        <button
-          aria-label="Previous"
-          onClick={() => scrollBy(-1)}
-          className="hidden sm:flex absolute -left-4 top-1/3 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow"
-        >
-          <ChevronLeftIcon size={16} />
-        </button>
-        <button
-          aria-label="Next"
-          onClick={() => scrollBy(1)}
-          className="hidden sm:flex absolute -right-4 top-1/3 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow"
-        >
-          <ChevronRightIcon size={16} />
-        </button>
+          <button
+            aria-label="Previous"
+            onClick={() => scrollBy(-1)}
+            className="hidden sm:flex absolute -left-4 top-1/3 z-20 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow"
+          >
+            <ChevronLeftIcon size={16} />
+          </button>
+          <button
+            aria-label="Next"
+            onClick={() => scrollBy(1)}
+            className="hidden sm:flex absolute -right-4 top-1/3 z-20 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow"
+          >
+            <ChevronRightIcon size={16} />
+          </button>
+
+          {count > 1 && (
+            <div className="mt-[13.6px] flex items-center justify-center gap-[7.2px]">
+              {products.map((p, i) => (
+                <button
+                  key={p.name}
+                  type="button"
+                  aria-label={`Go to ${p.name}`}
+                  onClick={() => setIndex(count + i)}
+                  className={`h-[10px] w-[10px] rounded-full bg-[#a67c3d] transition-transform duration-300 ${
+                    i === ((index % count) + count) % count
+                      ? "scale-[1.15]"
+                      : "scale-100 opacity-[0.28]"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       </div>
     </section>
   );

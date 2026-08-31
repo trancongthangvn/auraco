@@ -34,6 +34,7 @@ export interface Dictionary {
     privacyPolicy: string;
     returnPolicy: string;
     termsOfService: string;
+    contact: string;
     copyright: string;
   };
   common: {
@@ -84,9 +85,11 @@ export interface Dictionary {
     whyLoveIt: string;
     details: string;
     material: string;
+    metal: string;
     handFinishedNote: string;
     deliveryReturns: string;
-    deliveryReturnsText: string;
+    deliveryReturnsItems: string[];
+    bestSellers: string;
     youMayAlsoLike: string;
     quantity: string;
     decreaseQuantity: string;

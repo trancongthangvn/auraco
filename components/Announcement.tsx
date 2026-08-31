@@ -10,8 +10,14 @@ export default function Announcement() {
   if (!visible) return null;
 
   return (
-    <div className="relative bg-[#2b261f] text-white text-center text-sm py-2 px-8">
-      <span>{dict.announcement.signup}</span>
+    <div className="relative bg-[#2b261f] text-white text-center py-2 px-8">
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event("open-welcome-popup"))}
+        className="text-[9px] uppercase tracking-[0.14em] hover:underline"
+      >
+        {dict.announcement.signup}
+      </button>
       <button
         aria-label="Dismiss announcement"
         onClick={() => setVisible(false)}

@@ -37,6 +37,7 @@ const dictionary = {
     privacyPolicy: "Informativa sulla privacy",
     returnPolicy: "Politica di reso",
     termsOfService: "Termini di servizio",
+    contact: "Contatti",
     copyright: "© 2026 AURA & CO. Tutti i diritti riservati.",
   },
   common: {
@@ -89,11 +90,18 @@ const dictionary = {
     whyLoveIt: "Perché lo amerai:",
     details: "Dettagli",
     material: "Materiale",
+    metal: "Metallo",
     handFinishedNote:
       "Ogni pezzo è rifinito a mano e ispezionato per la qualità prima della spedizione.",
     deliveryReturns: "Consegna e resi",
-    deliveryReturnsText:
-      "Consegna gratuita per ordini superiori a $120. Resi facili entro 30 giorni per articoli non indossati nella confezione originale. Tutti i pezzi sono coperti da garanzia di 2 anni.",
+    deliveryReturnsItems: [
+      "Spedizione gratuita per ordini oltre $120, più resi facili entro 30 giorni",
+      "Vermeil oro 18K / argento sterling 925",
+      "100% impermeabile e resistente all'appannamento, garantito",
+      "Reso entro 30 giorni",
+      "Confezione regalo disponibile al checkout",
+    ],
+    bestSellers: "Più venduti",
     youMayAlsoLike: "Potrebbe piacerti anche",
     quantity: "Quantità",
     decreaseQuantity: "Diminuisci quantità",

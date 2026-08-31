@@ -3,7 +3,6 @@ import Link from "next/link";
 import Announcement from "@/components/Announcement";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import PageHero from "@/components/PageHero";
 import { serverApiFetch } from "@/lib/server-api";
 import { ArrowRightIcon } from "@/components/icons";
 import { getServerDictionary } from "@/lib/i18n/server";
@@ -80,9 +79,13 @@ export default async function NewsPage({
     <>
       <Announcement />
       <Header />
-      <main>
-        <PageHero title={dict.news.title} />
-        <div className="mx-auto max-w-[1400px] px-6 py-16">
+      <main className="px-4 pt-6 pb-12">
+        <header className="mx-auto max-w-[543px] px-6 pt-12 pb-6">
+          <h1 className="font-serif-display text-[38px] leading-[39.9px] font-normal tracking-[0.02em] text-[#2f2925]">
+            {dict.news.title}
+          </h1>
+        </header>
+        <div>
           {categories.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2 mb-8">
               <Link
@@ -150,14 +153,14 @@ export default async function NewsPage({
               )}
             </div>
           ) : (
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
               {posts.map((post) => (
                 <Link
                   key={post.slug}
                   href={`/news/${post.slug}`}
-                  className="group block"
+                  className="group flex h-full flex-col overflow-hidden rounded-[14px] border border-gold-light/35 bg-white shadow-[0_18px_40px_rgba(43,38,31,0.08)]"
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden mb-4 bg-[#f7f4f0]">
+                  <div className="relative aspect-[5/3] overflow-hidden bg-[#f7f4f0]">
                     {post.image_url && (
                       <Image
                         src={post.image_url}
@@ -168,23 +171,25 @@ export default async function NewsPage({
                       />
                     )}
                   </div>
-                  <p className="text-xs text-black/50 mb-2">
-                    {post.category_name && (
-                      <span className="text-gold uppercase tracking-wide">
-                        {post.category_name}
-                      </span>
-                    )}
-                    {post.category_name && post.published_at && " · "}
-                    {post.published_at &&
-                      new Date(post.published_at).toLocaleDateString(dateLocale(locale))}
-                  </p>
-                  <h3 className="text-lg mb-2 leading-snug">{post.title}</h3>
-                  <p className="text-sm text-black/70 mb-3 leading-relaxed">
-                    {post.excerpt}
-                  </p>
-                  <span className="inline-flex items-center gap-1.5 text-xs tracking-wide text-gold">
-                    {dict.news.readMore} <ArrowRightIcon size={13} />
-                  </span>
+                  <div className="flex flex-1 flex-col px-[17.6px] pt-4 pb-[18.4px]">
+                    <p className="font-ui mb-[5.6px] text-[10px] leading-[15.5px] font-light tracking-[0.2px] text-[rgba(40,36,31,0.52)]">
+                      {post.category_name && (
+                        <span className="text-gold uppercase">{post.category_name}</span>
+                      )}
+                      {post.category_name && post.published_at && " · "}
+                      {post.published_at &&
+                        new Date(post.published_at).toLocaleDateString(dateLocale(locale))}
+                    </p>
+                    <h3 className="font-serif-display mb-[7.2px] line-clamp-2 text-[19.2px] leading-[29.76px] font-bold text-ink">
+                      {post.title}
+                    </h3>
+                    <p className="font-ui mb-[10.4px] line-clamp-2 text-[12px] leading-[18.6px] font-light tracking-[0.06px] text-[#625d56]">
+                      {post.excerpt}
+                    </p>
+                    <span className="font-ui mt-auto inline-flex items-center gap-1.5 self-start text-[11px] leading-[17.05px] font-normal tracking-[0.66px] text-[#8d6a37] uppercase">
+                      {dict.news.readMore} <ArrowRightIcon size={12} />
+                    </span>
+                  </div>
                 </Link>
               ))}
             </div>

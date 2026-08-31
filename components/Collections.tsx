@@ -20,17 +20,17 @@ export default function Collections({
   return (
     <section
       ref={revealRef}
-      className={`mx-auto max-w-[1400px] px-4 py-8 sm:px-6 sm:py-10 ${revealClass}`}
+      className={`home-block mx-auto ${revealClass}`}
     >
-      <h2 className="font-serif-display text-[2rem] sm:text-[2.35rem] font-bold text-center text-[#2b261f] mb-4">
+      <h2 className="font-serif-display section-title">
         Collections
       </h2>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+      <div className="grid grid-cols-2 gap-[0.65rem] sm:grid-cols-3 sm:gap-4">
         {collections.map((c) => (
           <Link
             key={c.name}
             href={c.href}
-            className="group flex flex-col overflow-hidden rounded-xl border border-[#2b261f]/[0.08] bg-[#faf8f4] transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(43,38,31,0.08)]"
+            className="group relative flex flex-col overflow-hidden rounded-xl border border-[#2b261f]/[0.08] bg-[#faf8f4] transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04] hover:shadow-[0_18px_40px_rgba(43,38,31,0.08)]"
           >
             {/* A collection added in the admin without an image yields an
                 empty `img`; rendering <Image src=""> there shows a broken
@@ -41,13 +41,13 @@ export default function Collections({
                   src={c.img}
                   alt={c.name}
                   fill
-                  sizes="(min-width: 640px) 33vw, 50vw"
+                  sizes="(min-width: 1448px) 450px, (min-width: 640px) 33vw, 50vw"
                   className="object-cover"
                 />
               )}
             </span>
-            <span className="px-4 py-4 text-center">
-              <span className="font-serif-display text-sm sm:text-base font-normal text-[#2b261f]">
+            <span className="flex flex-col gap-[0.35rem] pb-[18.4px] pl-[17.6px] pr-[17.6px] pt-4 text-center">
+              <span className="font-display-serif text-[19px] font-normal leading-[21.85px] text-[#28241f]">
                 {c.name}
               </span>
             </span>

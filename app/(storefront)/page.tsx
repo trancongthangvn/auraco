@@ -14,9 +14,20 @@ import TrustBadges from "@/components/TrustBadges";
 import ITGirlEdit from "@/components/ITGirlEdit";
 import Journal from "@/components/Journal";
 import Footer from "@/components/Footer";
+import WelcomePopup from "@/components/WelcomePopup";
 import type { Product as CarouselProduct } from "@/data/site";
 import { serverApiFetch } from "@/lib/server-api";
 import { toFullProduct, type ApiProduct } from "@/lib/catalog-mappers";
+// Testimonials carry no photo of their own yet; the cards borrow these
+// on-model shots by position.
+const TESTIMONIAL_PHOTOS = [
+  "/images/products/imported/09cc71d8476343cca31538ff35842330.webp",
+  "/images/products/imported/bd4c07cbdf55464f93499767a3e9905e.webp",
+  "/images/products/imported/502c9cd87d1848849d03e79dbaecfe82.webp",
+  "/images/products/imported/b80b434ec6cc425d995b2ecc8767c97c.webp",
+  "/images/products/imported/35115fb1c6f64907a2c1bcf3597d0cce.webp",
+  "/images/products/imported/2103924f79864c16964d7bb16327ca81.webp",
+];
 
 type ApiHeroSlide = {
   id: number;
@@ -52,8 +63,10 @@ function toCarouselProducts(list: ApiProduct[]): CarouselProduct[] {
     href: `/product/${p.slug}`,
     material: p.material,
     price: `$${Number(p.price).toFixed(2)} USD`,
+    priceValue: Number(p.price),
     rating: Math.round(Number(p.rating)),
     img: p.images[0],
+    hoverImg: p.images[1],
   }));
 }
 
@@ -99,7 +112,6 @@ export default async function Home() {
     categoryRailImages,
     pressMentions,
     beachVibeApi,
-    newArrivalsApi,
     allProductsApi,
   ] = await Promise.all([
     serverApiFetch<{
@@ -115,14 +127,11 @@ export default async function Home() {
     serverApiFetch<ApiProduct[]>("/api/products?collection=BEACH-VIBE").catch(
       () => [] as ApiProduct[]
     ),
-    serverApiFetch<ApiProduct[]>("/api/products?collection=NEW-ARRIVALS").catch(
-      () => [] as ApiProduct[]
-    ),
     serverApiFetch<ApiProduct[]>("/api/products").catch(() => [] as ApiProduct[]),
   ]);
 
-  const beachVibeProducts = toCarouselProducts(beachVibeApi);
-  const newArrivalProducts = toCarouselProducts(newArrivalsApi);
+  // Six tiles, as on the reference — the collection holds more than fit.
+  const newArrivalProducts = toCarouselProducts(beachVibeApi).slice(0, 6);
 
   // Only products the shop owner has attached a video to; VideoCarousel
   // renders nothing at all when this is empty.
@@ -137,11 +146,15 @@ export default async function Home() {
     img: s.image_url,
   }));
 
-  const testimonials: Testimonial[] = homepage.testimonials.map((t) => ({
+  const testimonials: Testimonial[] = homepage.testimonials.map((t, i) => ({
     initials: t.initials,
     name: t.name,
     date: formatQuoteDate(t.quote_date),
     quote: t.quote,
+    // Testimonials have no photo column yet, so each card borrows one of the
+    // on-model shots, assigned by position so the row stays stable between
+    // renders. Swap for a real column once customers can upload their own.
+    photo: TESTIMONIAL_PHOTOS[i % TESTIMONIAL_PHOTOS.length],
   }));
 
   const collectionTiles: CollectionTile[] = collections.map((c) => ({
@@ -160,11 +173,18 @@ export default async function Home() {
         <AsSeenIn mentions={pressMentions} />
         <Collections collections={collectionTiles} />
         <ProductCarousel
-          title="BEACH VIBE"
-          subtitle="Sun-drenched styles for endless summer days. Discover lightweight pieces designed to catch the coastal light."
-          products={beachVibeProducts}
+          title="NEW ARRIVALS"
+          products={newArrivalProducts}
+          layout="grid"
+          feature={{
+            href: "/catalog/BEACH-VIBE",
+            title: "BEACH VIBE",
+            description:
+              "Sun-drenched styles for endless summer days. Discover lightweight pieces designed to catch the coastal light.",
+            image:
+              "/images/settings/home-product-sections/a4975173-b51a-4180-89db-b79a72e73c03.webp",
+          }}
         />
-        <ProductCarousel title="NEW ARRIVALS" products={newArrivalProducts} />
         <VideoCarousel products={videoProducts} />
         <Testimonials testimonials={testimonials} />
         <TrustBadges />
@@ -172,6 +192,7 @@ export default async function Home() {
         <Journal />
       </main>
       <Footer />
+      <WelcomePopup />
     </>
   );
 }

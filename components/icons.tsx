@@ -16,27 +16,27 @@ const base = (size = 18) => ({
 
 export function SearchIcon({ className, size }: IconProps) {
   return (
-    <svg {...base(size)} className={className} aria-hidden="true">
-      <circle cx="11" cy="11" r="7" />
-      <line x1="21" y1="21" x2="16.2" y2="16.2" />
+    <svg {...base(size)} strokeWidth={1.8} className={className} aria-hidden="true">
+      <circle cx="11" cy="11" r="6.25" />
+      <path d="M16.2 16.2 20.5 20.5" />
     </svg>
   );
 }
 
 export function UserIcon({ className, size }: IconProps) {
   return (
-    <svg {...base(size)} className={className} aria-hidden="true">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20c0-3.6 3.6-6 8-6s8 2.4 8 6" />
+    <svg {...base(size)} strokeWidth={1.8} className={className} aria-hidden="true">
+      <circle cx="12" cy="8" r="3.25" />
+      <path d="M5.5 19.5c1.4-3.2 4-4.75 6.5-4.75s5.1 1.55 6.5 4.75" />
     </svg>
   );
 }
 
 export function BagIcon({ className, size }: IconProps) {
   return (
-    <svg {...base(size)} className={className} aria-hidden="true">
-      <path d="M6 8h12l-1 12H7L6 8Z" />
-      <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+    <svg {...base(size)} strokeWidth={1.8} className={className} aria-hidden="true">
+      <path d="M7.25 8.75h9.5a2 2 0 0 1 1.99 1.82l.58 6.4a2.75 2.75 0 0 1-2.74 3H7.42a2.75 2.75 0 0 1-2.74-3l.58-6.4a2 2 0 0 1 1.99-1.82Z" />
+      <path d="M8.75 11.5V7.75a3.25 3.25 0 0 1 6.5 0v3.75" />
     </svg>
   );
 }
@@ -100,6 +100,86 @@ export function CheckIcon({ className, size }: IconProps) {
   );
 }
 
+/**
+ * Scalloped "verified" badge for the feedback-card avatar tick — the exact
+ * outline the shop owner supplied, recoloured from its source blue/white to
+ * the site's own gold (`#f0b429`, matching the reference's own verified-tick
+ * colour) with a white check for contrast, instead of a plain circle.
+ */
+export function VerifiedBadgeIcon({ className, size = 24 }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="m19.36 9v-2.36a2 2 0 0 0 -2-2h-2.31l-1.64-1.64a2 2 0 0 0 -2.82 0l-1.59 1.64h-2.36a2 2 0 0 0 -2 2v2.36l-1.64 1.59a2 2 0 0 0 0 2.82l1.64 1.64v2.31a2 2 0 0 0 2 2h2.36l1.59 1.64a2 2 0 0 0 2.82 0l1.64-1.64h2.31a2 2 0 0 0 2-2v-2.31l1.64-1.64a2 2 0 0 0 0-2.82z"
+        fill="#f0b429"
+      />
+      <path
+        d="m11.25 14.5a1 1 0 0 1 -.71-.29l-1.54-1.5a1 1 0 0 1 1.42-1.42l.79.8 2.29-2.3a1 1 0 0 1 1.5 1.42l-3 3a1 1 0 0 1 -.75.29z"
+        fill="#fff"
+      />
+    </svg>
+  );
+}
+
+export function WarrantyBadgeIcon({ className, size }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden="true">
+      <path d="M12 2.5 14 4.3l2.7-.4 1 2.6 2.6 1-.4 2.7 1.8 2-1.8 2 .4 2.7-2.6 1-1 2.6-2.7-.4L12 21.5l-2-1.8-2.7.4-1-2.6-2.6-1 .4-2.7-1.8-2 1.8-2-.4-2.7 2.6-1 1-2.6 2.7.4Z" />
+      <polyline points="8.8 12.2 11 14.4 15.4 10" />
+    </svg>
+  );
+}
+
+export function GemIcon({ className, size }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden="true">
+      <path d="M6 3h12l3.5 5L12 21 2.5 8Z" />
+      <path d="M2.5 8h19" />
+      <path d="M9 3 6 8l6 13" />
+      <path d="M15 3l3 5-6 13" />
+    </svg>
+  );
+}
+
+export function GiftIcon({ className, size }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden="true">
+      <rect x="3" y="9.5" width="18" height="4" />
+      <rect x="4.5" y="13.5" width="15" height="8" />
+      <line x1="12" y1="9.5" x2="12" y2="21.5" />
+      <path d="M12 9.5C10.5 5.5 6.5 4.5 6.5 7.2 6.5 9 9.5 9.5 12 9.5Z" />
+      <path d="M12 9.5C13.5 5.5 17.5 4.5 17.5 7.2 17.5 9 14.5 9.5 12 9.5Z" />
+    </svg>
+  );
+}
+
+export function TruckIcon({ className, size }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden="true">
+      <path d="M2.5 6.5h11v9h-11z" />
+      <path d="M13.5 10h3.4l3.6 3v2.5h-7z" />
+      <circle cx="7" cy="17.5" r="1.7" />
+      <circle cx="17" cy="17.5" r="1.7" />
+    </svg>
+  );
+}
+
+export function ReturnBoxIcon({ className, size }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden="true">
+      <path d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5Z" />
+      <path d="M4 8.5v8L12 21l8-4.5v-8" />
+      <path d="M12 13v8" />
+    </svg>
+  );
+}
+
 export function SparkleIcon({ className, size }: IconProps) {
   return (
     <svg
@@ -127,12 +207,12 @@ export function StarIcon({
       viewBox="0 0 24 24"
       fill={filled ? "currentColor" : "none"}
       stroke="currentColor"
-      strokeWidth={filled ? 0 : 1.4}
+      strokeWidth={1.5}
       strokeLinejoin="round"
       className={className}
       aria-hidden="true"
     >
-      <path d="M12 3.5l2.47 5.4 5.78.58-4.36 4.02 1.2 5.79L12 16.6l-5.09 2.7 1.2-5.8-4.36-4.02 5.78-.58L12 3.5Z" />
+      <path d="M12 2l2.95 6.6 7.05.7-5.3 4.92 1.55 7.18L12 17.85 5.75 21.4 7.3 14.22 2 9.3l7.05-.7L12 2z" />
     </svg>
   );
 }
@@ -148,9 +228,14 @@ export function StarRating({
 }) {
   const full = Math.round(rating);
   return (
-    <span className={`inline-flex items-center gap-0.5 text-gold ${className}`}>
+    <span className={`inline-flex items-center gap-[1.6px] text-gold ${className}`}>
       {Array.from({ length: 5 }, (_, i) => (
-        <StarIcon key={i} size={size} filled={i < full} />
+        <StarIcon
+          key={i}
+          size={size}
+          filled={i < full}
+          className={i < full ? undefined : "opacity-[0.35]"}
+        />
       ))}
     </span>
   );

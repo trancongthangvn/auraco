@@ -46,13 +46,15 @@ export default function CategoryRail({
 
   const railLinks = navLinks.filter((link) => isRailKey(link.key));
 
+  // Same 1400px shell as every other section: a wider one here made the rest
+  // of the page look pinched beside it.
   return (
     <section
       ref={revealRef}
       aria-label="Shop by category"
-      className={`mx-auto max-w-[1400px] px-4 py-[30px] sm:px-6 sm:py-14 ${revealClass}`}
+      className={`home-block mx-auto ${revealClass}`}
     >
-      <div role="list" className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-6">
+      <div role="list" className="grid grid-cols-2 gap-[clamp(0.8rem,2vw,1.5rem)] sm:grid-cols-4">
         {railLinks.map((link) => {
           const key = link.key as CategoryRailKey;
           const label = dict.nav[key];
@@ -63,7 +65,7 @@ export default function CategoryRail({
               key={key}
               role="listitem"
               href={link.href}
-              className="group block text-center text-ink"
+              className="group block text-center text-ink transition-transform duration-300 ease-out hover:scale-[1.04] hover:z-10 relative"
             >
               <span className="relative block aspect-square overflow-hidden bg-[#e9e4dc]">
                 {img ? (
@@ -71,12 +73,12 @@ export default function CategoryRail({
                     src={img}
                     alt={label}
                     fill
-                    sizes="(min-width: 640px) 25vw, 50vw"
+                    sizes="(min-width: 1448px) 320px, (min-width: 640px) 25vw, 50vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                 ) : null}
               </span>
-              <span className="font-serif-display mt-2.5 block text-[26px] leading-[1.15] font-normal normal-case tracking-normal text-ink transition-colors group-hover:text-gold">
+              <span className="font-serif-display mt-[0.65rem] block text-[26px] font-normal normal-case leading-[1.15] tracking-normal text-[#2b261f] transition-colors group-hover:text-gold">
                 {label}
               </span>
             </Link>

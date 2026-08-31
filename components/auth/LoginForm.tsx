@@ -27,7 +27,7 @@ export default function LoginForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light bg-transparent focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f]"
         />
       </label>
       <label className="block text-sm">
@@ -37,7 +37,7 @@ export default function LoginForm() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light bg-transparent focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f]"
         />
       </label>
 
@@ -83,7 +83,9 @@ export default function LoginForm() {
       </button>
 
       {message && (
-        <p className="text-xs text-center text-black/70">{message}</p>
+        <p role="status" aria-live="polite" className="text-xs text-center text-black/70">
+          {message}
+        </p>
       )}
 
       <p className="text-sm text-center">

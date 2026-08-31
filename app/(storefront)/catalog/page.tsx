@@ -29,13 +29,20 @@ export default async function CatalogPage({
     getServerDictionary(),
   ]);
 
+  const brandNavKey: Record<string, string> = {
+    Necklaces: "necklaces",
+    Bracelets: "bracelets",
+    Earrings: "earrings",
+    "Signature-Sets": "signatureSets",
+  };
+
   const products: FullProduct[] = apiProducts.map(toFullProduct);
   const collectionFilters: CollectionFilter[] = toCollectionFilters(apiCollections);
 
   return (
     <>
       <Announcement />
-      <Header />
+      <Header activeNavKey={brand ? brandNavKey[brand] ?? null : "collections"} />
       <main>
         <CatalogClient
           products={products}

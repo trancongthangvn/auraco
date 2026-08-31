@@ -34,7 +34,7 @@ export default function RegisterForm() {
           required
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light bg-transparent focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f]"
         />
       </label>
       <label className="block text-sm">
@@ -44,7 +44,7 @@ export default function RegisterForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light bg-transparent focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f]"
         />
       </label>
       <label className="block text-sm">
@@ -54,7 +54,7 @@ export default function RegisterForm() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light bg-transparent focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f]"
         />
       </label>
       <label className="block text-sm">
@@ -64,9 +64,15 @@ export default function RegisterForm() {
           type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light focus:outline-none focus:border-[#2b261f] bg-transparent"
+          aria-describedby={error ? "confirm-password-error" : undefined}
+          aria-invalid={!!error}
+          className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light bg-transparent focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f]"
         />
-        {error && <p className="text-xs text-red-700 mt-2">{error}</p>}
+        {error && (
+          <p id="confirm-password-error" role="alert" className="text-xs text-red-700 mt-2">
+            {error}
+          </p>
+        )}
       </label>
 
       <button
@@ -92,7 +98,9 @@ export default function RegisterForm() {
       </button>
 
       {message && (
-        <p className="text-xs text-center text-black/70">{message}</p>
+        <p role="status" aria-live="polite" className="text-xs text-center text-black/70">
+          {message}
+        </p>
       )}
 
       <p className="text-sm text-center">

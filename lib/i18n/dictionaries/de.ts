@@ -37,6 +37,7 @@ const dictionary = {
     privacyPolicy: "Datenschutzrichtlinie",
     returnPolicy: "Rückgaberichtlinie",
     termsOfService: "Nutzungsbedingungen",
+    contact: "Kontakt",
     copyright: "© 2026 AURA & CO. Alle Rechte vorbehalten.",
   },
   common: {
@@ -89,11 +90,18 @@ const dictionary = {
     whyLoveIt: "Warum Sie es lieben werden:",
     details: "Details",
     material: "Material",
+    metal: "Metall",
     handFinishedNote:
       "Jedes Stück wird von Hand fertiggestellt und vor dem Versand auf Qualität geprüft.",
     deliveryReturns: "Versand & Rückgabe",
-    deliveryReturnsText:
-      "Kostenloser Versand ab einem Bestellwert von 120 $. Einfache 30-Tage-Rückgabe für ungetragene Artikel in Originalverpackung. Alle Stücke sind mit 2 Jahren Garantie abgesichert.",
+    deliveryReturnsItems: [
+      "Kostenloser Versand ab 120 $, plus einfache 30-Tage-Rückgabe",
+      "18 Karat Gold Vermeil / 925er Sterlingsilber",
+      "100% wasserfest und anlaufbeständig, garantiert",
+      "30 Tage Rückgaberecht",
+      "Geschenkverpackung an der Kasse erhältlich",
+    ],
+    bestSellers: "Bestseller",
     youMayAlsoLike: "Das könnte Ihnen auch gefallen",
     quantity: "Menge",
     decreaseQuantity: "Menge verringern",

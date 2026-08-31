@@ -9,8 +9,8 @@ export default function PageHero({
 }) {
   if (compact) {
     return (
-      <div className="mx-auto max-w-[560px] px-6 pt-12 pb-6">
-        <h1 className="font-sans text-[19px] font-medium uppercase tracking-[0.08em] mb-2">
+      <div className="mx-auto max-w-[543px] px-6 pt-12 pb-6">
+        <h1 className="font-ui text-[19px] font-medium uppercase tracking-[0.08em] mb-2">
           {title}
         </h1>
         {subtitle && (
@@ -21,7 +21,7 @@ export default function PageHero({
   }
 
   return (
-    <div className="mx-auto max-w-[650px] px-6 pt-12 pb-6">
+    <div className="mx-auto max-w-[543px] px-6 pt-12 pb-6">
       <h1 className="font-serif-display text-[38px] font-normal tracking-[0.02em] mb-2">
         {title}
       </h1>

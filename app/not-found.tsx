@@ -3,6 +3,7 @@ import Announcement from "@/components/Announcement";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LanguageProvider from "@/components/i18n/LanguageProvider";
+import CurrencyProvider from "@/components/currency/CurrencyProvider";
 
 // Rendered for any URL that matches no route at all, so it sits outside the
 // `(storefront)` route group's layout (and its cookie-driven locale) — wrap
@@ -10,9 +11,10 @@ import LanguageProvider from "@/components/i18n/LanguageProvider";
 export default function NotFound() {
   return (
     <LanguageProvider locale="en">
-      <Announcement />
-      <Header />
-      <main>
+      <CurrencyProvider>
+        <Announcement />
+        <Header />
+        <main>
         <div className="mx-auto max-w-[600px] px-6 py-24 text-center">
           <h1 className="font-serif-display text-5xl mb-4">Page not found</h1>
           <p className="text-sm text-black/60 mb-10">
@@ -33,8 +35,9 @@ export default function NotFound() {
             </Link>
           </div>
         </div>
-      </main>
-      <Footer />
+        </main>
+        <Footer />
+      </CurrencyProvider>
     </LanguageProvider>
   );
 }

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CheckIcon } from "@/components/icons";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { formatPrice, currencyMeta } from "@/lib/currency";
+import { useCart } from "@/components/cart/CartProvider";
 
 type BundleItem = {
   slug: string;
@@ -33,6 +34,7 @@ export default function FrequentlyBoughtTogether({
   );
   const [added, setAdded] = useState(false);
   const { currency } = useCurrency();
+  const { addItem } = useCart();
 
   if (companions.length === 0) return null;
 
@@ -123,24 +125,45 @@ export default function FrequentlyBoughtTogether({
       <button
         type="button"
         onClick={() => {
+          // The bundle discount is a deal on the combined total, not any one
+          // item's own price (see the discountPercent prop note above) — so
+          // each line gets scaled by the same factor on the way into the
+          // cart, which is a real localStorage cart now (not a demo
+          // checkmark), so the total actually charged matches what this
+          // button advertised.
+          const scale = subtotal > 0 ? total / subtotal : 1;
+          const bundleRows = [
+            { slug: mainProduct.slug, name: mainProduct.name, price: mainProduct.price, image: mainProduct.image },
+            ...selectedCompanions,
+          ];
+          for (const item of bundleRows) {
+            addItem({
+              slug: item.slug,
+              name: item.name,
+              price: Math.round(item.price * scale * 100) / 100,
+              image: item.image ?? null,
+            });
+          }
           setAdded(true);
           setTimeout(() => setAdded(false), 1800);
         }}
-        className="mt-4 flex w-full flex-wrap items-center justify-center gap-x-[10.4px] gap-y-[5.6px] rounded-[10px] bg-[#2b261f] px-5 py-[15.2px] font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] text-white transition-colors hover:bg-black"
+        className="mt-4 flex w-full flex-col items-center gap-1 rounded-[10px] bg-[#2b261f] px-5 py-[15.2px] font-ui text-white transition-colors hover:bg-black"
       >
         {added ? (
-          <>
+          <span className="flex items-center gap-2 text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px]">
             Added <CheckIcon size={15} />
-          </>
+          </span>
         ) : (
           <>
-            <span>Add both to bag</span>
-            <span className="font-bold">{currencyMeta[currency].symbol}{total.toFixed(2)}</span>
-            {savings > 0 && (
-              <span className="text-[14.4px] leading-[22.32px] font-normal text-white/80">
-                Save {currencyMeta[currency].symbol}{savings.toFixed(2)}
+            <span className="text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px]">
+              Add Both to Bag
+            </span>
+            <span className="flex items-center gap-2 text-[12px] font-normal text-white/75">
+              <span className="font-semibold text-white">
+                {currencyMeta[currency].symbol}{total.toFixed(2)}
               </span>
-            )}
+              {savings > 0 && <span>Save {currencyMeta[currency].symbol}{savings.toFixed(2)}</span>}
+            </span>
           </>
         )}
       </button>

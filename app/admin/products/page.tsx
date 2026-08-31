@@ -355,6 +355,9 @@ export default function AdminProductsPage() {
     setEditCollections([]);
     setEditSortOrder("0");
     setEditStock("0");
+    setEditDescription("");
+    setEditImages([]);
+    setEditThumbnail(null);
     setCreateError(null);
   };
 
@@ -370,6 +373,7 @@ export default function AdminProductsPage() {
         .replace(/(^-|-$)/g, "");
       const parsedPrice = Number(editPrice);
       const parsedStock = Number.parseInt(editStock, 10);
+      const parsedSortOrder = Number.parseInt(editSortOrder, 10);
       const created = await apiFetch<AdminProduct>("/api/products/admin/products", {
         method: "POST",
         body: JSON.stringify({
@@ -380,6 +384,10 @@ export default function AdminProductsPage() {
           material: newMaterial,
           price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
           stock: Number.isInteger(parsedStock) ? parsedStock : 0,
+          sortOrder: Number.isInteger(parsedSortOrder) ? parsedSortOrder : 0,
+          description: editDescription,
+          images: editImages.filter((img) => img.trim().length > 0),
+          thumbnailUrl: editThumbnail,
         }),
       });
       setProducts((list) => [created, ...list]);
@@ -742,32 +750,64 @@ export default function AdminProductsPage() {
                 })}
               </div>
 
-              <div className="flex gap-4">
-                <div className="flex-1">
+              <div className="mb-4 grid grid-cols-3 gap-3">
+                <div>
                   <Label>Giá (USD)</Label>
                   <Input
                     value={editPrice}
                     onChange={(e) => setEditPrice(e.target.value)}
                     type="number"
-                    className="mb-1"
                     disabled={saving}
                   />
                 </div>
-                <div className="flex-1">
-                  <Label>Tồn kho (Stock)</Label>
+                <div>
+                  <Label>Tồn kho</Label>
                   <Input
                     value={editStock}
                     onChange={(e) => setEditStock(e.target.value)}
                     type="number"
                     min={0}
-                    className="mb-1"
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <Label>Ưu tiên</Label>
+                  <Input
+                    value={editSortOrder}
+                    onChange={(e) => setEditSortOrder(e.target.value)}
+                    type="number"
                     disabled={saving}
                   />
                 </div>
               </div>
+
+              <Label>Mô tả sản phẩm</Label>
+              <Textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={3}
+                placeholder="Mô tả hiển thị ở mục &quot;Why You'll Love It&quot;"
+                className="mb-4"
+                disabled={saving}
+              />
+
+              <div className="mb-2 grid grid-cols-2 gap-3">
+                <ImageField
+                  label="Ảnh bìa"
+                  value={editImages[0] ?? null}
+                  onChange={(url) => setEditImages((list) => [url ?? "", ...list.slice(1)])}
+                  disabled={saving}
+                />
+                <ImageField
+                  label="Thumbnail riêng (tùy chọn)"
+                  value={editThumbnail}
+                  onChange={setEditThumbnail}
+                  disabled={saving}
+                />
+              </div>
               <p className="text-xs text-black/40 mb-2 mt-1">
-                Sau khi tạo, form sửa chi tiết (ảnh, mô tả, điểm nổi bật, thứ tự ưu
-                tiên...) sẽ mở ra ngay để bạn điền tiếp.
+                Sau khi tạo, form sửa chi tiết (thêm ảnh, điểm nổi bật, biến
+                thể, thuộc tính, SEO...) sẽ mở ra ngay để bạn điền tiếp.
               </p>
             </div>
             <ModalFooter>

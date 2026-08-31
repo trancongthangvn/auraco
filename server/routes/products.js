@@ -305,6 +305,7 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
       metaTitle,
       metaDescription,
       showAtHome,
+      sortOrder,
     } = req.body || {};
 
     const videoUrlInput = videoUrl !== undefined ? videoUrl : videoUrlSnake;
@@ -339,14 +340,17 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
     ) {
       return res.status(400).json({ error: 'discountPercent must be a number between 0 and 100' });
     }
+    if (sortOrder !== undefined && !Number.isInteger(sortOrder)) {
+      return res.status(400).json({ error: 'sortOrder must be an integer' });
+    }
 
     const result = await query(
       `INSERT INTO products
          (slug, name, category, material, price, compare_at_price, rating,
           review_count, images, description, features, stock, active, video_url,
           brand, thumbnail_url, discount_percent, badge_label, sticker_image_url,
-          meta_title, meta_description, show_at_home)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+          meta_title, meta_description, show_at_home, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
        RETURNING *`,
       [
         slug.trim(),
@@ -371,6 +375,7 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
         normalizeNullableString(metaTitle),
         normalizeNullableString(metaDescription),
         showAtHome === undefined ? false : Boolean(showAtHome),
+        Number.isInteger(sortOrder) ? sortOrder : 0,
       ]
     );
 

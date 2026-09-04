@@ -9,7 +9,8 @@
   - **Production**: source at `/var/www/auraco-app` — nginx port `80` reverse-proxies to `aura-web` (port `3100`); its Express API is `aura-api` (port `4000`). Publicly exposed at **https://aura.maxmin.vn** via a Cloudflare Tunnel pointed at container 118 port 80.
   - Staging and production currently **share one Postgres database** (`auraco`) — this is a demo/personal project, not yet worth splitting. Revisit if real customer data ever needs isolating from test data.
   - All 4 processes run under **PM2** via `/var/www/ecosystem.config.js` (also committed to the repo root as `ecosystem.config.js`), started with `pm2 start ecosystem.config.js --only <names>` and persisted with `pm2 save`.
-- **GitHub repo**: `trancongthangvn/auraco` (remote origin has no embedded token; commit author configured **locally** as `ALODEV <hello.alodev@gmail.com>` — do not commit as "Claude").
+- **GitHub repo**: `trancongthangvn/auraco` (remote origin has no embedded token; commit author configured **locally** as `ALODEV <hello.alodev@gmail.com>` — do not commit as "Claude"). As of 2026-09-05, **all three of** the local dev machine, `/var/www/auraco-app-staging` and `/var/www/auraco-app` are independent git clones of this same repo (each has its own `.git`, `git remote -v` → `origin` → the GitHub URL). Deploying now means committing + pushing, then pulling on the target environment — see "Deploy pipeline" below. Before that date, the two server directories were plain rsync/tar copies with no version control at all; that gap is exactly what let a fixed bug's old code quietly resurface (nothing recorded which file changed when, so a later manual edit or partial deploy could silently undo an earlier fix with no way to tell).
+- **Shared uploads store**: `server/uploads` on both staging and production is a **symlink** to `/var/www/auraco-uploads` (not a real per-environment directory). Staging and production already share one database, but until 2026-09-05 they each had their *own* uploads folder on disk — an admin uploading a product photo on staging wrote the file only to staging's disk while the shared DB row's `/uploads/<file>` path was readable from both, so production 404'd on any image uploaded while working on staging (and vice versa). Symlinking both to one real directory fixed it permanently; the pre-fix originals are kept at `server/uploads.bak-<date>` in each environment (not deleted, just superseded). `.gitignore`'s `server/uploads` entry (no trailing slash) is deliberately written to match a symlink as well as a real directory — a trailing slash only matches real directories and let the symlink show up as an untracked file.
 - **Reference architecture container**: LXC `114` (`vaithaihoa`, a different live business site) — read-only architecture reference used when designing the real backend. Its stack: Express (raw `pg`, no ORM) + PostgreSQL + JWT auth (bcrypt + jsonwebtoken) + multer/sharp uploads, PM2, Next.js `rewrites()` proxying `/api/*`/`/uploads/*` to the Express API. No PayPal/Cash App/Zelle code there (only COD/bank-transfer) — those were designed from scratch for AURA & CO.
 
 ## Standing deploy rule
@@ -23,52 +24,81 @@ Real backend, not static export. Two independent layers per environment:
 1. **Express API** (`server/`) — raw `pg`, JWT auth (`jsonwebtoken` + `bcryptjs`), file uploads (`multer` + `sharp`), one route file per resource domain under `server/routes/`. Reads `server/.env` (`DATABASE_URL`, `JWT_SECRET`, `PORT`, `CORS_ORIGINS`) via `dotenv`.
 2. **Next.js app** (`app/`, `components/`, `lib/`) — `next start` (no `output: "export"` anymore). `next.config.ts` has a `rewrites()` that proxies `/api/*` and `/uploads/*` to the Express API's `API_URL` (read from `.env.local` at the Next.js project root, e.g. `API_URL=http://localhost:4000`). Browser code uses `lib/api.ts`'s `apiFetch()` (relative paths, relies on the rewrite). Server Components use `lib/server-api.ts`'s `serverApiFetch()` (calls `API_URL` directly, since SSR has no browser origin to be "same-origin" relative to).
 
-## Deploy pipeline (real backend, current state)
+## Deploy pipeline (git-based, current state as of 2026-09-05)
+
+Source of truth is now GitHub (`trancongthangvn/auraco`, branch `main`), not the local
+working directory. Every environment — local dev, staging, production — is its own
+clone tracking that same `origin`. Deploying is: commit locally → push → pull on the
+target environment → rebuild in place → restart. No more tar/rsync/scp of source.
 
 ```bash
 # 1. Build & verify locally first
-cd /Users/Shared/CODE/aura-co-jewelry
+cd /path/to/aura-co-jewelry
 npx eslint . && npx tsc --noEmit && npm run build   # must all be clean
 
-# 2. Ship source (NOT node_modules/.next/out/.env*) to the host, then into the container
-rsync -avz --exclude 'node_modules' --exclude '.next' --exclude 'out' --exclude '.git' \
-  --exclude 'server/node_modules' --exclude 'server/uploads' --exclude '*.env' \
-  -e "ssh root@10.5.100.10" . root@10.5.100.10:/tmp/auraco-src/
-ssh root@10.5.100.10 "cd /tmp/auraco-src && tar -czf /tmp/auraco-src.tar.gz . && rm -rf /tmp/auraco-src"
-ssh root@10.5.100.10 "pct push 118 /tmp/auraco-src.tar.gz /tmp/auraco-src.tar.gz && \
-  pct exec 118 -- bash -c 'tar -xzf /tmp/auraco-src.tar.gz -C /var/www/auraco-app-staging && rm /tmp/auraco-src.tar.gz' && \
-  rm /tmp/auraco-src.tar.gz"
+# 2. Commit and push. NEVER commit as "Claude" — author is configured locally as
+#    ALODEV <hello.alodev@gmail.com> (already set on this clone's .git/config).
+git add -A
+git commit -m "<describe the change>"
+git push origin main
 
-# 3. Install deps + BUILD IN PLACE on the container (do not rebuild locally and copy .next — see gotcha #5)
-ssh root@10.5.100.10 "pct exec 118 -- bash -c 'cd /var/www/auraco-app-staging && npm ci && npm run build'"
-ssh root@10.5.100.10 "pct exec 118 -- bash -c 'cd /var/www/auraco-app-staging/server && npm ci'"
+# 3. Pull onto staging and rebuild in place.
+#    `git reset --hard origin/main` (not `git pull`) is deliberate: the staging/
+#    production working trees are pure deploy targets, never hand-edited, so a hard
+#    reset that forces the tree to exactly match the commit is safer than a merge —
+#    it's also what fixed a real CRLF-vs-LF drift on 4 files the first time these
+#    server clones were set up (git reset alone updates HEAD/index but leaves
+#    working-tree files as they were, which read as "modified" until force-synced).
+ssh root@10.5.100.10 "pct exec 118 -- bash -c '
+  cd /var/www/auraco-app-staging &&
+  git fetch origin main &&
+  git reset --hard origin/main &&
+  npm ci && npm run build &&
+  cd server && npm ci
+'"
 
 # 4. Restart the STAGING PM2 processes
 ssh root@10.5.100.10 "pct exec 118 -- pm2 restart aura-web-staging aura-api-staging"
 
 # 5. Verify staging (curl + browser incl. mobile viewport + console errors), get user confirmation
 
-# 6. Only on explicit confirmation, promote to production:
-#    copy the STAGING SOURCE (not the built .next) into production, preserving production's own
-#    server/.env and .env.local (different ports!), then REBUILD IN PLACE for production too:
+# 6. Only on explicit confirmation, promote to production — same pull-and-rebuild,
+#    against the SAME commit that was just verified on staging (no separate copy step,
+#    no risk of drifting from what was actually checked). server/.env and .env.local
+#    are gitignored, so they are untouched by the reset — production keeps its own
+#    ports/secrets automatically.
 ssh root@10.5.100.10 "pct exec 118 -- bash -c '
-  cp /var/www/auraco-app/server/.env /tmp/prod-server.env.bak &&
-  cp /var/www/auraco-app/.env.local /tmp/prod-nextapp.env.local.bak &&
-  rm -rf /var/www/auraco-app/* &&
-  cp -a /var/www/auraco-app-staging/. /var/www/auraco-app/ &&
-  cp /tmp/prod-server.env.bak /var/www/auraco-app/server/.env &&
-  cp /tmp/prod-nextapp.env.local.bak /var/www/auraco-app/.env.local &&
-  rm /tmp/prod-server.env.bak /tmp/prod-nextapp.env.local.bak &&
-  cd /var/www/auraco-app && npm run build
+  cd /var/www/auraco-app &&
+  git fetch origin main &&
+  git reset --hard origin/main &&
+  npm ci && npm run build &&
+  cd server && npm ci
 '"
 ssh root@10.5.100.10 "pct exec 118 -- pm2 restart aura-api aura-web"
 
 # 7. Verify production (curl both LAN IP and https://aura.maxmin.vn, browser check, mobile viewport)
+
+# 8. Confirm all three environments landed on the same commit (cheap sanity check,
+#    catches a failed fetch/reset before it's mistaken for a successful deploy):
+git log --oneline -1                                                          # local
+ssh root@10.5.100.10 "pct exec 118 -- bash -c '
+  cd /var/www/auraco-app-staging && git log --oneline -1
+  cd /var/www/auraco-app && git log --oneline -1
+'"
 ```
+
+**If a deploy step fails partway** (e.g. `npm run build` errors after `git reset --hard`
+already moved the working tree): the environment is left on the new commit's *source*
+with no successful *build*. Fix the error and re-run `npm run build` — do not re-run
+`git reset` again unless the source itself needs to change, and do not fall back to
+copying files by hand, which is exactly the untracked-drift problem this workflow
+replaces. `ls .next/BUILD_ID` confirms a build actually completed (see gotcha #12).
 
 ## Environment files (never committed — see `.gitignore`)
 
-Each environment needs its own pair, written directly on the container (never via git):
+Each environment needs its own pair, written directly on the container (never via git —
+`server/.env` and `.env.local` are both gitignored, so `git reset --hard origin/main`
+during a deploy never touches them):
 
 - `server/.env`: `DATABASE_URL=postgres://auraco_app:<password>@localhost:5432/auraco`, `JWT_SECRET=<random>`, `PORT=4000` (prod) / `4001` (staging), `CORS_ORIGINS=http://10.5.100.118:8080,https://aura.maxmin.vn`.
 - `.env.local` (Next.js project root): `API_URL=http://localhost:4000` (prod) / `http://localhost:4001` (staging).
@@ -89,6 +119,7 @@ Each environment needs its own pair, written directly on the container (never vi
 11. **`images.unoptimized` was a leftover from the old static export.** It is now off, so Next optimizes images (a 1.8MB source PNG serves as a 27KB AVIF). Two consequences: (a) any absolute *external* image URL in the database will throw at render and 500 that page unless its host is in `next.config.ts`'s `remotePatterns` — the admin's paste-URL field is therefore restricted to same-origin paths; (b) every `next/image` whose `src` may be empty (a product saved without images, a collection with no `image_url`) must be guarded with `{src && <Image .../>}`, otherwise it renders as a broken-image icon.
 
 12. **`pct exec` into 118 can hang indefinitely when the Proxmox host itself is overloaded** — seen at `load average: 55-58` (on a host with `free -h` showing ~21/39GB swap in use) while `ssh root@10.5.100.10 "echo ..."` (no `pct exec`) still returned instantly. Symptom: every `pct exec 118 -- ...` call times out even with a 3-minute budget, including trivial ones like `ps aux` — it is not the command that is slow, it is entering the container's namespace. Before assuming a deploy step itself is broken, run `ssh root@10.5.100.10 "uptime"` (bare SSH, no `pct exec`) — if load is 50+, wait and retry later rather than repeatedly hammering `pct exec`, which just stacks more queued exec attempts on an already-thrashing host. A build kicked off right before the host tips into this state can be left half-written (`.next/` containing only `build/`+`cache/` subfolders, no `BUILD_ID`) — check for `BUILD_ID` before trusting a build "probably finished in the background."
+13. **No version control on the server was the root cause of "a fixed bug's old code comes back."** Before 2026-09-05, staging and production were plain tar/rsync copies with no git history on either — nothing recorded which file changed when, so there was no way to tell a stale/partial deploy from a real fix, and no way to diff or roll back. Separately (same underlying "no source of truth" problem, different symptom): each environment had its **own** `server/uploads` folder on disk even though they shared one database, so a product photo uploaded on staging 404'd on production and vice versa — this looked identical to "the fix didn't take" from the storefront but was actually a missing file, not a code regression. Both are fixed now: all three environments (local, staging, production) are git clones of `trancongthangvn/auraco` tracking `origin/main` (see "Deploy pipeline" above), and `server/uploads` is a symlink to one shared `/var/www/auraco-uploads` on both. If "a fix disappeared" ever comes up again, check `git log --oneline -1` on the environment in question **before** assuming the code regressed — it may just be behind `origin/main`.
 
 ## Payment methods
 

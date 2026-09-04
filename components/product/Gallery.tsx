@@ -116,11 +116,11 @@ export default function Gallery({
     const el = thumbViewportRef.current;
     if (!el) return;
     const firstThumb = el.firstElementChild as HTMLElement | null;
-    // Step by one thumbnail's own height (plus the gap-3 gutter) so a click
-    // pages forward exactly one photo at a time, same as missoma.com's own
-    // arrow — falls back to a full viewport page if a thumbnail hasn't
-    // rendered its real height yet.
-    const step = firstThumb ? firstThumb.getBoundingClientRect().height + 12 : el.clientHeight;
+    // Step by one thumbnail's own height (plus the 10px gutter, matching
+    // missoma.com's own thumb-slide margin-bottom) so a click pages forward
+    // exactly one photo at a time, same as their arrow — falls back to a
+    // full viewport page if a thumbnail hasn't rendered its real height yet.
+    const step = firstThumb ? firstThumb.getBoundingClientRect().height + 10 : el.clientHeight;
     el.scrollBy({ top: step, behavior: "smooth" });
     // The scroll listener alone is enough in a normal browser, but a smooth
     // scroll's own events can be dropped (seen live in an automated one),
@@ -188,7 +188,13 @@ export default function Gallery({
           align-items: stretch then fills the thumbnail column to match), so
           this stays proportional at any width instead of the crop ratio
           drifting with the viewport, and it composes with max-w-[750px]
-          below rather than replacing it. */}
+          below rather than replacing it.
+          Corner radius (10px) and every gap (10px: hero↔column, and between
+          stacked thumbnails) are pixel-matched to missoma.com's own values
+          too — measured live (border-radius: 10px on their media container,
+          `gap: 10px` on the column wrapper, each thumb-slide's own
+          `margin-bottom: 10px`) rather than left at Tailwind's rounded-lg
+          (8px) / gap-3 (12px), which were close but not exact. */}
       {/* Explicit request: the width used to grow with the page's own
           responsive column track, so on a wide screen the (height-capped)
           tiles got stretched wider and wider — more of each photo cropped
@@ -196,13 +202,13 @@ export default function Gallery({
           matches the frame size confirmed against a reference screenshot;
           past that the block just stops growing and centers, leaving blank
           space on a wide screen rather than cropping further. */}
-      <div className="hidden min-[1000px]:mx-auto min-[1000px]:grid min-[1000px]:max-w-[750px] min-[1000px]:grid-cols-[2.2fr_1fr] min-[1000px]:gap-3">
+      <div className="hidden min-[1000px]:mx-auto min-[1000px]:grid min-[1000px]:max-w-[750px] min-[1000px]:grid-cols-[2.2fr_1fr] min-[1000px]:gap-[10px]">
         <button
           ref={heroRef}
           type="button"
           aria-label="View full-size image"
           onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-          className="group relative aspect-[4/5] self-start overflow-hidden rounded-lg bg-[#f6f0e6] cursor-zoom-in"
+          className="group relative aspect-[4/5] self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
         >
           {/* No `key` here either — see the mobile hero below for why. */}
           {effectiveImages[active] && (
@@ -227,7 +233,7 @@ export default function Gallery({
           >
             <div
               ref={thumbViewportRef}
-              className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex min-h-0 flex-1 flex-col gap-[10px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               {effectiveImages.map((src, i) => (
                 <button
@@ -236,7 +242,7 @@ export default function Gallery({
                   aria-label={`Show image ${i + 1} of ${effectiveImages.length}`}
                   aria-current={active === i ? "true" : undefined}
                   onClick={() => setActive(i)}
-                  className={`group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-lg bg-[#f6f0e6] ${
+                  className={`group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6] ${
                     active === i ? "ring-2 ring-[#2b261f]" : ""
                   }`}
                 >

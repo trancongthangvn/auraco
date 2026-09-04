@@ -167,13 +167,23 @@ export default function FrequentlyBoughtTogether({
           // line — never "Add Both to Bag", which was wrong even for the
           // 2-companion case (main + 2 companions is 3 items, not "both").
           <>
+            {/* Bug found in QA: this button multiplied nothing by the
+                selected currency's rate — it reused the same raw USD
+                `total`/`savings` for every currency and just swapped the
+                symbol, so EUR/GBP showed the USD number under a different
+                sign (same class of bug AddToBag.tsx had earlier). The
+                individual row prices above were already correct
+                (formatPrice(..., rates[currency])) — only this summary
+                button's own numbers were wrong. `addItem()` below is
+                deliberately untouched: cart/checkout stays USD regardless
+                of what's displayed here. */}
             <span>Add to Cart -</span>
             <span className="font-semibold">
-              {currencyMeta[currency].symbol}{total.toFixed(2)}
+              {currencyMeta[currency].symbol}{(total * rates[currency]).toFixed(2)}
             </span>
             {savings > 0 && (
               <span className="normal-case font-normal text-white/75">
-                (Save {currencyMeta[currency].symbol}{savings.toFixed(2)})
+                (Save {currencyMeta[currency].symbol}{(savings * rates[currency]).toFixed(2)})
               </span>
             )}
           </>

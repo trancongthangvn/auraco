@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
 const { UPLOAD_DIR } = require('./lib/upload');
 
 const app = express();
@@ -117,6 +118,14 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
+  // Multer's own errors (file-too-large, too-many-files, wrong field name,
+  // ...) never set `.status` either — same class of bug as the fileFilter
+  // rejection in lib/upload.js (found during admin-panel QA), just a
+  // different trigger. A oversized upload was reading back as 500 "server
+  // error" instead of 400 "your file is too big".
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ error: err.message });
+  }
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 

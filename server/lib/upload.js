@@ -49,7 +49,12 @@ const storage = multer.diskStorage({
 function fileFilter(req, file, cb) {
   const rule = MIME_WHITELIST[file.mimetype];
   if (!rule) {
-    return cb(new Error(`Unsupported file type: ${file.mimetype}`));
+    // Without `.status`, index.js's error handler falls back to 500 —
+    // a client picking the wrong file type read back as "server error"
+    // instead of "bad request" (found during admin-panel QA).
+    const err = new Error(`Unsupported file type: ${file.mimetype}`);
+    err.status = 400;
+    return cb(err);
   }
   cb(null, true);
 }

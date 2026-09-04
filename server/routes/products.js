@@ -178,12 +178,20 @@ router.get('/', async (req, res) => {
       `;
     }
 
+    // A product's rank within a collection (e.g. the cart's "Best sellers"
+    // rail) is independent of its rank in the full catalog — order by the
+    // collection's own sort_order first when one is in play, falling back
+    // to the catalog order for the tie-break / no-collection case.
+    const orderBy = collection
+      ? '(pc.sort_order = 0), pc.sort_order ASC, (p.sort_order = 0), p.sort_order ASC, p.created_at DESC'
+      : '(p.sort_order = 0), p.sort_order ASC, p.created_at DESC';
+
     const sql = `
       SELECT p.*
         FROM products p
         ${joinClause}
        WHERE ${conditions.join(' AND ')}
-       ORDER BY (p.sort_order = 0), p.sort_order ASC, p.created_at DESC
+       ORDER BY ${orderBy}
     `;
 
     const result = await query(sql, params);

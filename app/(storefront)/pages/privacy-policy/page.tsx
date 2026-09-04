@@ -5,7 +5,7 @@ export const metadata = { title: "Privacy Policy | AURA & CO" };
 export default function PrivacyPolicyPage() {
   return (
     <LegalPage
-      title="Privacy Policy"
+      title="Privacy policy"
       sections={[
         {
           heading: "1. Information We Collect",

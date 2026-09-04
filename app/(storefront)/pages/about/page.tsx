@@ -13,7 +13,7 @@ export default function AboutPage() {
       <main>
         <PageHero
           title="About AURA & CO"
-          subtitle="Modern, everyday jewelry made to last."
+          subtitle="Your Anchor in a Fast-Paced World."
         />
         <div className="mx-auto max-w-[800px] px-6 py-16 space-y-6">
           <p className="text-sm text-black/70 leading-relaxed">

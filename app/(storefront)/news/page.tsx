@@ -28,15 +28,6 @@ type PostListResponse = {
   limit: number;
 };
 
-type PostCategory = {
-  id: number;
-  slug: string;
-  name: string;
-  description: string | null;
-  sort_order: number;
-  post_count: number;
-};
-
 const PER_PAGE = 12;
 
 function buildUrl(params: { category?: string; search?: string; page?: number }): string {
@@ -63,17 +54,13 @@ export default async function NewsPage({
   query.set("limit", String(PER_PAGE));
   query.set("page", String(page));
 
-  const [list, categories] = await Promise.all([
-    serverApiFetch<PostListResponse>(`/api/content/posts?${query.toString()}`),
-    serverApiFetch<PostCategory[]>("/api/content/post-categories").catch(
-      () => [] as PostCategory[]
-    ),
-  ]);
+  const list = await serverApiFetch<PostListResponse>(
+    `/api/content/posts?${query.toString()}`
+  );
 
   const posts = list.posts ?? [];
   const total = list.total ?? posts.length;
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
-  const totalCount = categories.reduce((sum, c) => sum + Number(c.post_count || 0), 0);
 
   return (
     <>
@@ -84,63 +71,9 @@ export default async function NewsPage({
           <h1 className="font-serif-display text-[38px] leading-[39.9px] font-normal tracking-[0.02em] text-[#2f2925]">
             {dict.news.title}
           </h1>
+          <p className="font-ui mt-2 text-[14px] text-[#70675f]">{dict.news.subtitle}</p>
         </header>
         <div>
-          {categories.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-2 mb-8">
-              <Link
-                href={buildUrl({ search })}
-                className={`border px-4 py-2 text-xs uppercase tracking-wide transition-colors ${
-                  !category
-                    ? "border-gold text-gold"
-                    : "border-black/10 text-black/60 hover:border-black/30"
-                }`}
-              >
-                {dict.news.all}
-                {totalCount > 0 ? ` (${totalCount})` : ""}
-              </Link>
-              {categories.map((c) => (
-                <Link
-                  key={c.id}
-                  href={buildUrl({ category: c.slug, search })}
-                  className={`border px-4 py-2 text-xs uppercase tracking-wide transition-colors ${
-                    category === c.slug
-                      ? "border-gold text-gold"
-                      : "border-black/10 text-black/60 hover:border-black/30"
-                  }`}
-                >
-                  {c.name} ({c.post_count})
-                </Link>
-              ))}
-            </div>
-          )}
-
-          <form action="/news" className="flex justify-center mb-12">
-            {category && <input type="hidden" name="category" value={category} />}
-            <div className="flex w-full max-w-sm">
-              <input
-                type="text"
-                name="search"
-                defaultValue={search}
-                placeholder={dict.news.searchPlaceholder}
-                className="flex-1 border border-black/10 bg-white px-4 py-2 text-sm focus:border-gold focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="border border-l-0 border-black/10 px-4 py-2 text-xs uppercase tracking-wide text-black/60 hover:border-black/30"
-              >
-                {dict.news.searchButton}
-              </button>
-            </div>
-          </form>
-
-          {search && (
-            <p className="text-sm text-black/50 mb-8 text-center">
-              {dict.news.searchResultsFor} &ldquo;{search}&rdquo;
-              {total > 0 ? ` — ${total} ${dict.news.searchResultsCount}` : ` — ${dict.news.noResultsSearch}`}
-            </p>
-          )}
-
           {posts.length === 0 ? (
             <div className="py-20 text-center">
               <p className="text-sm text-black/50">
@@ -160,7 +93,7 @@ export default async function NewsPage({
                   href={`/news/${post.slug}`}
                   className="group flex h-full flex-col overflow-hidden rounded-[14px] border border-gold-light/35 bg-white shadow-[0_18px_40px_rgba(43,38,31,0.08)]"
                 >
-                  <div className="relative aspect-[5/3] overflow-hidden bg-[#f7f4f0]">
+                  <div className="relative aspect-square overflow-hidden bg-[#f7f4f0]">
                     {post.image_url && (
                       <Image
                         src={post.image_url}

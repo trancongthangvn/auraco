@@ -25,16 +25,6 @@ type PostDetail = {
   og_image: string | null;
 };
 
-type RelatedPost = {
-  id: number;
-  slug: string;
-  title: string;
-  excerpt: string | null;
-  image_url: string | null;
-  published_at: string;
-  category_name: string | null;
-};
-
 async function fetchPost(slug: string): Promise<PostDetail | null> {
   try {
     return await serverApiFetch<PostDetail>(
@@ -43,17 +33,6 @@ async function fetchPost(slug: string): Promise<PostDetail | null> {
   } catch (err) {
     if (err instanceof ServerApiError && err.status === 404) return null;
     throw err;
-  }
-}
-
-async function fetchRelated(slug: string): Promise<RelatedPost[]> {
-  try {
-    const list = await serverApiFetch<RelatedPost[]>(
-      `/api/content/posts/${encodeURIComponent(slug)}/related`
-    );
-    return Array.isArray(list) ? list : [];
-  } catch {
-    return [];
   }
 }
 
@@ -99,8 +78,6 @@ export default async function NewsArticlePage({
   const post = await fetchPost(slug);
   if (!post) notFound();
 
-  const related = await fetchRelated(slug);
-  const views = Number(post.views || 0);
   const { locale, dict } = await getServerDictionary();
 
   return (
@@ -109,7 +86,16 @@ export default async function NewsArticlePage({
       <Header />
       <main className="px-4 pt-6 pb-12">
         <article>
-          <header className="mx-auto max-w-[543px] px-6 pt-12 pb-6">
+          {/* Explicit request, two rounds: (1) this block sits flush against
+              the page's left edge, matching where the article's image/
+              content below it already start — not centered as its own
+              island the way `mx-auto` had it (the reference site does
+              center it, the owner wants this deliberately different); (2)
+              no `max-w` either, so the title now wraps at the same width as
+              the full-bleed image below instead of a narrower fixed column
+              — lines fill out toward the right edge like ordinary prose
+              instead of wrapping early and leaving a ragged gap. */}
+          <header className="px-6 pt-12 pb-6">
             <p className="mb-2 text-[11.52px] leading-[17.856px] tracking-[0.18em] text-gold uppercase">
               {post.category_name || dict.nav.news}
             </p>
@@ -118,18 +104,22 @@ export default async function NewsArticlePage({
             </h1>
             <p className="font-ui text-[14px] leading-[22.4px] font-light tracking-[0.21px] text-[#70675f]">
               {post.published_at &&
-                new Date(post.published_at).toLocaleDateString(dateLocale(locale))}
-              {views > 0 && (
-                <>
-                  {post.published_at && " · "}
-                  {views.toLocaleString(dateLocale(locale))} {dict.news.views}
-                </>
-              )}
+                new Date(post.published_at).toLocaleDateString(dateLocale(locale), {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
             </p>
           </header>
 
+          {/* min-h only from sm: up — combined with aspect-[16/9] on a
+              narrow mobile viewport, a 440px floor forces the browser to
+              widen the box (not just heighten it) to hold the ratio,
+              overflowing the page horizontally. At sm+ the container is
+              already wide enough that 16:9 alone clears 440px, so the
+              min-h there is a no-op safety net, not a real constraint. */}
           {post.image_url && (
-            <div className="relative mb-10 aspect-[16/9] min-h-[440px] overflow-hidden bg-[#f7f4f0]">
+            <div className="relative mb-10 aspect-[16/9] sm:min-h-[440px] overflow-hidden bg-[#f7f4f0]">
               <Image
                 src={post.image_url}
                 alt={post.title}
@@ -138,12 +128,6 @@ export default async function NewsArticlePage({
                 className="object-cover"
               />
             </div>
-          )}
-
-          {post.excerpt && (
-            <p className="font-serif-display mb-10 text-xl leading-relaxed text-black/70">
-              {post.excerpt}
-            </p>
           )}
 
           {/*
@@ -176,56 +160,12 @@ export default async function NewsArticlePage({
           <p className="my-4">
             <Link
               href="/news"
-              className="font-ui inline-flex items-center rounded-full border border-gold-light/35 bg-white px-5 py-[10.4px] text-[12px] leading-[18.6px] font-light tracking-[0.12px] text-[#68625c] transition-colors hover:text-ink"
+              className="font-ui inline-flex items-center rounded-full px-5 py-[10.4px] text-[12px] leading-[18.6px] font-light tracking-[0.12px] text-[#68625c] transition-colors hover:text-ink"
             >
               ← {dict.news.backToJournal}
             </Link>
           </p>
         </article>
-
-        {related.length > 0 && (
-          <section className="border-t border-black/10 bg-[#f7f4f0]">
-            <div className="mx-auto px-6 py-16">
-              <h2 className="font-serif-display text-2xl mb-8 text-center">
-                {dict.news.relatedTitle}
-              </h2>
-              <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
-                {related.map((item) => (
-                  <Link
-                    key={item.slug}
-                    href={`/news/${item.slug}`}
-                    className="group block overflow-hidden rounded-[14px] border border-gold-light/35 bg-white shadow-[0_18px_40px_rgba(43,38,31,0.08)]"
-                  >
-                    <div className="relative aspect-[5/3] overflow-hidden bg-white">
-                      {item.image_url && (
-                        <Image
-                          src={item.image_url}
-                          alt={item.title}
-                          fill
-                          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      )}
-                    </div>
-                    <div className="px-[17.6px] pt-4 pb-[18.4px]">
-                      <p className="font-ui mb-[5.6px] text-[10px] leading-[15.5px] font-light tracking-[0.2px] text-[rgba(40,36,31,0.52)]">
-                        {item.category_name && (
-                          <span className="text-gold uppercase">{item.category_name}</span>
-                        )}
-                        {item.category_name && item.published_at && " · "}
-                        {item.published_at &&
-                          new Date(item.published_at).toLocaleDateString(dateLocale(locale))}
-                      </p>
-                      <h3 className="font-serif-display text-[19.2px] leading-[29.76px] font-bold text-ink">
-                        {item.title}
-                      </h3>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
       </main>
       <Footer />
     </>

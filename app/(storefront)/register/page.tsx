@@ -18,7 +18,7 @@ export default async function RegisterPage() {
       <Announcement />
       <Header />
       <main>
-        <PageHero title={dict.auth.register.title} subtitle={dict.auth.register.subtitle} compact />
+        <PageHero title={dict.auth.register.title} subtitle={dict.auth.register.subtitle} />
         <RegisterForm />
       </main>
       <Footer />

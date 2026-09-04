@@ -101,6 +101,7 @@ app.use('/api', require('./routes/orders-payments'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/collections', require('./routes/collections'));
+app.use('/api/brands', require('./routes/brands'));
 app.use('/api/discount-codes', require('./routes/discount-codes'));
 app.use('/api', require('./routes/inquiries-reviews-press'));
 app.use('/api/content', require('./routes/posts'));

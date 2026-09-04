@@ -8,7 +8,7 @@ import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { useRequireAdmin } from "@/components/admin/useRequireAdmin";
 import { apiFetch, ApiError } from "@/lib/api";
 import Button from "@/components/admin/ui/Button";
-import { Input, Label } from "@/components/admin/ui/Field";
+import { Input, Label, Textarea } from "@/components/admin/ui/Field";
 import ImageField from "@/components/admin/ImageField";
 import { TableCard, Th, Td, TR_HOVER } from "@/components/admin/ui/Table";
 import {
@@ -22,7 +22,9 @@ type Collection = {
   id: number;
   slug: string;
   name: string;
+  description: string | null;
   image_url: string | null;
+  banner_url: string | null;
   href: string | null;
   sort_order: number;
   active: boolean;
@@ -68,7 +70,7 @@ export default function AdminCollectionsPage() {
     }
   };
 
-  const saveEdit = async (form: { name: string; href: string; image_url: string }) => {
+  const saveEdit = async (form: { name: string; href: string; image_url: string; banner_url: string; description: string }) => {
     if (!editing) return;
     setSaving(true);
     try {
@@ -76,7 +78,13 @@ export default function AdminCollectionsPage() {
         `/api/collections/admin/${editing.id}`,
         {
           method: "PUT",
-          body: JSON.stringify({ name: form.name, href: form.href, image_url: form.image_url || null }),
+          body: JSON.stringify({
+            name: form.name,
+            href: form.href,
+            image_url: form.image_url || null,
+            banner_url: form.banner_url || null,
+            description: form.description || null,
+          }),
         }
       );
       setCollections((list) =>
@@ -90,7 +98,7 @@ export default function AdminCollectionsPage() {
     }
   };
 
-  const createCollection = async (form: { name: string; href: string; image_url: string }) => {
+  const createCollection = async (form: { name: string; href: string; image_url: string; banner_url: string; description: string }) => {
     setSaving(true);
     try {
       const slug = form.name
@@ -106,6 +114,8 @@ export default function AdminCollectionsPage() {
           name: form.name,
           href: form.href,
           image_url: form.image_url || null,
+          banner_url: form.banner_url || null,
+          description: form.description || null,
         }),
       });
       setCollections((list) => [...list, created]);
@@ -193,6 +203,8 @@ export default function AdminCollectionsPage() {
           initialName={editing.name}
           initialHref={editing.href ?? ""}
           initialImageUrl={editing.image_url ?? ""}
+          initialBannerUrl={editing.banner_url ?? ""}
+          initialDescription={editing.description ?? ""}
           saving={saving}
           onCancel={() => setEditing(null)}
           onSubmit={saveEdit}
@@ -206,6 +218,8 @@ export default function AdminCollectionsPage() {
           initialName=""
           initialHref=""
           initialImageUrl=""
+          initialBannerUrl=""
+          initialDescription=""
           saving={saving}
           onCancel={() => setCreating(false)}
           onSubmit={createCollection}
@@ -225,6 +239,8 @@ function EditModal({
   initialName,
   initialHref,
   initialImageUrl,
+  initialBannerUrl,
+  initialDescription,
   saving,
   onCancel,
   onSubmit,
@@ -234,13 +250,17 @@ function EditModal({
   initialName: string;
   initialHref: string;
   initialImageUrl: string;
+  initialBannerUrl: string;
+  initialDescription: string;
   saving: boolean;
   onCancel: () => void;
-  onSubmit: (form: { name: string; href: string; image_url: string }) => void;
+  onSubmit: (form: { name: string; href: string; image_url: string; banner_url: string; description: string }) => void;
 }) {
   const [name, setName] = useState(initialName);
   const [href, setHref] = useState(initialHref);
   const [imageUrl, setImageUrl] = useState(initialImageUrl);
+  const [bannerUrl, setBannerUrl] = useState(initialBannerUrl);
+  const [description, setDescription] = useState(initialDescription);
 
   return (
     <ModalBackdrop onClose={onCancel}>
@@ -259,12 +279,27 @@ function EditModal({
             onChange={(e) => setHref(e.target.value)}
             className="mb-4"
           />
+          <Label>Mô tả (hiển thị dưới tiêu đề trên trang /catalog)</Label>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            className="mb-4"
+          />
           <ImageField
-            label="Ảnh collection"
+            label="Ảnh đại diện (dùng ở ô collection trên trang chủ)"
             value={imageUrl || null}
             onChange={(url) => setImageUrl(url ?? "")}
             disabled={saving}
           />
+          <div className="mt-4">
+            <ImageField
+              label="Ảnh banner (hiển thị to ở đầu trang /catalog/<collection> — thường là ảnh người mẫu/lifestyle)"
+              value={bannerUrl || null}
+              onChange={(url) => setBannerUrl(url ?? "")}
+              disabled={saving}
+            />
+          </div>
         </div>
         <ModalFooter>
           <Button variant="secondary" onClick={onCancel} disabled={saving}>
@@ -272,7 +307,7 @@ function EditModal({
           </Button>
           <Button
             variant="primary"
-            onClick={() => onSubmit({ name, href, image_url: imageUrl })}
+            onClick={() => onSubmit({ name, href, image_url: imageUrl, banner_url: bannerUrl, description })}
             disabled={saving || !name.trim()}
           >
             {submitLabel}

@@ -12,8 +12,9 @@ import { currencyMeta } from "@/lib/currency";
 
 export default function AddToBag({ product }: { product: FullProduct }) {
   const dict = useDictionary().product;
-  const { currency } = useCurrency();
+  const { currency, rates } = useCurrency();
   const symbol = currencyMeta[currency].symbol;
+  const rate = rates[currency];
   const router = useRouter();
   const { addItem } = useCart();
   const { variants, selectedVariant, setSelectedVariant } = useVariant();
@@ -69,14 +70,14 @@ export default function AddToBag({ product }: { product: FullProduct }) {
           gold, but that is inherited default — the price leaf it renders is
           15px/500 Jost in near-black. Measured on the leaf, not the wrapper. */}
       <p className="flex flex-wrap items-baseline gap-[8.8px] mt-2.5 mb-6">
+        <span className="font-ui text-[15px] font-medium leading-[18px] tracking-[0.6px] text-[#302c27]">
+          {symbol}{(displayPrice * rate).toFixed(2)}
+        </span>
         {displayCompareAt && (
           <span className="text-[16px] leading-4 text-[#9a9a9a] line-through">
-            {symbol}{displayCompareAt.toFixed(2)}
+            {symbol}{(displayCompareAt * rate).toFixed(2)}
           </span>
         )}
-        <span className="font-ui text-[15px] font-medium leading-[18px] tracking-[0.6px] text-[#302c27]">
-          {symbol}{displayPrice.toFixed(2)}
-        </span>
       </p>
 
       {showSwatches && (
@@ -124,7 +125,9 @@ export default function AddToBag({ product }: { product: FullProduct }) {
           >
             <MinusIcon size={14} />
           </button>
-          <span className="text-center text-sm">{qty}</span>
+          <span className="flex h-8 w-8 items-center justify-center border-x border-gold-light/35 text-center text-base">
+            {qty}
+          </span>
           <button
             aria-label={dict.increaseQuantity}
             onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
@@ -135,7 +138,9 @@ export default function AddToBag({ product }: { product: FullProduct }) {
         </div>
       </div>
 
-      <div className="flex flex-row gap-2 mb-3">
+      {/* Stacked full-width, not side-by-side — measured on the reference,
+          both buttons span the same width as the price/qty row above them. */}
+      <div className="flex flex-col gap-2 mb-3">
         <button
           disabled={outOfStock}
           onClick={() => {
@@ -143,7 +148,7 @@ export default function AddToBag({ product }: { product: FullProduct }) {
             setAdded(true);
             setTimeout(() => setAdded(false), 1800);
           }}
-          className="flex-1 min-h-[44px] rounded-full border border-[#28241f] bg-white text-[#28241f] px-3 py-2 font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] hover:bg-black/5 transition-colors inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full min-h-[44px] rounded-full border border-[#28241f] bg-white text-[#28241f] px-3 py-2 font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] hover:bg-black/5 transition-colors inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {added ? (
             <>
@@ -160,7 +165,7 @@ export default function AddToBag({ product }: { product: FullProduct }) {
             addToCart();
             router.push("/checkout");
           }}
-          className="flex-1 min-h-[44px] text-center rounded-full bg-[#2b261f] border border-[#2b261f] text-white px-3 py-2 font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] hover:bg-black transition-colors inline-flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full min-h-[44px] text-center rounded-full bg-[#2b261f] border border-[#2b261f] text-white px-3 py-2 font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] hover:bg-black transition-colors inline-flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50"
         >
           {dict.buyNow}
         </button>

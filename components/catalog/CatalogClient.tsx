@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -71,12 +71,16 @@ const CATEGORY_LEDE: Record<string, string> = {
  *  above the option list. */
 function FilterSection({
   title,
+  count = 0,
   isOpen,
   onToggle,
   onClear,
   children,
 }: {
   title: string;
+  /** Active selections in this group — shown as a small pill next to the
+   *  title, matching the reference's "Metal (1)" badge. */
+  count?: number;
   isOpen: boolean;
   onToggle: () => void;
   onClear?: () => void;
@@ -89,13 +93,34 @@ function FilterSection({
         onClick={onToggle}
         className="group flex w-full items-center justify-between text-left"
       >
-        <span className="text-[15px] font-semibold text-[#111] transition-colors group-hover:text-gold">{title}</span>
+        <span className="flex items-center gap-2">
+          <span className="text-[15px] font-semibold text-[#111] transition-colors group-hover:text-gold">{title}</span>
+          {count > 0 && (
+            <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-ink text-[10.4px] font-normal leading-none text-white">
+              {count}
+            </span>
+          )}
+        </span>
         <span className="transition-colors group-hover:text-gold">
           {isOpen ? <MinusIcon size={14} /> : <PlusIcon size={14} />}
         </span>
       </button>
-      {isOpen && (
-        <div className="mt-3">
+      {/* Was `{isOpen && <div>...}` — mounting/unmounting the content
+          outright, with no height to animate between, so expanding or
+          collapsing a section snapped the whole page open or shut instantly
+          and shoved everything below it — explicit report: "runs/jumps
+          around when pressing expand/collapse, very annoying". The
+          grid-template-rows 0fr↔1fr trick animates a height that was never
+          knowable up front (the option list's real height depends on its
+          content) without measuring anything in JS: the row track itself
+          tweens between collapsed and content-sized, and the inner
+          `overflow-hidden` clips whatever hasn't "arrived" yet mid-transition. */}
+      <div
+        className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+          isOpen ? "grid-rows-[1fr] mt-3" : "grid-rows-[0fr]"
+        }`}
+      >
+        <div className="overflow-hidden">
           {onClear && (
             <button
               type="button"
@@ -107,7 +132,7 @@ function FilterSection({
           )}
           {children}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -121,6 +146,8 @@ export default function CatalogClient({
   brandParam,
   queryParam,
   heroImage,
+  collectionDescription,
+  brandDescription,
 }: {
   products: FullProduct[];
   initialCollection?: string;
@@ -135,52 +162,91 @@ export default function CatalogClient({
   /** Collection artwork, shown as a banner with the collection name burned
    *  into its bottom-left corner (the reference site's collection pages). */
   heroImage?: string;
+  /** Admin-set lede for this collection (collections.description). Falls
+   *  back to COLLECTION_LEDE when the admin hasn't written one yet. */
+  collectionDescription?: string;
+  /** Admin-set lede for this brand/category (brands.description). Falls
+   *  back to CATEGORY_LEDE when the admin hasn't written one yet. */
+  brandDescription?: string;
 }) {
   const brand = brandParam?.replace(/-/g, " ");
   const query = queryParam?.toLowerCase().trim();
 
-  const { currency } = useCurrency();
+  const { currency, rates } = useCurrency();
   const [collection] = useState(initialCollection);
+  // Explicit request: the sidebar "Category" checkboxes previously called
+  // selectCategory(), which navigated to /catalog/<collection> — a full
+  // route change. That's why picking one auto-collapsed the panel (the page
+  // remounted with openSections back at its closed default) and jumped the
+  // scroll position back to the top on every click, and why only one could
+  // ever be checked at a time. This is a separate, independent filter, kept
+  // client-side exactly like Material/Price below: it starts seeded from
+  // whichever single collection the URL landed on (so the checkbox still
+  // reflects where you are), but from then on toggles freely and narrows
+  // the current product list in place — same pattern as Material, so
+  // nothing about the collection route, hero banner, heading or the pill
+  // row above the grid (all still driven by `collection` alone) changes.
+  const [categoryFilter, setCategoryFilter] = useState<string[]>(
+    initialCollection !== "ALL" ? [initialCollection] : []
+  );
   const [sort, setSort] = useState<
     "newest" | "price-asc" | "price-desc" | "featured"
   >("featured");
   const [visible, setVisible] = useState(12);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  // Category and Material open by default, like the reference; Type and
-  // Price start collapsed and expand on demand.
-  const [openSections, setOpenSections] = useState({
-    category: true,
+  // Explicit request: filters open by default on landing (not just once the
+  // customer clicks "Show Filters" themselves) — but only on tablet/desktop.
+  // On mobile they default closed instead, since the panel there renders
+  // inline above the product grid (see filterPanelBody's `lg:hidden` usage
+  // below) and pushes every product down a full screen's worth on load.
+  // useState(true) keeps server and first-client-render markup identical
+  // (avoiding a hydration mismatch); useLayoutEffect corrects it to closed
+  // on a narrow viewport before the browser paints, so mobile never
+  // visibly flashes open before snapping shut.
+  const [filtersOpen, setFiltersOpen] = useState(true);
+  useLayoutEffect(() => {
+    // One-time correction of the initial default before paint, not a
+    // continuous sync with window size (that would fight a user who
+    // deliberately opens/closes filters and then resizes the window by a
+    // few px) — the narrower pattern the lint rule expects doesn't apply.
+    // matchMedia, not window.innerWidth: innerWidth can transiently read 0
+    // before layout has settled (confirmed live), and since this effect
+    // only runs once on mount, a stray 0 there would lock filters closed
+    // permanently even on desktop. matchMedia evaluates the same md:
+    // breakpoint Tailwind uses without depending on layout having run yet.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!window.matchMedia("(min-width: 768px)").matches) setFiltersOpen(false);
+  }, []);
+  // Every facet group starts collapsed — the reference's own filter drawer
+  // shows compact "+" headers and expands a section only when it's tapped.
+  const closedSections = {
+    category: false,
     brand: false,
-    material: true,
+    material: false,
     price: false,
     sort: false,
-  });
+  };
+  const [openSections, setOpenSections] = useState(closedSections);
   const router = useRouter();
 
-  // The drawer edits a draft and only commits on Apply, like the reference
-  // site. Brand lives in the URL (?brand=), so applying it navigates rather
-  // than holding a second source of truth for the same value.
-  const [draftCollection, setDraftCollection] = useState(initialCollection);
-  const [draftBrand, setDraftBrand] = useState(brandParam ?? "");
-  const [draftSort, setDraftSort] = useState<
-    "newest" | "price-asc" | "price-desc" | "featured"
-  >("featured");
-
   // Facets beyond category/brand stay client-side: they narrow the list the
-  // page already has, so a round trip would buy nothing.
+  // page already has, so a round trip would buy nothing. Category (above)
+  // and Material/Price (below) apply the instant a checkbox is ticked, no
+  // separate draft/Apply step. Type still navigates via selectBrand,
+  // unchanged — out of scope for this request.
   const [materials, setMaterials] = useState<string[]>([]);
   const [priceBand, setPriceBand] = useState("");
-  const [draftMaterials, setDraftMaterials] = useState<string[]>([]);
-  const [draftPriceBand, setDraftPriceBand] = useState("");
 
-  // The filter panel narrows Type/Material/Price to whatever the currently
-  // *drafted* Category (and, in turn, Type) actually has products for — so a
-  // combination that would return zero results is never selectable in the
-  // first place.
   const toSlug = (label: string) => label.replace(/ /g, "-");
   const collectionScope = useCallback(
     (coll: string) =>
       coll === "ALL" ? products : products.filter((p) => p.collections.includes(coll)),
+    [products]
+  );
+  const categoryScope = useCallback(
+    (cats: string[]) =>
+      cats.length === 0
+        ? products
+        : products.filter((p) => p.collections.some((c) => cats.includes(c))),
     [products]
   );
   const brandOptionsFor = (scope: FullProduct[]) =>
@@ -192,55 +258,42 @@ export default function CatalogClient({
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
 
-  const draftCollectionScope = useMemo(
-    () => collectionScope(draftCollection),
-    [collectionScope, draftCollection]
-  );
-  const draftBrandOptions = useMemo(
-    () => brandOptionsFor(draftCollectionScope),
-    [draftCollectionScope]
-  );
-  const draftScope = useMemo(
-    () =>
-      draftBrand
-        ? draftCollectionScope.filter((p) => toSlug(p.category) === draftBrand)
-        : draftCollectionScope,
-    [draftCollectionScope, draftBrand]
-  );
-  const draftMaterialOptions = useMemo(
-    () => materialOptionsFor(draftScope),
-    [draftScope]
-  );
-  const draftPriceBandOptions = useMemo(
-    () => PRICE_BANDS.filter((b) => draftScope.some((p) => b.test(p.price))),
-    [draftScope]
-  );
-
-  /** Re-narrows Material/Price to the new scope and drops any drafted
-   *  selection that scope no longer supports, whenever Category or Type
-   *  changes. */
-  const pruneToScope = (scope: FullProduct[]) => {
-    const materials = materialOptionsFor(scope);
-    setDraftMaterials((prev) => prev.filter((m) => materials.includes(m)));
+  /** Drops any selected Material/Price option the given scope no longer
+   *  supports — so a combination that would return zero results is never
+   *  left checked after Category or Type changes. */
+  const pruneFacetsToScope = (scope: FullProduct[]) => {
+    const scopeMaterials = materialOptionsFor(scope);
+    setMaterials((prev) => prev.filter((m) => scopeMaterials.includes(m)));
     const bands = PRICE_BANDS.filter((b) => scope.some((p) => b.test(p.price))).map(
       (b) => b.value
     );
-    setDraftPriceBand((prev) => (bands.includes(prev) ? prev : ""));
+    setPriceBand((prev) => (bands.includes(prev) ? prev : ""));
   };
 
-  const onDraftCollectionChange = (value: string) => {
-    setDraftCollection(value);
-    const scope = collectionScope(value);
+  const applyCategoryFilter = (next: string[]) => {
+    setCategoryFilter(next);
+    const scope = categoryScope(next);
     const brands = brandOptionsFor(scope).map(toSlug);
-    const nextBrand = draftBrand && brands.includes(draftBrand) ? draftBrand : "";
-    setDraftBrand(nextBrand);
-    pruneToScope(nextBrand ? scope.filter((p) => toSlug(p.category) === nextBrand) : scope);
+    const nextBrand = brandParam && brands.includes(brandParam) ? brandParam : "";
+    pruneFacetsToScope(nextBrand ? scope.filter((p) => toSlug(p.category) === nextBrand) : scope);
+    setVisible(12);
   };
 
-  const onDraftBrandChange = (value: string) => {
-    setDraftBrand(value);
-    const scope = collectionScope(draftCollection);
-    pruneToScope(value ? scope.filter((p) => toSlug(p.category) === value) : scope);
+  const toggleCategoryFilter = (value: string) => {
+    applyCategoryFilter(
+      categoryFilter.includes(value)
+        ? categoryFilter.filter((v) => v !== value)
+        : [...categoryFilter, value]
+    );
+  };
+
+  const selectBrand = (value: string) => {
+    const scope = collectionScope(collection);
+    pruneFacetsToScope(value ? scope.filter((p) => toSlug(p.category) === value) : scope);
+    setVisible(12);
+    const base = collection === "ALL" ? "/catalog" : `/catalog/${collection}`;
+    const qs = value ? `?brand=${encodeURIComponent(value)}` : "";
+    router.push(`${base}${qs}`);
   };
 
   /** Products left after brand, collection and search — the set the material
@@ -258,47 +311,44 @@ export default function CatalogClient({
           p.category.toLowerCase().includes(query)
       );
     }
-    return collection === "ALL"
+    return categoryFilter.length === 0
       ? list
-      : list.filter((p) => p.collections.includes(collection));
-  }, [products, brand, query, collection]);
+      : list.filter((p) => p.collections.some((c) => categoryFilter.includes(c)));
+  }, [products, brand, query, categoryFilter]);
 
-  // Seeded when the drawer opens rather than in an effect, so the draft never
-  // fights the committed values on re-render.
+  // Type/Material/Price options are derived from whatever Category (and, in
+  // turn, Type) is currently committed — never from a draft — so an option
+  // that would return zero results is never offered.
+  const collectionOnlyScope = useMemo(
+    () => categoryScope(categoryFilter),
+    [categoryScope, categoryFilter]
+  );
+  const brandOptions = useMemo(
+    () => brandOptionsFor(collectionOnlyScope),
+    [collectionOnlyScope]
+  );
+  const materialOptions = useMemo(() => materialOptionsFor(inScope), [inScope]);
+  const priceBandOptions = useMemo(
+    () => PRICE_BANDS.filter((b) => inScope.some((p) => b.test(p.price))),
+    [inScope]
+  );
+
+  // Every group collapses again each time the panel is opened, matching the
+  // reference's own compact, all-closed default.
   const openFilters = () => {
-    setDraftCollection(collection);
-    setDraftBrand(brandParam ?? "");
-    setDraftSort(sort);
-    setDraftMaterials(materials);
-    setDraftPriceBand(priceBand);
+    setOpenSections(closedSections);
     setFiltersOpen(true);
   };
 
-  const applyFilters = () => {
-    setSort(draftSort);
-    setMaterials(draftMaterials);
-    setPriceBand(draftPriceBand);
-    setVisible(12);
-    setFiltersOpen(false);
-
-    // Category and brand both live in the URL so the chips, breadcrumb and
-    // header highlight all read from one place; only sort stays local.
-    const brandChanged = (brandParam ?? "") !== draftBrand;
-    const collectionChanged = draftCollection !== collection;
-    if (brandChanged || collectionChanged) {
-      const base =
-        draftCollection === "ALL" ? "/catalog" : `/catalog/${draftCollection}`;
-      const qs = draftBrand ? `?brand=${encodeURIComponent(draftBrand)}` : "";
-      router.push(`${base}${qs}`);
-    }
-  };
-
   const resetFilters = () => {
-    setDraftCollection("ALL");
-    setDraftBrand("");
-    setDraftMaterials([]);
-    setDraftPriceBand("");
-    setDraftSort("featured");
+    setMaterials([]);
+    setPriceBand("");
+    setCategoryFilter([]);
+    setSort("featured");
+    setVisible(12);
+    if (collection !== "ALL" || brandParam) {
+      router.push("/catalog");
+    }
   };
 
   const filtered = useMemo(() => {
@@ -328,20 +378,252 @@ export default function CatalogClient({
   const activeFilterCount =
     materials.length +
     (priceBand ? 1 : 0) +
-    (collection !== "ALL" ? 1 : 0) +
+    categoryFilter.length +
     (brandParam ? 1 : 0);
 
   const lede =
     collection !== "ALL"
-      ? COLLECTION_LEDE[collection]
+      ? collectionDescription ?? COLLECTION_LEDE[collection]
       : brand
-      ? CATEGORY_LEDE[brand.toLowerCase()] ?? subheading
+      ? brandDescription ?? CATEGORY_LEDE[brand.toLowerCase()] ?? subheading
       : subheading;
 
   // Only collection pages carry artwork; brand pages and search results show
-  // the head and toolbar alone.
-  const bannerImage = COLLECTION_BANNER[collection] ?? heroImage;
+  // the head and toolbar alone. An admin-set image (heroImage, from
+  // collections.image_url) takes priority over the seeded default — this was
+  // backwards before (the hard-coded map always won), so changing a
+  // collection's image in the admin silently had no visible effect.
+  const bannerImage = heroImage ?? COLLECTION_BANNER[collection];
   const showHero = Boolean(bannerImage) && collection !== "ALL" && !query;
+
+  // Shared between the mobile/tablet inline toolbar and the desktop sidebar
+  // header (persistent left column) so both stay pixel-identical instead of
+  // drifting apart as two hand-maintained copies.
+  const filterToggleAndCount = (
+    <>
+      {/* Borderless, plain-case "sliders" icon — explicit request, matching
+          the reference exactly: no button border/background, no uppercase
+          transform, no heavy weight/tracking (all of that was this button's
+          own decoration, not something the reference does). */}
+      <button
+        type="button"
+        onClick={filtersOpen ? () => setFiltersOpen(false) : openFilters}
+        className="font-ui flex w-full items-center justify-center gap-[7.2px] px-3 py-2 text-[12.48px] font-normal leading-[19.344px] hover:text-gold sm:w-auto sm:justify-start"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <circle cx="14" cy="6" r="2" fill="currentColor" stroke="none" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+          <circle cx="10" cy="18" r="2" fill="currentColor" stroke="none" />
+        </svg>
+        {filtersOpen ? "Hide Filters" : "Show Filters"}
+      </button>
+      {/* Explicit request: the item count sits next to the toggle in both
+          states now, not just once the sidebar is open. */}
+      <span className="font-ui text-[12.48px] text-[#5c554a]">
+        {filtered.length} items
+      </span>
+    </>
+  );
+
+  const sortSelect = (
+    <label className="block min-w-0 flex-1 px-3 py-2 sm:flex-none">
+      <span className="sr-only">Sort by</span>
+      <select
+        value={sort}
+        onChange={(e) => setSort(e.target.value as typeof sort)}
+        className="font-ui w-full rounded-lg border-[0.667px] border-[#2b261f]/[0.14] bg-white px-3 py-2 text-[12.48px] font-semibold leading-[19.344px] text-[#2b261f] sm:w-[156px]"
+      >
+        <option value="featured">Featured</option>
+        <option value="newest">Newest</option>
+        <option value="price-asc">Price: low to high</option>
+        <option value="price-desc">Price: high to low</option>
+      </select>
+    </label>
+  );
+
+  // The five collapsible facet groups plus Reset — identical content shown
+  // either inline above the grid (mobile/tablet) or inside the persistent
+  // left sidebar (desktop, once filters are open).
+  const filterPanelBody = (
+    <>
+      <FilterSection
+        title="Category"
+        count={categoryFilter.length}
+        isOpen={openSections.category}
+        onToggle={() =>
+          setOpenSections((s) => ({ ...s, category: !s.category }))
+        }
+        onClear={
+          categoryFilter.length > 0 ? () => applyCategoryFilter([]) : undefined
+        }
+      >
+        <div className="space-y-3">
+          {collectionFilters.map((c) => (
+            <label
+              key={c.value}
+              className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
+            >
+              <input
+                type="checkbox"
+                checked={
+                  c.value === "ALL"
+                    ? categoryFilter.length === 0
+                    : categoryFilter.includes(c.value)
+                }
+                onChange={() =>
+                  c.value === "ALL"
+                    ? applyCategoryFilter([])
+                    : toggleCategoryFilter(c.value)
+                }
+                className="h-4 w-4 accent-ink"
+              />
+              <span>{c.value === "ALL" ? "All categories" : c.label}</span>
+            </label>
+          ))}
+        </div>
+      </FilterSection>
+
+      <FilterSection
+        title="Type"
+        count={brandParam ? 1 : 0}
+        isOpen={openSections.brand}
+        onToggle={() => setOpenSections((s) => ({ ...s, brand: !s.brand }))}
+        onClear={brandParam ? () => selectBrand("") : undefined}
+      >
+        <div className="space-y-3">
+          {brandOptions.map((b) => (
+            <label
+              key={b}
+              className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
+            >
+              <input
+                type="checkbox"
+                checked={(brandParam ?? "") === toSlug(b)}
+                onChange={() => selectBrand(toSlug(b))}
+                className="h-4 w-4 accent-ink"
+              />
+              <span>{b}</span>
+            </label>
+          ))}
+        </div>
+      </FilterSection>
+
+      <FilterSection
+        title="Material"
+        count={materials.length}
+        isOpen={openSections.material}
+        onToggle={() =>
+          setOpenSections((s) => ({ ...s, material: !s.material }))
+        }
+        onClear={
+          materials.length > 0 ? () => setMaterials([]) : undefined
+        }
+      >
+        <div className="space-y-3">
+          {materialOptions.map((m) => (
+            <label
+              key={m}
+              className="flex items-start gap-2.5 text-[14px] text-[#2b261f]"
+            >
+              <input
+                type="checkbox"
+                checked={materials.includes(m)}
+                onChange={(e) => {
+                  setMaterials((prev) =>
+                    e.target.checked
+                      ? [...prev, m]
+                      : prev.filter((x) => x !== m)
+                  );
+                  setVisible(12);
+                }}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-ink"
+              />
+              <span>{m}</span>
+            </label>
+          ))}
+        </div>
+      </FilterSection>
+
+      <FilterSection
+        title="Price"
+        count={priceBand ? 1 : 0}
+        isOpen={openSections.price}
+        onToggle={() => setOpenSections((s) => ({ ...s, price: !s.price }))}
+        onClear={priceBand ? () => setPriceBand("") : undefined}
+      >
+        <div className="space-y-3">
+          {priceBandOptions.map((b) => (
+            <label
+              key={b.value}
+              className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
+            >
+              <input
+                type="checkbox"
+                checked={priceBand === b.value}
+                onChange={() => {
+                  setPriceBand(b.value);
+                  setVisible(12);
+                }}
+                className="h-4 w-4 accent-ink"
+              />
+              <span>{b.label}</span>
+            </label>
+          ))}
+        </div>
+      </FilterSection>
+
+      <FilterSection
+        title="Sort by"
+        isOpen={openSections.sort}
+        onToggle={() => setOpenSections((s) => ({ ...s, sort: !s.sort }))}
+        onClear={sort !== "featured" ? () => setSort("featured") : undefined}
+      >
+        <div className="space-y-3">
+          {(
+            [
+              { value: "featured", label: "Featured" },
+              { value: "newest", label: "Newest" },
+              { value: "price-asc", label: "Price: low to high" },
+              { value: "price-desc", label: "Price: high to low" },
+            ] as const
+          ).map((opt) => (
+            <label
+              key={opt.value}
+              className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
+            >
+              <input
+                type="checkbox"
+                checked={sort === opt.value}
+                onChange={() => setSort(opt.value)}
+                className="h-4 w-4 accent-ink"
+              />
+              <span>{opt.label}</span>
+            </label>
+          ))}
+        </div>
+      </FilterSection>
+
+      <div className="flex items-center py-6">
+        <button
+          type="button"
+          onClick={resetFilters}
+          className="text-[12px] text-[#888] hover:text-ink"
+        >
+          Reset
+        </button>
+      </div>
+    </>
+  );
 
   return (
     <div className="px-4 pt-4 pb-14">
@@ -350,7 +632,7 @@ export default function CatalogClient({
           not under it. */}
       <nav
         aria-label="Breadcrumb"
-        className="mb-[13.6px] flex h-5 items-center text-[13.12px] leading-5 text-[#5c554a]"
+        className="mb-0 flex h-5 items-center text-[13.12px] leading-5 text-[#5c554a]"
       >
         <Link href="/" className="hover:text-ink">
           Home
@@ -373,6 +655,14 @@ export default function CatalogClient({
           {displayHeading}
         </h1>
       </header>
+
+      {/* The lede sits between the title and the collection chips on every
+          category page — it was rendering after the chips here, which only
+          matched the reference by coincidence on pages where the chips
+          block was absent. */}
+      {!query && !showHero && lede && (
+        <p className="mb-2 max-w-3xl text-[15px] text-black/60">{lede}</p>
+      )}
 
       {!query && collectionFilters.length > 0 && (
         /* Each chip is a link to that collection's own page, the way the
@@ -402,239 +692,93 @@ export default function CatalogClient({
         </nav>
       )}
 
-      {!query && !showHero && lede && (
-        <p className="mb-2 max-w-3xl text-[15px] text-black/60">{lede}</p>
-      )}
-
+      {/* Below `lg`, filters (when open) stay an inline full-width panel above
+          the grid — the original behavior. At `lg` and up, once filters are
+          open this becomes a persistent two-column layout: a ~264px left
+          sidebar (toggle + count + facets + Reset) alongside the grid, which
+          keeps its own width in the right column. Closed, or below `lg`,
+          there's a single column exactly as before.
+          Explicit request: opening/closing now slides and pushes smoothly
+          instead of snapping instantly. That needs the column track itself
+          to transition (0px ↔ 264px, not the `lg:grid`/`lg:grid-cols-*`
+          utilities being added and removed outright, which is a discrete
+          class swap with nothing to animate between) and the sidebar to
+          stay mounted throughout, animating its own width/opacity rather
+          than being conditionally rendered in and out. */}
       {!query && (
-        /* Sits above the banner, as on the reference: a hairline rule with
-           the filter trigger on one side and sort on the other, and no
-           product count between them. */
-        <div className="sticky top-16 z-30 mb-1 flex items-center justify-between gap-4 border-[0.667px] border-[#2b261f]/[0.14] bg-white/[0.96] px-[13.6px] py-[10.4px]">
+        /* The one and only toggle+count+sort row, now OUTSIDE the two-column
+           grid below — explicit report, confirmed against two reference
+           screenshots (filters open vs. closed): this row sits at the exact
+           same x position in both, because on the reference it isn't part of
+           the sliding grid at all. It used to live inside the product
+           column (`min-w-0` div below), so even once it stopped duplicating
+           itself it still slid sideways by the sidebar's own width as
+           grid-template-columns animated between them. Living above the
+           grid entirely means neither column's width changes it. */
+        <div className="sticky top-16 z-30 mb-1 flex items-center justify-between gap-4 bg-white/[0.96] py-[10.4px]">
           <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
-            <button
-              type="button"
-              onClick={filtersOpen ? () => setFiltersOpen(false) : openFilters}
-              className="font-ui flex w-full items-center justify-center gap-[7.2px] rounded-lg border-[0.667px] border-[#2b261f]/[0.14] bg-white px-3 py-2 text-[12.48px] font-semibold uppercase leading-[19.344px] tracking-[1.4976px] hover:text-gold sm:w-auto sm:justify-start"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                aria-hidden="true"
-              >
-                <path d="M4 6h16M7 12h10M10 18h4" />
-              </svg>
-              {filtersOpen ? "Hide Filters" : "Filter"}
-              {!filtersOpen && activeFilterCount > 0 && (
-                <span className="flex h-[18.4px] w-[18.4px] items-center justify-center rounded-full bg-ink text-[10.4px] font-normal leading-none tracking-normal text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-            {filtersOpen && (
-              <span className="font-ui text-[12.48px] text-[#5c554a]">
-                {filtered.length} items
-              </span>
-            )}
+            {filterToggleAndCount}
           </div>
 
           {/* The reference pads the control's wrapper as well as the select
               itself, which is what makes the 53px-tall cell around a 37px
               control. */}
-          <label className="block min-w-0 flex-1 px-3 py-2 sm:flex-none">
-            <span className="sr-only">Sort by</span>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as typeof sort)}
-              className="font-ui w-full rounded-lg border-[0.667px] border-[#2b261f]/[0.14] bg-white px-3 py-2 text-[12.48px] font-semibold leading-[19.344px] text-[#2b261f] sm:w-[156px]"
-            >
-              <option value="featured">Featured</option>
-              <option value="newest">Newest</option>
-              <option value="price-asc">Price: low to high</option>
-              <option value="price-desc">Price: high to low</option>
-            </select>
-          </label>
+          {sortSelect}
         </div>
       )}
 
-      {/* Inline, collapsible filter panel — opens/closes with the "Filter" /
-          "Hide Filters" toggle above; each facet inside is its own
-          open/close accordion section (+ / − icon), matching the reference's
-          own filter layout rather than a full-screen slide-in drawer. */}
-      {!query && filtersOpen && (
-        <div className="mb-4 border-[0.667px] border-t-0 border-[#2b261f]/[0.14] bg-white px-[13.6px]">
-          <FilterSection
-            title="Category"
-            isOpen={openSections.category}
-            onToggle={() =>
-              setOpenSections((s) => ({ ...s, category: !s.category }))
-            }
-            onClear={
-              draftCollection !== "ALL"
-                ? () => setDraftCollection("ALL")
-                : undefined
-            }
+      <div
+        className={`lg:items-start lg:gap-10 lg:transition-[grid-template-columns] lg:duration-300 lg:ease-out ${
+          !query ? (filtersOpen ? "lg:grid lg:grid-cols-[264px_1fr]" : "lg:grid lg:grid-cols-[0px_1fr]") : ""
+        }`}
+      >
+        {!query && (
+          <aside
+            // lg:min-w-0 overrides a grid item's default min-width:auto,
+            // which would otherwise force the track back open to fit this
+            // content even while grid-template-columns says 0px — the track
+            // and the item need to shrink together for the collapse to
+            // actually read as a slide rather than a jump-cut at the end.
+            className={`hidden lg:sticky lg:top-20 lg:block lg:min-w-0 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:overflow-x-hidden lg:transition-opacity lg:duration-300 lg:ease-out ${
+              filtersOpen ? "lg:opacity-100" : "lg:pointer-events-none lg:opacity-0"
+            }`}
           >
-            <div className="space-y-3">
-              {collectionFilters.map((c) => (
-                <label
-                  key={c.value}
-                  className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={draftCollection === c.value}
-                    onChange={() => onDraftCollectionChange(c.value)}
-                    className="h-4 w-4 accent-ink"
-                  />
-                  <span>{c.value === "ALL" ? "All categories" : c.label}</span>
-                </label>
-              ))}
+            {/* No toggle/count copy here — it used to live in this sidebar
+                AND in the toolbar row below simultaneously, discretely
+                swapping which one was visible as filtersOpen changed. That
+                read as the control jumping between two different spots on
+                the page, especially now that opening/closing animates —
+                explicit report. There's exactly one now, fixed in the
+                toolbar row (see below), which never moves; only this facet
+                panel slides in and out beside it. No card border/background
+                around the facet list either — explicit request, confirmed
+                live against the reference. */}
+            <div>{filterPanelBody}</div>
+          </aside>
+        )}
+
+        <div className="min-w-0">
+
+          {/* Inline, collapsible filter panel — opens/closes with the "Filter" /
+              "Hide Filters" toggle above; each facet inside is its own
+              open/close accordion section (+ / − icon), matching the reference's
+              own filter layout rather than a full-screen slide-in drawer. Only
+              below `lg`: at `lg`+ the sidebar above takes over. */}
+          {!query && filtersOpen && (
+            <div className="mb-4 border-[0.667px] border-t-0 border-[#2b261f]/[0.14] bg-white px-[13.6px] lg:hidden">
+              {filterPanelBody}
             </div>
-          </FilterSection>
+          )}
 
-          <FilterSection
-            title="Type"
-            isOpen={openSections.brand}
-            onToggle={() => setOpenSections((s) => ({ ...s, brand: !s.brand }))}
-            onClear={draftBrand ? () => setDraftBrand("") : undefined}
-          >
-            <div className="space-y-3">
-              {draftBrandOptions.map((b) => (
-                <label
-                  key={b}
-                  className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={draftBrand === toSlug(b)}
-                    onChange={() => onDraftBrandChange(toSlug(b))}
-                    className="h-4 w-4 accent-ink"
-                  />
-                  <span>{b}</span>
-                </label>
-              ))}
-            </div>
-          </FilterSection>
-
-          <FilterSection
-            title="Material"
-            isOpen={openSections.material}
-            onToggle={() =>
-              setOpenSections((s) => ({ ...s, material: !s.material }))
-            }
-            onClear={
-              draftMaterials.length > 0 ? () => setDraftMaterials([]) : undefined
-            }
-          >
-            <div className="space-y-3">
-              {draftMaterialOptions.map((m) => (
-                <label
-                  key={m}
-                  className="flex items-start gap-2.5 text-[14px] text-[#2b261f]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={draftMaterials.includes(m)}
-                    onChange={(e) =>
-                      setDraftMaterials((prev) =>
-                        e.target.checked
-                          ? [...prev, m]
-                          : prev.filter((x) => x !== m)
-                      )
-                    }
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-ink"
-                  />
-                  <span>{m}</span>
-                </label>
-              ))}
-            </div>
-          </FilterSection>
-
-          <FilterSection
-            title="Price"
-            isOpen={openSections.price}
-            onToggle={() => setOpenSections((s) => ({ ...s, price: !s.price }))}
-            onClear={draftPriceBand ? () => setDraftPriceBand("") : undefined}
-          >
-            <div className="space-y-3">
-              {draftPriceBandOptions.map((b) => (
-                <label
-                  key={b.value}
-                  className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={draftPriceBand === b.value}
-                    onChange={() => setDraftPriceBand(b.value)}
-                    className="h-4 w-4 accent-ink"
-                  />
-                  <span>{b.label}</span>
-                </label>
-              ))}
-            </div>
-          </FilterSection>
-
-          <FilterSection
-            title="Sort by"
-            isOpen={openSections.sort}
-            onToggle={() => setOpenSections((s) => ({ ...s, sort: !s.sort }))}
-            onClear={draftSort !== "featured" ? () => setDraftSort("featured") : undefined}
-          >
-            <div className="space-y-3">
-              {(
-                [
-                  { value: "featured", label: "Featured" },
-                  { value: "newest", label: "Newest" },
-                  { value: "price-asc", label: "Price: low to high" },
-                  { value: "price-desc", label: "Price: high to low" },
-                ] as const
-              ).map((opt) => (
-                <label
-                  key={opt.value}
-                  className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={draftSort === opt.value}
-                    onChange={() => setDraftSort(opt.value)}
-                    className="h-4 w-4 accent-ink"
-                  />
-                  <span>{opt.label}</span>
-                </label>
-              ))}
-            </div>
-          </FilterSection>
-
-          <div className="flex items-center gap-[22px] py-6">
-            <button
-              type="button"
-              onClick={applyFilters}
-              className="flex h-10 flex-1 max-w-[220px] items-center justify-center bg-[#111] text-[10px] font-medium tracking-[0.08em] text-white uppercase transition-opacity hover:opacity-85"
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="text-[12px] text-[#888] hover:text-ink"
-            >
-              Reset
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showHero && (
+          {showHero && (
         /* Square corners and a Cormorant lede — the reference sets the
            collection blurb in the display face, not the UI one. */
         <div className="my-[18.4px] pb-[24.17px] pt-[5px]">
-          <div className="group/banner relative aspect-[1209/800] w-full overflow-hidden">
+          {/* Below 768px the reference's own mobile stylesheet swaps this from
+              the landscape aspect-[1209/800] ratio to a fixed 450px height —
+              not aspect-ratio-based at all at that breakpoint — which reads
+              as a tall/portrait banner instead of the wide one desktop gets. */}
+          <div className="group/banner relative h-[450px] w-full overflow-hidden md:h-auto md:aspect-[1209/800]">
             <Image
               src={bannerImage as string}
               alt=""
@@ -660,6 +804,29 @@ export default function CatalogClient({
 
       {!query && activeFilterCount > 0 && (
         <div className="mt-6 flex flex-wrap items-center gap-2">
+          {categoryFilter.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => applyCategoryFilter(categoryFilter.filter((v) => v !== c))}
+              className="inline-flex items-center gap-2 rounded-full border border-black/20 px-3 py-1.5 text-xs hover:border-ink"
+            >
+              {collectionFilters.find((f) => f.value === c)?.label ?? c}
+              <span aria-hidden="true">×</span>
+              <span className="sr-only">Remove filter</span>
+            </button>
+          ))}
+          {brandParam && (
+            <button
+              type="button"
+              onClick={() => selectBrand("")}
+              className="inline-flex items-center gap-2 rounded-full border border-black/20 px-3 py-1.5 text-xs hover:border-ink"
+            >
+              {brand}
+              <span aria-hidden="true">×</span>
+              <span className="sr-only">Remove filter</span>
+            </button>
+          )}
           {materials.map((m) => (
             <button
               key={m}
@@ -683,6 +850,13 @@ export default function CatalogClient({
               <span className="sr-only">Remove filter</span>
             </button>
           )}
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="text-xs font-medium text-[#5c554a] underline hover:text-ink"
+          >
+            Clear all
+          </button>
         </div>
       )}
 
@@ -702,26 +876,37 @@ export default function CatalogClient({
                 {/* Products can be saved with no images; guard the empty src
                     so the card shows the tinted frame, not a broken image. */}
                 <div className="relative aspect-square overflow-hidden bg-[#f5f2ee] mb-3">
+                  {/* Same badge treatment as the homepage carousel
+                      (ProductCarousel.tsx) — this catalog grid never
+                      rendered `badgeLabel` at all despite the admin having a
+                      field for it and the data already flowing through. */}
+                  {p.badgeLabel && (
+                    <span className="absolute left-2 top-2 z-10 rounded-full bg-[#111] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.04em] text-white">
+                      {p.badgeLabel}
+                    </span>
+                  )}
                   {p.images[0] && (
                     <Image
                       src={p.images[0]}
                       alt={p.name}
                       fill
                       sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-                      className={`object-cover transition-opacity duration-500 ${
+                      className={`object-cover transition-opacity duration-[900ms] ${
                         p.images[1] ? "group-hover:opacity-0" : "transition-transform group-hover:scale-105"
                       }`}
                     />
                   )}
                   {/* Second image is the on-model shot; it fades in on hover,
-                      the same front/back swap the reference site uses. */}
+                      the same front/back swap the reference site uses. Slowed
+                      from 500ms — a customer said the swap felt jarring at
+                      that speed. */}
                   {p.images[1] && (
                     <Image
                       src={p.images[1]}
                       alt=""
                       fill
                       sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-                      className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                      className="object-cover opacity-0 transition-opacity duration-[900ms] group-hover:opacity-100"
                     />
                   )}
                   <AddToBagButton
@@ -745,12 +930,12 @@ export default function CatalogClient({
                   {p.material}
                 </p>
                 <p className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">
+                  {formatPrice(p.price, currency, rates[currency])}
                   {p.compareAtPrice && (
-                    <span className="line-through text-black/40 mr-2">
-                      {formatPrice(p.compareAtPrice, currency)}
+                    <span className="line-through text-black/40 ml-2">
+                      {formatPrice(p.compareAtPrice, currency, rates[currency])}
                     </span>
                   )}
-                  {formatPrice(p.price, currency)}
                 </p>
               </Link>
             ))}
@@ -760,14 +945,16 @@ export default function CatalogClient({
             <div className="text-center mt-12">
               <button
                 onClick={() => setVisible((v) => v + 12)}
-                className="border border-[#2b261f] px-8 py-3 text-sm tracking-wide hover:bg-[#2b261f] hover:text-white transition-colors"
+                className="font-ui text-sm uppercase tracking-[0.08em] text-[#2b261f] underline underline-offset-4 hover:text-gold transition-colors"
               >
-                SHOW MORE
+                Show more
               </button>
             </div>
           )}
         </>
       )}
+        </div>
+      </div>
     </div>
   );
 }

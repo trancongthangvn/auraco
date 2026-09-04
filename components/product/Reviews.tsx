@@ -15,7 +15,7 @@ export default async function Reviews({ product }: { product: FullProduct }) {
   return (
     <section className="mx-auto px-4 mt-12 pt-6 border-t border-gold-light/35">
       <h2 className="font-serif-display text-[22px] leading-[24.2px] text-[#28241f] mt-6 mb-[9.6px]">
-        Reviews
+        Customer Reviews
       </h2>
       <ReviewsClient
         slug={product.slug}

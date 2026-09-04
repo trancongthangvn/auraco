@@ -5,7 +5,7 @@ export const metadata = { title: "Security Policy | AURA & CO" };
 export default function SecurityPolicyPage() {
   return (
     <LegalPage
-      title="Security Policy"
+      title="Security policy"
       sections={[
         {
           heading: "1. Encryption",

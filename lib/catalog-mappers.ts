@@ -49,14 +49,32 @@ export type ApiProduct = {
   variants?: ApiProductVariant[];
   /** Small card badge ("New In", "Hot"...) — null/absent hides it. */
   badge_label?: string | null;
+  /** Dedicated nav mega-menu thumbnail (reference's `/thumbnails/*`) —
+   *  distinct lifestyle shot from the catalog's own `images[0]`. Null for
+   *  the few products the reference itself never generated one for. */
+  thumbnail_url?: string | null;
 };
 
 export type ApiCollection = {
   id: number;
   slug: string;
   name: string;
+  description: string | null;
   image_url: string | null;
+  /** Catalog page's own hero banner (a distinct lifestyle photo) — separate
+   *  from `image_url`, which is the homepage tile's still-life shot. */
+  banner_url: string | null;
   href: string | null;
+  sort_order: number;
+  active: boolean;
+};
+
+export type ApiBrand = {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
   sort_order: number;
   active: boolean;
 };
@@ -100,6 +118,8 @@ export function toFullProduct(api: ApiProduct): FullProduct {
     attributes: api.attributes,
     detailsHtml: api.details_html ?? undefined,
     variants: (api.variants || []).map(toProductVariant),
+    thumbnailUrl: api.thumbnail_url ?? undefined,
+    badgeLabel: api.badge_label ?? undefined,
   };
 }
 

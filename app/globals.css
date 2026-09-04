@@ -2,10 +2,7 @@
 @plugin "@tailwindcss/typography";
 
 @theme inline {
-  --font-serif: var(--font-serif);
   --font-sans: var(--font-sans);
-  --font-ui: var(--font-ui);
-  --font-display: var(--font-display);
   --color-gold: #a67c3d;
   --color-gold-light: #c9a66b;
   --color-ink: #2b261f;
@@ -23,31 +20,71 @@
   --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Mobile Safari/Chrome rubber-band fix: swiping past the left/right edge
+   of the page would otherwise drag the whole viewport frame sideways
+   (browser-level overscroll navigation/bounce), revealing blank space even
+   though the page itself has no horizontal overflow (verified: scrollWidth
+   === clientWidth at 375px). Disabling horizontal overscroll here removes
+   that "traveling frame" without touching any layout. */
+html,
 body {
-  font-family: var(--font-sans), system-ui, sans-serif;
+  overscroll-behavior-x: none;
+  /* iOS Safari has deliberately ignored `user-scalable=no`/`maximum-scale`
+     in the viewport meta tag since iOS 10 (an intentional Apple
+     accessibility decision) — so the viewport-meta zoom lock in
+     app/layout.tsx's `viewport` export does nothing on a real iPhone/iPad,
+     even though it works in other browsers. `touch-action` is what Safari
+     actually respects for this: `pan-x pan-y` (deliberately NOT the
+     `manipulation` shorthand, which per spec still permits pinch-zoom)
+     allows normal one- or two-finger scrolling but stops the browser from
+     ever recognizing a pinch as a zoom gesture, which is what was letting a
+     fast swipe near the screen edge occasionally get misread as pinch-zoom
+     and shrink the whole page. */
+  touch-action: pan-x pan-y;
 }
 
-.font-serif-display {
-  font-family: var(--font-serif), Georgia, serif;
-  /* Cormorant Garamond defaults to oldstyle figures — digits drop below the
-     baseline and read as broken/misaligned in an uppercase heading ("10%"
-     looks like "ı0%"). The reference forces lining figures wherever a number
-     sits in this face (its `.promo-numeric` span); we do it face-wide since
-     every Cormorant instance that carries a digit wants the same fix. */
-  font-variant-numeric: lining-nums proportional-nums;
+/* Safari/WebKit has a long-standing bug where `100vw` (used by every
+   full-bleed breakout in this codebase — CategoryFeature.tsx's
+   `w-screen -mx-[50vw]` pattern, etc.) is computed INCLUDING the width of
+   the browser's scrollbar gutter, even on platforms with no visible overlay
+   scrollbar. That makes those elements a few px wider than the real
+   viewport — invisible in Chromium (where this was tested and measured
+   clean), but on real Safari/iPadOS it creates genuine page-level
+   horizontal overflow, which drags the sticky header sideways with it once
+   anything scrolls it into view.
+   Clipping horizontal overflow at the root is the standard fix, but it must
+   go on `html` ONLY, not `body`: setting `overflow-x` (and only
+   overflow-x) on an element forces that element's computed `overflow-y`
+   from `visible` to `auto` per the CSS overflow spec, which turns `body`
+   into its own independent scroll container — and that broke the header's
+   `position: sticky` outright (confirmed live: it scrolled away with the
+   page instead of staying pinned, once this was on `body` too). `html` is
+   already the document's real scrolling element in standard mode, so
+   clipping there is enough on its own without touching `body`. */
+html {
+  overflow-x: hidden;
 }
 
-/* The reference's UI face — nav links, prices and materials, review quotes,
-   trust-band labels, footer headings. Distinct from the body sans. */
+/* Reference site's actual two-face system: Cormorant Garamond serif for
+   headings/logo, Source Sans 3 for body copy and UI labels. (The reference
+   also declares "Jost, sans-serif" on nav/buttons, but never loads Jost —
+   see DEPLOYMENT.md — so those elements use Source Sans 3 too, the closest
+   already-loaded face to that fallback's metrics.) */
+body,
 .font-ui {
-  font-family: var(--font-ui), system-ui, sans-serif;
+  font-family: "Source Sans 3", system-ui, sans-serif;
+}
+.font-serif-display,
+.font-display-serif {
+  font-family: var(--font-serif), "Cormorant Garamond", Georgia, serif;
 }
 
-/* The reference's collection-tile face. Higher contrast and a larger
-   x-height than the Cormorant used for headings, so it reads bigger at the
-   same 19px. */
-.font-display-serif {
-  font-family: var(--font-display), Georgia, serif;
+/* Explicit request: the footer specifically should match the reference's
+   actual rendered (broken) fallback pixel-for-pixel, not the Source Sans 3
+   substitute above — scoped to <footer> only, the site-wide .font-ui rule
+   is untouched. */
+footer .font-ui {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 /* Scroll-reveal, matching auracojewelry.com's own .reveal-on-scroll timing

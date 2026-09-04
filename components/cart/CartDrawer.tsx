@@ -71,6 +71,8 @@ export default function CartDrawer() {
     updateQty,
     removeItem,
     addItem,
+    previewItem,
+    confirmPreview,
   } = useCart();
   const router = useRouter();
   const pathname = usePathname();
@@ -130,6 +132,37 @@ export default function CartDrawer() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
+          {previewItem && (
+            <div className="mb-5 border-b border-black/10 pb-5">
+              <div className="flex items-center gap-3">
+                <div className="relative block h-16 w-16 shrink-0 overflow-hidden bg-[#f5f2ee]">
+                  {previewItem.image && (
+                    <Image
+                      src={previewItem.image}
+                      alt={previewItem.name}
+                      fill
+                      sizes="64px"
+                      className="object-cover"
+                    />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-[#2b261f]">
+                    {previewItem.name}
+                  </p>
+                  <p className="mt-1 text-[13px] text-[#2b261f]">{money(previewItem.price)}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={confirmPreview}
+                className="mt-3 flex h-11 w-full items-center justify-center border border-[#28241f] text-[11px] font-semibold uppercase tracking-[0.08em] text-[#28241f] transition-colors hover:bg-black/5"
+              >
+                Add to Bag
+              </button>
+            </div>
+          )}
+
           {items.length === 0 ? (
             <p className="py-10 text-center text-sm text-black/50">
               Your bag is empty.

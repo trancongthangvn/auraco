@@ -34,25 +34,31 @@ export default function FlagIcon({
   };
 
   switch (locale) {
-    case "en":
+    case "en": {
+      // Also used for GBP in the currency picker. User-supplied artwork,
+      // nested at its native 60×30 (2:1) viewBox like the USD flag above.
+      const sClip = `${clipId}-s`;
+      const tClip = `${clipId}-t`;
       return (
         <svg {...common}>
-          <clipPath id={clipId}>
-            <path d="M30,20 h30 v20 z v20 h-30 z h-30 v-20 z v-20 h30 z" />
-          </clipPath>
-          <rect width="60" height="40" fill="#00247d" />
-          <path d="M0,0 L60,40 M60,0 L0,40" fill="none" stroke="#fff" strokeWidth="8" />
-          <path
-            d="M0,0 L60,40 M60,0 L0,40"
-            fill="none"
-            clipPath={`url(#${clipId})`}
-            stroke="#cf142b"
-            strokeWidth="5"
-          />
-          <path d="M30,0 v40 M0,20 h60" fill="none" stroke="#fff" strokeWidth="13" />
-          <path d="M30,0 v40 M0,20 h60" fill="none" stroke="#cf142b" strokeWidth="8" />
+          <svg viewBox="0 0 60 30" width="60" height="40" preserveAspectRatio="none">
+            <clipPath id={sClip}>
+              <path d="M0,0 v30 h60 v-30 z" />
+            </clipPath>
+            <clipPath id={tClip}>
+              <path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z" />
+            </clipPath>
+            <g clipPath={`url(#${sClip})`}>
+              <path d="M0,0 v30 h60 v-30 z" fill="#012169" />
+              <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6" />
+              <path d="M0,0 L60,30 M60,0 L0,30" clipPath={`url(#${tClip})`} stroke="#C8102E" strokeWidth="4" />
+              <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10" />
+              <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6" />
+            </g>
+          </svg>
         </svg>
       );
+    }
 
     case "fr":
       return (
@@ -91,33 +97,66 @@ export default function FlagIcon({
       );
 
     case "us":
+      // Explicit request: the full 50-star flag artwork the user supplied,
+      // not the previous placeholder (13 stripes + a plain navy rectangle
+      // with no stars at all). Nested as its own <svg> at the artwork's
+      // native 7410×3900 viewBox rather than hand-converting every star
+      // coordinate to the 60×40 system the other flags share — the outer
+      // <svg>'s common.viewBox already scales this inner one to line up
+      // with the rest of the list.
       return (
         <svg {...common}>
-          <rect width="60" height="40" fill="#b22234" />
-          {[1, 3, 5, 7, 9, 11].map((i) => (
-            <rect key={i} y={i * (40 / 13)} width="60" height={40 / 13} fill="#fff" />
-          ))}
-          <rect width="24" height="21.6" fill="#3c3b6e" />
+          <svg viewBox="0 0 7410 3900" width="60" height="40" preserveAspectRatio="none">
+            <path d="M0,0h7410v3900H0" fill="#b31942" />
+            <path d="M0,450H7410m0,600H0m0,600H7410m0,600H0m0,600H7410m0,600H0" stroke="#FFF" strokeWidth="300" />
+            <path d="M0,0h2964v2100H0" fill="#0a3161" />
+            <g fill="#FFF">
+              <g id="us-flag-s18">
+                <g id="us-flag-s9">
+                  <g id="us-flag-s5">
+                    <g id="us-flag-s4">
+                      <path id="us-flag-s" d="M247,90 317.534230,307.082039 132.873218,172.917961H361.126782L176.465770,307.082039z" />
+                      <use xlinkHref="#us-flag-s" y="420" />
+                      <use xlinkHref="#us-flag-s" y="840" />
+                      <use xlinkHref="#us-flag-s" y="1260" />
+                    </g>
+                    <use xlinkHref="#us-flag-s" y="1680" />
+                  </g>
+                  <use xlinkHref="#us-flag-s4" x="247" y="210" />
+                </g>
+                <use xlinkHref="#us-flag-s9" x="494" />
+              </g>
+              <use xlinkHref="#us-flag-s18" x="988" />
+              <use xlinkHref="#us-flag-s9" x="1976" />
+              <use xlinkHref="#us-flag-s5" x="2470" />
+            </g>
+          </svg>
         </svg>
       );
 
     case "eu":
+      // User-supplied artwork, nested at its native 900×600 (3:2) viewBox
+      // like the USD/GBP flags above.
       return (
         <svg {...common}>
-          <rect width="60" height="40" fill="#003399" />
-          {Array.from({ length: 12 }, (_, i) => {
-            const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
-            const cx = 30 + Math.cos(a) * 12;
-            const cy = 20 + Math.sin(a) * 12;
-            return (
+          <svg viewBox="0 0 900 600" width="60" height="40">
+            <rect width="900" height="600" fill="#039" />
+            <g fill="#fc0" transform="translate(450,300)">
               <path
-                key={i}
-                fill="#ffcc00"
-                transform={`translate(${cx},${cy}) scale(0.32)`}
-                d="M0,-6 1.76,-1.85 6,-1.85 2.65,0.7 3.7,5 0,2.3 -3.7,5 -2.65,0.7 -6,-1.85 -1.76,-1.85Z"
+                id="eu-flag-s"
+                d="M0,162.5 22.041947,230.338137 -35.664619,188.411863H35.664619L-22.041947,230.338137z"
               />
-            );
-          })}
+              <use xlinkHref="#eu-flag-s" y="-400" />
+              <g id="eu-flag-s5">
+                <use xlinkHref="#eu-flag-s" transform="rotate(30) rotate(-30,0,200)" />
+                <use xlinkHref="#eu-flag-s" transform="rotate(60) rotate(-60,0,200)" />
+                <use xlinkHref="#eu-flag-s" transform="rotate(90) rotate(-90,0,200)" />
+                <use xlinkHref="#eu-flag-s" transform="rotate(120) rotate(-120,0,200)" />
+                <use xlinkHref="#eu-flag-s" transform="rotate(150) rotate(-150,0,200)" />
+              </g>
+              <use xlinkHref="#eu-flag-s5" transform="scale(-1,1)" />
+            </g>
+          </svg>
         </svg>
       );
   }

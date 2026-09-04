@@ -30,7 +30,7 @@ export default function Collections({
           <Link
             key={c.name}
             href={c.href}
-            className="group relative flex flex-col overflow-hidden rounded-xl border border-[#2b261f]/[0.08] bg-[#faf8f4] transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04] hover:shadow-[0_18px_40px_rgba(43,38,31,0.08)]"
+            className="group relative flex flex-col overflow-hidden rounded-xl border border-[#2b261f]/[0.08] bg-[#faf8f4] transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.015] hover:shadow-[0_10px_24px_rgba(43,38,31,0.08)]"
           >
             {/* A collection added in the admin without an image yields an
                 empty `img`; rendering <Image src=""> there shows a broken
@@ -48,7 +48,7 @@ export default function Collections({
                 />
               )}
             </span>
-            <span className="flex flex-col gap-[0.35rem] pb-3 pl-2 pr-2 pt-2.5 text-center sm:pb-[18.4px] sm:pl-[17.6px] sm:pr-[17.6px] sm:pt-4">
+            <span className="flex flex-col items-center gap-[0.35rem] pb-3 pl-2 pr-2 pt-2.5 text-center sm:pb-[18.4px] sm:pl-[17.6px] sm:pr-[17.6px] sm:pt-4">
               <span className="font-display-serif whitespace-nowrap text-[14px] font-normal leading-[16px] text-[#28241f] sm:text-[19px] sm:leading-[21.85px]">
                 {c.name}
               </span>

@@ -24,7 +24,7 @@ const dictionary = {
   },
   footer: {
     newsletterHeading: "REGÍSTRATE Y AHORRA 10%",
-    emailPlaceholder: "Correo electrónico",
+    emailPlaceholder: "Introduce tu correo electrónico",
     subscribe: "Suscribirse",
     newsletterDisclaimer:
       "Al registrarte, aceptas nuestra política de seguridad y privacidad.",
@@ -47,15 +47,22 @@ const dictionary = {
   },
   cart: {
     title: "Tu bolsa",
-    empty:
-      "Tu bolsa está vacía por el momento. Explora la colección y añade tus piezas favoritas.",
+    empty: "Tu bolsa está vacía.",
   },
   contact: {
+    heading: "Déjanos un mensaje.",
+    subheading:
+      "Comparte tus datos a continuación y nuestro equipo te contactará por teléfono.",
     fullName: "Nombre completo",
     email: "Correo electrónico",
-    phone: "Número de teléfono (opcional)",
+    emailPlaceholder: "tu@ejemplo.com",
+    phone: "Número de teléfono",
+    phonePlaceholder: "+1 (___) ___-____",
+    address: "Dirección",
     product: "Producto (opcional)",
-    message: "Mensaje",
+    productPlaceholder: "Pulsera, anillo, etc.",
+    message: "Mensaje (opcional)",
+    messagePlaceholder: "¿Cómo podemos ayudarte?",
     send: "ENVIAR MENSAJE",
     sending: "ENVIANDO...",
     sent: "MENSAJE ENVIADO",
@@ -69,6 +76,7 @@ const dictionary = {
   },
   news: {
     title: "Journal",
+    subtitle: "News, stories, and guides from our studio.",
     all: "Todos",
     searchPlaceholder: "Buscar artículos...",
     searchButton: "Buscar",

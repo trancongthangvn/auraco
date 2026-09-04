@@ -12,7 +12,7 @@ import {
   newArrivalProducts as initialNewArrivals,
 } from "@/data/site";
 import Button from "@/components/admin/ui/Button";
-import { Input, Textarea, Label } from "@/components/admin/ui/Field";
+import { Input, Textarea, Label, Select } from "@/components/admin/ui/Field";
 import ImageField from "@/components/admin/ImageField";
 import { TableCard, Th, Td, TR_HOVER } from "@/components/admin/ui/Table";
 import {
@@ -41,9 +41,12 @@ type Testimonial = {
   quote_date?: string | null;
   sort_order?: number;
   active?: boolean;
+  photo_url?: string | null;
 };
 
 type FeaturedProduct = (typeof initialBeachVibe)[number];
+
+type CollectionOption = { id: number; slug: string; name: string };
 
 type HomepageData = {
   heroSlides: HeroSlide[];
@@ -65,8 +68,9 @@ export default function AdminHomepagePage() {
 
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
   const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
-  const [slideForm, setSlideForm] = useState({ label: "", title: "", image_url: "" });
+  const [slideForm, setSlideForm] = useState({ label: "", title: "", image_url: "", href: "" });
   const [savingSlide, setSavingSlide] = useState(false);
+  const [collectionOptions, setCollectionOptions] = useState<CollectionOption[]>([]);
 
   // NOTE: content.js's /api/content/homepage endpoint only returns a flat
   // "featuredProducts" list (top active products by rating), it does not
@@ -78,12 +82,13 @@ export default function AdminHomepagePage() {
 
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
-  const [testimonialForm, setTestimonialForm] = useState({ name: "", quote: "" });
+  const [testimonialForm, setTestimonialForm] = useState({ name: "", quote: "", photo_url: "" });
   const [creatingTestimonial, setCreatingTestimonial] = useState(false);
   const [newTestimonialForm, setNewTestimonialForm] = useState({
     initials: "",
     name: "",
     quote: "",
+    photo_url: "",
   });
   const [savingTestimonial, setSavingTestimonial] = useState(false);
 
@@ -105,6 +110,14 @@ export default function AdminHomepagePage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    apiFetch<CollectionOption[]>("/api/collections/admin")
+      .then((data) => setCollectionOptions(data))
+      .catch(() => {
+        // Non-critical — the modal falls back to a plain href text field.
+      });
   }, []);
 
   const saveHeroSlides = async (next: HeroSlide[]) => {
@@ -140,7 +153,12 @@ export default function AdminHomepagePage() {
 
   const openEditSlide = (slide: HeroSlide) => {
     setEditingSlide(slide);
-    setSlideForm({ label: slide.label, title: slide.title, image_url: slide.image_url });
+    setSlideForm({
+      label: slide.label,
+      title: slide.title,
+      image_url: slide.image_url,
+      href: slide.href || "",
+    });
   };
 
   const submitEditSlide = async () => {
@@ -149,7 +167,13 @@ export default function AdminHomepagePage() {
     try {
       const next = heroSlides.map((s) =>
         s === editingSlide
-          ? { ...s, label: slideForm.label, title: slideForm.title, image_url: slideForm.image_url }
+          ? {
+              ...s,
+              label: slideForm.label,
+              title: slideForm.title,
+              image_url: slideForm.image_url,
+              href: slideForm.href,
+            }
           : s
       );
       await saveHeroSlides(next);
@@ -181,7 +205,7 @@ export default function AdminHomepagePage() {
 
   const openEditTestimonial = (t: Testimonial) => {
     setEditingTestimonial(t);
-    setTestimonialForm({ name: t.name, quote: t.quote });
+    setTestimonialForm({ name: t.name, quote: t.quote, photo_url: t.photo_url ?? "" });
   };
 
   const submitEditTestimonial = async () => {
@@ -190,7 +214,12 @@ export default function AdminHomepagePage() {
     try {
       const next = testimonials.map((t) =>
         t === editingTestimonial
-          ? { ...t, name: testimonialForm.name, quote: testimonialForm.quote }
+          ? {
+              ...t,
+              name: testimonialForm.name,
+              quote: testimonialForm.quote,
+              photo_url: testimonialForm.photo_url || null,
+            }
           : t
       );
       await saveTestimonials(next);
@@ -211,11 +240,12 @@ export default function AdminHomepagePage() {
           initials: newTestimonialForm.initials || newTestimonialForm.name.slice(0, 2).toUpperCase(),
           name: newTestimonialForm.name,
           quote: newTestimonialForm.quote,
+          photo_url: newTestimonialForm.photo_url || null,
         },
       ];
       await saveTestimonials(next);
       setCreatingTestimonial(false);
-      setNewTestimonialForm({ initials: "", name: "", quote: "" });
+      setNewTestimonialForm({ initials: "", name: "", quote: "", photo_url: "" });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không thể thêm đánh giá");
     } finally {
@@ -469,6 +499,26 @@ export default function AdminHomepagePage() {
                 onChange={(url) => setSlideForm((f) => ({ ...f, image_url: url ?? "" }))}
                 disabled={savingSlide}
               />
+              <div>
+                <Label>Collection (khi bấm &quot;Discover Now&quot; sẽ chuyển tới)</Label>
+                <Select
+                  value={
+                    collectionOptions.some(
+                      (c) => `/catalog/${c.slug.toUpperCase()}` === slideForm.href
+                    )
+                      ? slideForm.href
+                      : ""
+                  }
+                  onChange={(e) => setSlideForm((f) => ({ ...f, href: e.target.value }))}
+                >
+                  <option value="">— Chọn collection —</option>
+                  {collectionOptions.map((c) => (
+                    <option key={c.id} value={`/catalog/${c.slug.toUpperCase()}`}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             </div>
             <ModalFooter>
               <Button variant="secondary" onClick={() => setEditingSlide(null)}>
@@ -502,6 +552,12 @@ export default function AdminHomepagePage() {
                   rows={4}
                 />
               </div>
+              <ImageField
+                label="Ảnh khách hàng"
+                value={testimonialForm.photo_url || null}
+                onChange={(url) => setTestimonialForm((f) => ({ ...f, photo_url: url ?? "" }))}
+                disabled={savingTestimonial}
+              />
             </div>
             <ModalFooter>
               <Button variant="secondary" onClick={() => setEditingTestimonial(null)}>
@@ -539,6 +595,12 @@ export default function AdminHomepagePage() {
                   rows={4}
                 />
               </div>
+              <ImageField
+                label="Ảnh khách hàng"
+                value={newTestimonialForm.photo_url || null}
+                onChange={(url) => setNewTestimonialForm((f) => ({ ...f, photo_url: url ?? "" }))}
+                disabled={savingTestimonial}
+              />
             </div>
             <ModalFooter>
               <Button variant="secondary" onClick={() => setCreatingTestimonial(false)}>

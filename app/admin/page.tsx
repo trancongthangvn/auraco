@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Home, ArrowRight } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
-import PageHeader from "@/components/admin/PageHeader";
 import { apiFetch, ApiError } from "@/lib/api";
-import type { OrderStatus } from "@/data/admin";
+import { ORDER_STATUS_LABEL_EN, type OrderStatus } from "@/data/admin";
 import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
 import Badge from "@/components/admin/ui/Badge";
 
@@ -22,9 +23,18 @@ type AdminOrder = {
   created_at: string;
 };
 
+/** Reference measured its own status pills off `PENDING`/`CANCELLED` text —
+ *  this maps our own three statuses to the same warning/danger/success tone
+ *  Badge already carries, so the pill colors match without inventing a
+ *  fourth English-labeled status that doesn't exist in this data model. */
+const STATUS_TONE: Record<OrderStatus, "success" | "danger" | "warning"> = {
+  "Đã giao": "success",
+  "Đã hủy": "danger",
+  "Đang xử lý": "warning",
+};
+
 export default function AdminDashboardPage() {
   const [productCount, setProductCount] = useState(0);
-  const [collectionCount, setCollectionCount] = useState(0);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [orderTotal, setOrderTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -40,15 +50,12 @@ export default function AdminDashboardPage() {
       .then(([products, ordersRes]) => {
         if (cancelled) return;
         setProductCount(products.length);
-        setCollectionCount(
-          new Set(products.flatMap((p) => p.collections ?? [])).size
-        );
         setOrders(ordersRes.orders);
         setOrderTotal(ordersRes.total);
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "Không thể tải dữ liệu tổng quan.");
+          setError(err instanceof ApiError ? err.message : "Failed to load dashboard data.");
         }
       })
       .finally(() => {
@@ -60,78 +67,112 @@ export default function AdminDashboardPage() {
     };
   }, []);
 
-  const stats = [
-    { label: "Sản phẩm", value: productCount },
-    { label: "Đơn hàng", value: orderTotal },
-    {
-      label: "Đơn đang xử lý",
-      value: orders.filter((o) => o.status === "Đang xử lý").length,
-    },
-    { label: "Bộ sưu tập", value: collectionCount },
-  ];
-
   return (
     <AdminShell>
-      <PageHeader />
+      {/* Breadcrumb + heading + subtitle — replacing the old bordered
+          "guide card" (icon box + helper text) on this page specifically,
+          matching the reference Dashboard's own plain breadcrumb/H1/subtitle
+          layout. Other admin pages keep PageHeader as-is; only this one had
+          a screenshot to match precisely. */}
+      <nav className="mb-3 flex items-center gap-1.5 text-[13px] text-black/45">
+        <Home size={13} />
+        <span>/</span>
+        <span className="text-[#2b261f]">Dashboard</span>
+      </nav>
+      <h1 className="font-serif-display text-[26px] font-bold text-[#2b261f]">Dashboard</h1>
+      <p className="mt-1 mb-6 text-[13px] text-black/45">
+        Welcome back. Quick overview of your store.
+      </p>
 
-      {loading && <p className="text-sm text-black/40 py-8 text-center">Đang tải...</p>}
+      {loading && <p className="text-sm text-black/40 py-8 text-center">Loading...</p>}
       {error && <p className="text-sm text-red-700 py-4">{error}</p>}
 
       {!loading && !error && (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-8">
-            {stats.map((s) => (
-              <div
-                key={s.label}
-                className="bg-white rounded-2xl border border-black/10 shadow-sm p-5"
-              >
-                <p className="text-3xl font-serif-display mb-1">{s.value}</p>
-                <p className="text-xs text-black/50 uppercase tracking-wide">
-                  {s.label}
+          {/* One bordered panel holding 3 stat cards, each with its own pale
+              tint + a gold "→" link — matches the reference exactly (its
+              cards read Products/Orders/Currencies; ours uses the metrics
+              this admin actually tracks instead of inventing an FX-rates
+              feature that doesn't exist here). */}
+          <div className="mb-6 rounded-2xl border border-black/10 bg-white p-5 lg:p-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-xl bg-[#f7f1e2] p-5">
+                <p className="text-[13px] text-black/55">Products</p>
+                <p className="mt-1 font-serif-display text-[32px] font-bold text-[#2b261f]">
+                  {productCount}
                 </p>
+                <Link
+                  href="/admin/products"
+                  className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-gold hover:underline"
+                >
+                  Manage catalog <ArrowRight size={13} />
+                </Link>
               </div>
-            ))}
+              <div className="rounded-xl bg-[#f7f1e2] p-5">
+                <p className="text-[13px] text-black/55">Orders</p>
+                <p className="mt-1 font-serif-display text-[32px] font-bold text-[#2b261f]">
+                  {orderTotal}
+                </p>
+                <Link
+                  href="/admin/orders"
+                  className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-gold hover:underline"
+                >
+                  Review orders <ArrowRight size={13} />
+                </Link>
+              </div>
+              <div className="rounded-xl bg-[#f7f1e2] p-5">
+                <p className="text-[13px] text-black/55">Pending</p>
+                <p className="mt-1 font-serif-display text-[32px] font-bold text-[#2b261f]">
+                  {orders.filter((o) => o.status === "Đang xử lý").length}
+                </p>
+                <Link
+                  href="/admin/orders"
+                  className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-gold hover:underline"
+                >
+                  Process now <ArrowRight size={13} />
+                </Link>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-black/10 shadow-sm p-5">
-            <h2 className="text-sm font-medium mb-4 uppercase tracking-wide">
-              Đơn hàng gần đây
+          <div className="rounded-2xl border border-black/10 bg-white p-5 lg:p-6">
+            <h2 className="mb-4 text-[15px] font-semibold text-[#2b261f]">
+              Recent orders
             </h2>
             {orders.length === 0 ? (
-              <EmptyState>Chưa có đơn hàng nào.</EmptyState>
+              <EmptyState>No orders yet.</EmptyState>
             ) : (
               <TableCard>
                 <table className="w-full text-sm min-w-[560px]">
                   <thead>
-                    <tr className="border-b border-black/10">
-                      <Th>Mã đơn</Th>
-                      <Th>Khách hàng</Th>
-                      <Th>Ngày</Th>
-                      <Th align="right">Giá trị</Th>
-                      <Th align="right">Trạng thái</Th>
+                    <tr className="rounded-lg bg-[#f7f1e2] text-left">
+                      <Th>Number</Th>
+                      <Th>Customer</Th>
+                      <Th align="right">Total</Th>
+                      <Th align="right">Status</Th>
+                      <Th align="right"></Th>
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.slice(0, 5).map((o) => (
+                    {orders.slice(0, 8).map((o) => (
                       <tr key={o.id} className={TR_HOVER}>
-                        <Td>{o.order_code}</Td>
-                        <Td>{o.customer_name}</Td>
                         <Td>
-                          {new Date(o.created_at).toLocaleDateString("vi-VN")}
+                          <span className="font-semibold">{o.order_code}</span>
                         </Td>
+                        <Td>{o.customer_name}</Td>
                         <Td align="right">${o.total}</Td>
                         <Td align="right">
-                          <Badge
-                            tone={
-                              o.status === "Đã giao"
-                                ? "success"
-                                : o.status === "Đã hủy"
-                                ? "danger"
-                                : "warning"
-                            }
-                          >
-                            {o.status}
+                          <Badge tone={STATUS_TONE[o.status]}>
+                            {ORDER_STATUS_LABEL_EN[o.status]}
                           </Badge>
+                        </Td>
+                        <Td align="right">
+                          <Link
+                            href={`/admin/orders/${o.id}`}
+                            className="inline-flex items-center rounded-full border border-black/15 px-3.5 py-1.5 text-[12px] font-medium text-[#2b261f] hover:bg-[#f7f4f0]"
+                          >
+                            View
+                          </Link>
                         </Td>
                       </tr>
                     ))}

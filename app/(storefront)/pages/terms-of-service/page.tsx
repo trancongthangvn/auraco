@@ -5,7 +5,7 @@ export const metadata = { title: "Terms of Service | AURA & CO" };
 export default function TermsOfServicePage() {
   return (
     <LegalPage
-      title="Terms of Service"
+      title="Terms of service"
       sections={[
         {
           heading: "1. Use of Site",

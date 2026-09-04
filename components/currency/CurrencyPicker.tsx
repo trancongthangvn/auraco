@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDownIcon, CheckIcon } from "@/components/icons";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDownIcon } from "@/components/icons";
 import FlagIcon, { type FlagKind } from "@/components/i18n/FlagIcon";
 import { currencies, currencyMeta } from "@/lib/currency";
 import { useCurrency } from "./CurrencyProvider";
@@ -22,15 +22,32 @@ const CURRENCY_FLAG: Record<(typeof currencies)[number], FlagKind> = {
  * row, cream `#f4ece3`-tinted background on that row).
  */
 export default function CurrencyPicker() {
-  const { currency, setCurrency } = useCurrency();
+  const { currency, setCurrency, activeCurrencies } = useCurrency();
+  const visibleCurrencies = currencies.filter((c) => activeCurrencies[c]);
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Click-outside-to-close — this was hover-only before (open/close on
+  // mouseenter/mouseleave), which works for a mouse but leaves no way to
+  // dismiss the dropdown on a touch device other than tapping the trigger
+  // again: a tap elsewhere on the page did nothing, unlike the reference.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
 
   return (
-    <div
-      className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
+    // Explicit request: this used to open on mouseenter (hover), so just
+    // moving the cursor across it — no click needed — popped it open. Now
+    // it only opens on an actual click of the trigger button below; closing
+    // is still click-outside (see the effect above) or picking an option.
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -48,7 +65,7 @@ export default function CurrencyPicker() {
             role="listbox"
             className="rounded-[14px] bg-white p-[7.2px] shadow-[0_16px_42px_rgba(31,26,20,0.16)]"
           >
-            {currencies.map((c) => {
+            {visibleCurrencies.map((c) => {
               const active = c === currency;
               const meta = currencyMeta[c];
               return (
@@ -74,12 +91,15 @@ export default function CurrencyPicker() {
                         {meta.name}
                       </span>
                     </span>
+                    {/* No checkmark — its variable width (present only on
+                        the active row) was what threw the symbol column out
+                        of alignment between rows. The row's own tinted
+                        background (bg-[#f4ece3] above) is already the
+                        active-row indicator, so the symbol can sit in the
+                        same fixed position on every row instead. */}
                     <span className="text-[13.12px] font-medium text-[#5c554a]">
                       {meta.symbol}
                     </span>
-                    {active && (
-                      <CheckIcon size={16} className="shrink-0 text-gold" />
-                    )}
                   </button>
                 </li>
               );

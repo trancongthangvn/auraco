@@ -12,7 +12,7 @@ function isNonEmptyString(v) {
 }
 
 const COLLECTION_COLUMNS =
-  'id, slug, name, image_url, href, sort_order, active, created_at, updated_at';
+  'id, slug, name, description, image_url, banner_url, href, sort_order, active, created_at, updated_at';
 
 // ----------------------------------------------------------------------------
 // GET /collections — public list of active collections
@@ -48,7 +48,7 @@ router.get('/admin', authMiddleware, requireAdmin, async (req, res) => {
 // POST /collections/admin — create a collection
 // ----------------------------------------------------------------------------
 router.post('/admin', authMiddleware, requireAdmin, async (req, res) => {
-  const { slug, name, image_url, href, sort_order, active } = req.body || {};
+  const { slug, name, description, image_url, banner_url, href, sort_order, active } = req.body || {};
 
   if (!isNonEmptyString(slug)) {
     return res.status(400).json({ error: 'slug is required' });
@@ -65,13 +65,15 @@ router.post('/admin', authMiddleware, requireAdmin, async (req, res) => {
 
   try {
     const result = await query(
-      `INSERT INTO collections (slug, name, image_url, href, sort_order, active)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO collections (slug, name, description, image_url, banner_url, href, sort_order, active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING ${COLLECTION_COLUMNS}`,
       [
         slug.trim(),
         name.trim(),
+        description ?? null,
         image_url ?? null,
+        banner_url ?? null,
         href ?? null,
         sort_order !== undefined ? Number(sort_order) : 0,
         active !== undefined ? active : true,
@@ -96,7 +98,7 @@ router.put('/admin/:id', authMiddleware, requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Invalid collection id' });
   }
 
-  const { slug, name, image_url, href, sort_order, active } = req.body || {};
+  const { slug, name, description, image_url, banner_url, href, sort_order, active } = req.body || {};
 
   if (slug !== undefined && !isNonEmptyString(slug)) {
     return res.status(400).json({ error: 'slug must be a non-empty string' });
@@ -125,7 +127,9 @@ router.put('/admin/:id', authMiddleware, requireAdmin, async (req, res) => {
 
   setIfProvided('slug', slug !== undefined ? slug.trim() : undefined);
   setIfProvided('name', name !== undefined ? name.trim() : undefined);
+  setIfProvided('description', description);
   setIfProvided('image_url', image_url);
+  setIfProvided('banner_url', banner_url);
   setIfProvided('href', href);
   setIfProvided('sort_order', sort_order !== undefined ? Number(sort_order) : undefined);
   setIfProvided('active', active);

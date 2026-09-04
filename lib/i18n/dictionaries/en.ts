@@ -28,7 +28,7 @@ const dictionary: Dictionary = {
   },
   footer: {
     newsletterHeading: "SIGN UP FOR 10% OFF",
-    emailPlaceholder: "Email address",
+    emailPlaceholder: "Enter your email address",
     subscribe: "Subscribe",
     newsletterDisclaimer: "By signing up, you agree to our Security & Privacy.",
     shop: "Shop",
@@ -49,15 +49,23 @@ const dictionary: Dictionary = {
     continueShopping: "CONTINUE SHOPPING",
   },
   cart: {
-    title: "Your Bag",
-    empty: "Your bag is currently empty. Explore the collection and add your favorite pieces.",
+    title: "Your bag",
+    empty: "Your bag is empty.",
   },
   contact: {
+    heading: "Leave us a message.",
+    subheading:
+      "Please share your details below and our team will follow up by phone.",
     fullName: "Full name",
     email: "Email",
-    phone: "Phone number (optional)",
+    emailPlaceholder: "you@example.com",
+    phone: "Phone number",
+    phonePlaceholder: "+1 (___) ___-____",
+    address: "Address",
     product: "Product (optional)",
-    message: "Message",
+    productPlaceholder: "Bracelet, ring, etc.",
+    message: "Message (optional)",
+    messagePlaceholder: "How can we help?",
     send: "SEND MESSAGE",
     sending: "SENDING...",
     sent: "MESSAGE SENT",
@@ -71,6 +79,7 @@ const dictionary: Dictionary = {
   },
   news: {
     title: "Journal",
+    subtitle: "News, stories, and guides from our studio.",
     all: "All",
     searchPlaceholder: "Search articles...",
     searchButton: "Search",
@@ -117,8 +126,8 @@ const dictionary: Dictionary = {
   },
   auth: {
     login: {
-      title: "Sign In",
-      subtitle: "Sign in to view your orders, saved pieces, and account details.",
+      title: "Sign in",
+      subtitle: "Sign in to track orders and manage your profile. You can also checkout as a guest.",
       email: "Email",
       password: "Password",
       rememberMe: "Remember me",
@@ -134,8 +143,8 @@ const dictionary: Dictionary = {
       demoNotice: "UI demo — no real account system connected yet.",
     },
     register: {
-      title: "Create Account",
-      subtitle: "Join us to track orders, save favorites, and check out faster.",
+      title: "Create account",
+      subtitle: "Register to checkout, save your details, and view order history.",
       fullName: "Full name",
       email: "Email",
       password: "Password",

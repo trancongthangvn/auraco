@@ -6,11 +6,12 @@ import Image from "next/image";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useCart } from "@/components/cart/CartProvider";
 import { cartItemKey } from "@/lib/cart";
+import CurrencyPicker from "@/components/currency/CurrencyPicker";
 import {
   ChevronLeftIcon,
   PlusIcon,
   MinusIcon,
-  GlobeIcon,
+  SearchIcon,
 } from "@/components/icons";
 
 /** Small brand-representative badge per payment method key — same visual
@@ -59,6 +60,57 @@ function PaymentMethodBadge({ methodKey }: { methodKey: string }) {
   }
 }
 
+/** Floating-label text input — matches the reference checkout's
+ *  `.checkout-field--floating` pattern (label sits inside the field until
+ *  focused/filled, then floats to a small caption above the value). */
+function FloatingField({
+  id,
+  label,
+  type = "text",
+  value,
+  onChange,
+  required,
+  autoComplete,
+  icon,
+  className,
+}: {
+  id: string;
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  autoComplete?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`relative ${className ?? ""}`}>
+      <input
+        id={id}
+        type={type}
+        required={required}
+        autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder=" "
+        className="peer w-full rounded-[6px] border border-[#d5d5d5] px-4 pb-2 pt-5 font-ui text-[13px] text-[#171717] outline-none focus:border-ink"
+      />
+      <label
+        htmlFor={id}
+        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-ui text-[12px] font-light text-[#6d6d6d] transition-all peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-[10px] peer-[&:not(:placeholder-shown)]:top-3 peer-[&:not(:placeholder-shown)]:translate-y-0 peer-[&:not(:placeholder-shown)]:text-[10px]"
+      >
+        {label}
+      </label>
+      {icon && (
+        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-black/40">
+          {icon}
+        </span>
+      )}
+    </div>
+  );
+}
+
 const countries = [
   "Vietnam",
   "United States",
@@ -80,6 +132,9 @@ const countries = [
 // a valid order payment_method, so it's filtered out below.
 const ORDER_PAYMENT_KEYS = ["card", "paypal", "cashapp", "zelle"];
 
+// Same threshold TrustBadges/cart advertise ("Free US Shipping over $120").
+const FREE_SHIPPING_THRESHOLD = 120;
+
 type ApiPaymentMethod = {
   key: string;
   label: string;
@@ -94,9 +149,6 @@ type CreatedOrder = {
   payment_method: string;
 };
 
-const inputClass = "w-full border border-black/20 px-4 py-3 text-sm";
-const labelClass = "block text-xs tracking-wide uppercase mb-2";
-
 export default function CheckoutClient() {
   const { items, hydrated, subtotal, clear } = useCart();
   const itemsLoading = !hydrated;
@@ -108,19 +160,22 @@ export default function CheckoutClient() {
 
   // Contact
   const [email, setEmail] = useState("");
+  const [marketingOptIn, setMarketingOptIn] = useState(true);
 
   // Delivery
   const [country, setCountry] = useState("Vietnam");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [company, setCompany] = useState("");
   const [address, setAddress] = useState("");
   const [apartment, setApartment] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [phone, setPhone] = useState("");
+  const [smsOptIn, setSmsOptIn] = useState(false);
 
   const [payment, setPayment] = useState("");
-  const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
+  const [moreOptionsOpen, setMoreOptionsOpen] = useState(true);
 
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherMessage, setVoucherMessage] = useState("");
@@ -143,6 +198,13 @@ export default function CheckoutClient() {
   const preTaxTotal = Math.max(0, subtotal - discountAmount);
   const taxAmount = (preTaxTotal * taxPercent) / 100;
   const total = preTaxTotal + taxAmount;
+
+  const freeShippingQualified = subtotal >= FREE_SHIPPING_THRESHOLD;
+  const freeShippingProgress = Math.min(
+    100,
+    (subtotal / FREE_SHIPPING_THRESHOLD) * 100
+  );
+  const freeShippingRemaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
 
   useEffect(() => {
     (async () => {
@@ -283,8 +345,35 @@ export default function CheckoutClient() {
     }
   }
 
+  const sectionTitle = "font-ui text-[17px] font-medium text-[#151515] mb-4";
+
   return (
     <>
+      {/* Free-shipping progress bar — reference's own checkout-free-shipping
+          strip, shown once the cart is known (skipped pre-hydration/empty). */}
+      {!itemsLoading && items.length > 0 && (
+        <div className="border-b border-black/5 bg-white px-6 py-2.5">
+          <div className="mx-auto h-[3px] max-w-5xl overflow-hidden rounded-full bg-black/10">
+            <div
+              className="h-full rounded-full bg-ink transition-[width]"
+              style={{ width: `${freeShippingProgress}%` }}
+            />
+          </div>
+          <p className="mx-auto mt-1.5 max-w-5xl font-ui text-xs text-black/60">
+            {freeShippingQualified ? (
+              <>
+                Hooray! Your order qualifies for <strong>FREE</strong> delivery.
+              </>
+            ) : (
+              <>
+                Add ${freeShippingRemaining.toFixed(2)} more for{" "}
+                <strong>FREE</strong> delivery.
+              </>
+            )}
+          </p>
+        </div>
+      )}
+
       {/* Minimal checkout top bar. Grid (auto/1fr/auto) rather than
           flex+justify-between: with only 3 children of very different
           widths, justify-between doesn't truly center the middle one — the
@@ -298,44 +387,43 @@ export default function CheckoutClient() {
           >
             AURA & CO
           </Link>
-          <span className="mx-auto hidden items-center gap-1.5 text-sm sm:inline-flex">
-            <GlobeIcon size={16} />
-            USD
+          <span className="mx-auto hidden md:inline-flex">
+            <CurrencyPicker />
           </span>
           <Link
             href="/cart"
-            className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm tracking-wide hover:text-gold transition-colors"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap font-ui text-sm tracking-wide hover:text-gold transition-colors"
           >
             <ChevronLeftIcon size={14} /> Back to cart
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <main className="mx-auto grid grid-cols-1 gap-12 px-6 py-10 lg:grid-cols-[1fr_420px]">
         {/* Left column: checkout form */}
         <div>
           {/* Express checkout */}
           <section className="mb-6">
-            <h2 className="text-xs tracking-wide uppercase text-black/50 mb-3 text-center">
+            <h2 className="mb-3 text-center font-ui text-xs uppercase tracking-wide text-black/50">
               Express checkout
             </h2>
             <button
               type="button"
               onClick={() => setShowExpressDemo(true)}
-              className="w-full border border-[#003087] text-[#003087] py-3 text-sm font-semibold tracking-wide hover:bg-[#003087] hover:text-white transition-colors"
+              className="flex h-11 w-full items-center justify-center rounded-[4px] bg-[#ffc439] font-ui text-sm font-bold italic text-[#003087] transition-opacity hover:opacity-90"
             >
-              PayPal
+              Pay<span className="text-[#009cde]">Pal</span>
             </button>
             {showExpressDemo && (
-              <p className="mt-3 border border-black/10 bg-black/5 px-4 py-3 text-xs text-black/70">
+              <p className="mt-3 border border-black/10 bg-black/5 px-4 py-3 font-ui text-xs text-black/70">
                 This is a UI demo. No payment was processed.
               </p>
             )}
           </section>
 
-          <div className="flex items-center gap-4 my-8">
+          <div className="my-8 flex items-center gap-4">
             <div className="flex-1 border-t border-black/10" />
-            <span className="text-xs tracking-wide uppercase text-black/40">
+            <span className="font-ui text-xs uppercase tracking-wide text-black/40">
               OR
             </span>
             <div className="flex-1 border-t border-black/10" />
@@ -343,38 +431,49 @@ export default function CheckoutClient() {
 
           {/* Contact */}
           <section className="mb-8">
-            <h2 className="font-serif-display text-xl mb-4">Contact</h2>
-            <div className="mb-3">
-              <label htmlFor="checkout-email" className={labelClass}>
-                Email
-              </label>
+            <h2 className={sectionTitle}>Contact</h2>
+            <p className="mb-3 font-ui text-sm text-black/70">
+              Have an account?{" "}
+              <Link href="/login" className="underline hover:text-ink">
+                Log in
+              </Link>{" "}
+              or{" "}
+              <Link href="/register" className="underline hover:text-ink">
+                create an account
+              </Link>{" "}
+              for faster checkout.
+            </p>
+            <FloatingField
+              id="checkout-email"
+              label="Email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={setEmail}
+              className="mb-3"
+            />
+            <label className="flex items-start gap-2 font-ui text-sm text-black/70">
               <input
-                id="checkout-email"
-                type="email"
-                required
-                className={inputClass}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="checkbox"
+                checked={marketingOptIn}
+                onChange={(e) => setMarketingOptIn(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-ink"
               />
-            </div>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-ink" />
-              Keep me updated on new arrivals and offers
+              Don&apos;t miss out. Sign up for VIP access to sales, promos and
+              new collections — straight to your inbox.
             </label>
           </section>
 
           {/* Delivery */}
-          <section className="mb-8">
-            <h2 className="font-serif-display text-xl mb-4">Delivery</h2>
-            <div className="mb-3">
-              <label htmlFor="checkout-country" className={labelClass}>
-                Country
-              </label>
+          <section className="mb-8 space-y-3">
+            <h2 className={sectionTitle}>Delivery</h2>
+            <div className="relative">
               <select
                 id="checkout-country"
-                className={inputClass}
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
+                className="w-full appearance-none rounded-[6px] border border-[#d5d5d5] px-4 pb-2 pt-5 font-ui text-[13px] text-[#171717] outline-none focus:border-ink"
               >
                 {countries.map((c) => (
                   <option key={c} value={c}>
@@ -382,141 +481,140 @@ export default function CheckoutClient() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label htmlFor="checkout-first-name" className={labelClass}>
-                  First name
-                </label>
-                <input
-                  id="checkout-first-name"
-                  required
-                  className={inputClass}
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label htmlFor="checkout-last-name" className={labelClass}>
-                  Last name
-                </label>
-                <input
-                  id="checkout-last-name"
-                  required
-                  className={inputClass}
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="mb-3">
-              <label htmlFor="checkout-company" className={labelClass}>
-                Company (optional)
+              <label
+                htmlFor="checkout-country"
+                className="pointer-events-none absolute left-4 top-3 font-ui text-[10px] font-light text-[#6d6d6d]"
+              >
+                Country/Region
               </label>
-              <input id="checkout-company" className={inputClass} />
             </div>
-            <div className="mb-3">
-              <label htmlFor="checkout-address" className={labelClass}>
-                Address
-              </label>
-              <input
-                id="checkout-address"
+            <div className="grid grid-cols-2 gap-3">
+              <FloatingField
+                id="checkout-first-name"
+                label="First name"
                 required
-                className={inputClass}
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                autoComplete="given-name"
+                value={firstName}
+                onChange={setFirstName}
               />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="checkout-apartment" className={labelClass}>
-                Apartment / suite (optional)
-              </label>
-              <input
-                id="checkout-apartment"
-                className={inputClass}
-                value={apartment}
-                onChange={(e) => setApartment(e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label htmlFor="checkout-city" className={labelClass}>
-                  City
-                </label>
-                <input
-                  id="checkout-city"
-                  required
-                  className={inputClass}
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                />
-              </div>
-              <div>
-                <label htmlFor="checkout-postal-code" className={labelClass}>
-                  Postal code
-                </label>
-                <input
-                  id="checkout-postal-code"
-                  required
-                  className={inputClass}
-                  value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
-                />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="checkout-phone" className={labelClass}>
-                Phone
-              </label>
-              <input
-                id="checkout-phone"
+              <FloatingField
+                id="checkout-last-name"
+                label="Last name"
                 required
-                type="tel"
-                className={inputClass}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                autoComplete="family-name"
+                value={lastName}
+                onChange={setLastName}
               />
             </div>
+            <FloatingField
+              id="checkout-company"
+              label="Company (optional)"
+              autoComplete="organization"
+              value={company}
+              onChange={setCompany}
+            />
+            <FloatingField
+              id="checkout-address"
+              label="Address"
+              required
+              autoComplete="address-line1"
+              value={address}
+              onChange={setAddress}
+              icon={<SearchIcon size={16} />}
+            />
+            <FloatingField
+              id="checkout-apartment"
+              label="Apartment, suite, etc. (optional)"
+              autoComplete="address-line2"
+              value={apartment}
+              onChange={setApartment}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <FloatingField
+                id="checkout-city"
+                label="City"
+                required
+                autoComplete="address-level2"
+                value={city}
+                onChange={setCity}
+              />
+              <FloatingField
+                id="checkout-postal-code"
+                label="Postcode"
+                required
+                autoComplete="postal-code"
+                value={postalCode}
+                onChange={setPostalCode}
+              />
+            </div>
+            <FloatingField
+              id="checkout-phone"
+              label="Phone"
+              required
+              type="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={setPhone}
+              icon={
+                <span
+                  title="Used for delivery updates"
+                  className="flex h-4 w-4 items-center justify-center rounded-full border border-black/30 text-[10px] text-black/50"
+                >
+                  ?
+                </span>
+              }
+            />
+            <label className="flex items-start gap-2 font-ui text-sm text-black/70">
+              <input
+                type="checkbox"
+                checked={smsOptIn}
+                onChange={(e) => setSmsOptIn(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-ink"
+              />
+              Text me with news and offers
+            </label>
           </section>
 
           {/* Shipping method */}
           <section className="mb-8">
-            <h2 className="font-serif-display text-xl mb-4">
-              Shipping method
-            </h2>
+            <h2 className={sectionTitle}>Shipping method</h2>
             {!shippingReady ? (
-              <p className="text-sm text-black/50 border border-black/10 px-4 py-3">
-                Enter your shipping address to see available methods
+              <p className="border border-black/10 bg-black/[0.03] px-4 py-3 font-ui text-sm text-black/50">
+                Enter your shipping address to view available shipping
+                methods.
               </p>
             ) : (
-              <label className="flex items-center justify-between border border-[#2b261f] px-4 py-3 text-sm">
+              <label className="flex items-center justify-between border border-[#2b261f] px-4 py-3 font-ui text-sm">
                 <span className="flex items-center gap-3">
                   <input type="radio" name="shipping" checked readOnly />
                   Standard Shipping
                 </span>
-                <span>Free</span>
+                <span className="font-semibold uppercase">Free</span>
               </label>
             )}
           </section>
 
           {/* Payment */}
           <section className="mb-8">
-            <h2 className="font-serif-display text-xl mb-2">Payment</h2>
+            <h2 className={`${sectionTitle} mb-2`}>Payment</h2>
+            <p className="mb-4 font-ui text-xs text-black/50">
+              All transactions are secure and encrypted.
+            </p>
 
             {paymentMethodsError && (
               <p
                 role="alert"
-                className="mb-4 border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"
+                className="mb-4 border border-red-300 bg-red-50 px-4 py-3 font-ui text-sm text-red-700"
               >
                 {paymentMethodsError}
               </p>
             )}
 
             {!order && (
-              <div className="divide-y divide-black/10 border border-black/20">
+              <div className="divide-y divide-black/10 rounded-[6px] border border-black/15">
                 {cardMethod && (
                   <>
-                    <label className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-black/[0.03] transition-colors">
+                    <label className="flex items-center gap-3 px-4 py-3 font-ui text-sm hover:bg-black/[0.03] transition-colors">
                       <input
                         type="radio"
                         name="payment"
@@ -528,22 +626,22 @@ export default function CheckoutClient() {
                     </label>
 
                     {payment === "card" && (
-                      <div className="px-4 py-4 space-y-3 bg-black/[0.02]">
+                      <div className="space-y-3 bg-black/[0.02] px-4 py-4">
                         <input
                           disabled
                           placeholder="•••• •••• •••• ••••"
-                          className={`${inputClass} bg-black/5 text-black/40 cursor-not-allowed`}
+                          className="w-full cursor-not-allowed rounded-[6px] border border-[#d5d5d5] bg-black/5 px-4 py-3 font-ui text-sm text-black/40"
                         />
                         <div className="grid grid-cols-2 gap-3">
                           <input
                             disabled
                             placeholder="MM / YY"
-                            className={`${inputClass} bg-black/5 text-black/40 cursor-not-allowed`}
+                            className="w-full cursor-not-allowed rounded-[6px] border border-[#d5d5d5] bg-black/5 px-4 py-3 font-ui text-sm text-black/40"
                           />
                           <input
                             disabled
                             placeholder="CVC"
-                            className={`${inputClass} bg-black/5 text-black/40 cursor-not-allowed`}
+                            className="w-full cursor-not-allowed rounded-[6px] border border-[#d5d5d5] bg-black/5 px-4 py-3 font-ui text-sm text-black/40"
                           />
                         </div>
                       </div>
@@ -556,16 +654,14 @@ export default function CheckoutClient() {
                     <button
                       type="button"
                       onClick={() => setMoreOptionsOpen((v) => !v)}
-                      className="w-full flex items-center gap-2 text-left px-4 py-3 text-sm tracking-wide hover:bg-black/[0.03] transition-colors"
+                      className="flex w-full items-center gap-2 px-4 py-3 text-left font-ui text-sm tracking-wide hover:bg-black/[0.03] transition-colors"
                     >
                       {moreOptionsOpen ? (
                         <MinusIcon size={14} />
                       ) : (
                         <PlusIcon size={14} />
                       )}
-                      {moreOptionsOpen
-                        ? "Fewer payment options"
-                        : "More payment options"}
+                      More Payment Options
                     </button>
 
                     {moreOptionsOpen && (
@@ -573,7 +669,7 @@ export default function CheckoutClient() {
                         {otherMethods.map((option) => (
                           <label
                             key={option.key}
-                            className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-black/[0.03] transition-colors"
+                            className="flex items-center gap-3 px-4 py-3 font-ui text-sm hover:bg-black/[0.03] transition-colors"
                           >
                             <input
                               type="radio"
@@ -596,10 +692,10 @@ export default function CheckoutClient() {
               selectedMethod &&
               (selectedMethod.key === "cashapp" ||
                 selectedMethod.key === "zelle") && (
-                <div className="mt-3 border border-black/10 bg-black/5 px-4 py-3 text-sm text-black/70 space-y-2">
+                <div className="mt-3 space-y-2 border border-black/10 bg-black/5 px-4 py-3 font-ui text-sm text-black/70">
                   {selectedMethod.detail && <p>{selectedMethod.detail}</p>}
                   {selectedMethod.qr_image_url && (
-                    <div className="relative w-32 h-32 border border-black/10 bg-white">
+                    <div className="relative h-32 w-32 border border-black/10 bg-white">
                       <Image
                         src={selectedMethod.qr_image_url}
                         alt={`${selectedMethod.label} QR code`}
@@ -623,7 +719,7 @@ export default function CheckoutClient() {
                 type="button"
                 disabled={submitting || itemsLoading}
                 onClick={handlePayNow}
-                className="w-full bg-[#2b261f] text-white py-4 text-sm tracking-wide hover:bg-black transition-colors disabled:opacity-50"
+                className="w-full rounded-[4px] bg-[#2b261f] py-4 font-ui text-sm tracking-wide text-white transition-colors hover:bg-black disabled:opacity-50"
               >
                 {submitting ? "PLACING ORDER..." : "PAY NOW"}
               </button>
@@ -631,7 +727,7 @@ export default function CheckoutClient() {
               {submitError && (
                 <p
                   role="alert"
-                  className="mt-4 border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"
+                  className="mt-4 border border-red-300 bg-red-50 px-4 py-3 font-ui text-sm text-red-700"
                 >
                   {submitError}
                 </p>
@@ -640,8 +736,8 @@ export default function CheckoutClient() {
           )}
 
           {order && (
-            <div className="border border-black/10 px-4 py-4 space-y-4">
-              <p className="text-sm">
+            <div className="space-y-4 border border-black/10 px-4 py-4">
+              <p className="font-ui text-sm">
                 Order <strong>{order.order_code}</strong> placed successfully.
                 Total: ${Number(order.total).toFixed(2)}
               </p>
@@ -650,7 +746,7 @@ export default function CheckoutClient() {
                 order.payment_method === "zelle") &&
                 !proofUploaded && (
                   <div className="space-y-3">
-                    <p className="text-sm text-black/70">
+                    <p className="font-ui text-sm text-black/70">
                       Please upload a screenshot of your{" "}
                       {order.payment_method === "cashapp"
                         ? "Cash App"
@@ -663,20 +759,20 @@ export default function CheckoutClient() {
                       onChange={(e) =>
                         setProofFile(e.target.files?.[0] || null)
                       }
-                      className="block w-full text-sm"
+                      className="block w-full font-ui text-sm"
                     />
                     <button
                       type="button"
                       disabled={!proofFile || proofUploading}
                       onClick={handleUploadProof}
-                      className="border border-[#2b261f] px-6 py-3 text-sm tracking-wide hover:bg-[#2b261f] hover:text-white transition-colors disabled:opacity-50"
+                      className="border border-[#2b261f] px-6 py-3 font-ui text-sm tracking-wide hover:bg-[#2b261f] hover:text-white transition-colors disabled:opacity-50"
                     >
                       {proofUploading ? "UPLOADING..." : "UPLOAD PROOF"}
                     </button>
                     {proofError && (
                       <p
                         role="alert"
-                        className="border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"
+                        className="border border-red-300 bg-red-50 px-4 py-3 font-ui text-sm text-red-700"
                       >
                         {proofError}
                       </p>
@@ -685,7 +781,7 @@ export default function CheckoutClient() {
                 )}
 
               {proofUploaded && (
-                <p className="text-sm text-black/70">
+                <p className="font-ui text-sm text-black/70">
                   Thank you — your payment proof was submitted and is pending
                   review.
                 </p>
@@ -694,22 +790,29 @@ export default function CheckoutClient() {
           )}
         </div>
 
-        {/* Right column: order summary */}
+        {/* Right column: order summary — reference's tinted aside panel
+            (#f5f5f5, 38px/36px/60px padding), with the voucher field inside
+            the same card below the totals, matching the reference. */}
         <div>
-          <div className="border border-black/10 p-6 lg:sticky lg:top-6">
-            <h2 className="font-serif-display text-xl mb-6">
-              Order summary
+          <div className="rounded-[8px] bg-[#f5f5f5] px-9 pb-[38px] pt-[38px] lg:sticky lg:top-6">
+            <h2 className="mb-6 font-ui text-sm font-medium text-[#171717]">
+              Your order
             </h2>
 
             {itemsLoading ? (
-              <p className="text-sm text-black/50 mb-6">Loading…</p>
+              <p className="mb-6 font-ui text-sm text-black/50">Loading…</p>
             ) : items.length === 0 ? (
-              <p className="text-sm text-black/50 mb-6">Your bag is empty.</p>
+              <p className="mb-6 font-ui text-sm text-black/50">
+                Your bag is empty.
+              </p>
             ) : (
-              <div className="space-y-4 mb-6">
+              <ul className="mb-6 space-y-4">
                 {items.map((item) => (
-                  <div key={cartItemKey(item)} className="flex items-center gap-4">
-                    <div className="relative w-16 h-16 shrink-0 border border-black/10 bg-white">
+                  <li key={cartItemKey(item)} className="flex items-start gap-4">
+                    <Link
+                      href={`/product/${item.slug}`}
+                      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[4px] bg-white"
+                    >
                       {item.image && (
                         <Image
                           src={item.image}
@@ -719,73 +822,78 @@ export default function CheckoutClient() {
                           className="object-cover"
                         />
                       )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm">{item.name}</p>
-                      <p className="text-xs text-black/50">
-                        {item.variantLabel || item.material}
-                        {item.qty > 1 ? ` · Qty ${item.qty}` : ""}
+                    </Link>
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/product/${item.slug}`}
+                        className="font-ui text-sm text-[#171717] hover:text-gold"
+                      >
+                        {item.name}
+                      </Link>
+                      <p className="mt-1 flex items-center gap-2 font-ui text-xs text-black/50">
+                        <span>× {item.qty}</span>
+                        <span>${(item.price * item.qty).toFixed(2)}</span>
                       </p>
                     </div>
-                    <p className="text-sm">
-                      ${(item.price * item.qty).toFixed(2)}
-                    </p>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
 
-            <div className="flex gap-2 mb-6">
-              <input
-                aria-label="Discount code"
-                value={voucherCode}
-                onChange={(e) => setVoucherCode(e.target.value)}
-                placeholder="Discount code"
-                className={inputClass}
-                disabled={!!order}
-              />
+            <div className="space-y-2 border-t border-black/10 pt-4 font-ui text-sm">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <strong>${subtotal.toFixed(2)}</strong>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between">
+                  <span>Discount</span>
+                  <strong>-${discountAmount.toFixed(2)}</strong>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span>Shipping</span>
+                <strong className="uppercase">Free</strong>
+              </div>
+              <div className="flex justify-between pt-2 text-base">
+                <span>Total</span>
+                <strong>${total.toFixed(2)}</strong>
+              </div>
+              {taxAmount > 0 && (
+                <p className="text-xs text-black/50">
+                  Including ${taxAmount.toFixed(2)} in taxes
+                </p>
+              )}
+            </div>
+
+            {/* Voucher — inside the same order-summary card, below the
+                totals, matching the reference's single combined panel. */}
+            <div className="mt-6 flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  id="checkout-voucher"
+                  aria-label="Voucher code"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value)}
+                  placeholder="Voucher code"
+                  disabled={!!order}
+                  className="w-full rounded-[6px] border border-[#d5d5d5] bg-white px-4 py-3 font-ui text-[13px] text-[#171717] outline-none focus:border-ink disabled:opacity-50"
+                />
+              </div>
               <button
                 type="button"
                 onClick={handleApplyVoucher}
                 disabled={voucherApplying || !!order}
-                className="border border-[#2b261f] px-6 py-3 text-sm tracking-wide hover:bg-[#2b261f] hover:text-white transition-colors shrink-0 disabled:opacity-50"
+                className="shrink-0 rounded-[6px] border border-[#d5d5d5] bg-[#e9e9e9] px-6 py-3 font-ui text-sm tracking-wide text-black/50 hover:bg-[#2b261f] hover:text-white transition-colors disabled:opacity-50"
               >
                 {voucherApplying ? "..." : "Apply"}
               </button>
             </div>
             {voucherMessage && (
-              <p className="text-xs text-black/50 -mt-4 mb-6">
+              <p className="mt-2 font-ui text-xs text-black/50">
                 {voucherMessage}
               </p>
             )}
-
-            <div className="space-y-2 text-sm border-t border-black/10 pt-4">
-              <div className="flex justify-between">
-                <span className="text-black/60">Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
-              </div>
-              {discountAmount > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-black/60">Discount</span>
-                  <span>-${discountAmount.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-black/60">Shipping</span>
-                <span>Free</span>
-              </div>
-              <div className="pt-2 border-t border-black/10 mt-2">
-                <div className="flex justify-between text-base">
-                  <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
-                </div>
-                {taxAmount > 0 && (
-                  <p className="mt-1 text-xs text-black/50">
-                    Including ${taxAmount.toFixed(2)} in taxes
-                  </p>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </main>

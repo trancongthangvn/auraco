@@ -23,6 +23,13 @@ type CartContextValue = {
   drawerOpen: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
+  /** A product card's quick-add cart icon, matching the reference site,
+   *  doesn't add straight to the bag — it opens the drawer showing this one
+   *  item with its own "Add to Bag" button, and only clicking that actually
+   *  adds it (see `confirmPreview`). Null when no preview is pending. */
+  previewItem: AddInput | null;
+  showPreview: (item: AddInput) => void;
+  confirmPreview: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -56,6 +63,7 @@ export default function CartProvider({
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [previewItem, setPreviewItem] = useState<AddInput | null>(null);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -98,6 +106,17 @@ export default function CartProvider({
     setDrawerOpen(true);
   };
 
+  const showPreview = (item: AddInput) => {
+    setPreviewItem(item);
+    setDrawerOpen(true);
+  };
+
+  const confirmPreview = () => {
+    if (!previewItem) return;
+    addItem(previewItem);
+    setPreviewItem(null);
+  };
+
   const removeItem = (key: string) =>
     setItems((list) => list.filter((it) => cartItemKey(it) !== key));
 
@@ -126,7 +145,13 @@ export default function CartProvider({
         clear,
         drawerOpen,
         openDrawer: () => setDrawerOpen(true),
-        closeDrawer: () => setDrawerOpen(false),
+        closeDrawer: () => {
+          setDrawerOpen(false);
+          setPreviewItem(null);
+        },
+        previewItem,
+        showPreview,
+        confirmPreview,
       }}
     >
       {children}

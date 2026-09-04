@@ -30,9 +30,8 @@ export default async function CatalogCollectionPage({
   const products: FullProduct[] = apiProducts.map(toFullProduct);
   const collectionFilters: CollectionFilter[] = toCollectionFilters(apiCollections);
   const match = collectionFilters.find((c) => c.value === value);
-  const heroImage = apiCollections.find(
-    (c) => c.slug.toUpperCase() === value
-  )?.image_url;
+  const activeCollection = apiCollections.find((c) => c.slug.toUpperCase() === value);
+  const heroImage = activeCollection?.banner_url ?? activeCollection?.image_url;
   const heading = match?.label.toUpperCase() ?? collection.replace(/-/g, " ");
 
   return (
@@ -48,6 +47,7 @@ export default async function CatalogCollectionPage({
           brandParam={brand}
           queryParam={q}
           heroImage={heroImage ?? undefined}
+          collectionDescription={activeCollection?.description ?? undefined}
         />
       </main>
       <Footer />

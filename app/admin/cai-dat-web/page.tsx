@@ -27,8 +27,14 @@ type SiteSettings = {
     seo_title?: string | null;
     seo_description?: string | null;
     delivery_returns_items?: string[] | null;
+    why_love_it_label?: string | null;
     og_image_url?: string | null;
     tax_percent?: number | null;
+    it_girl_edit_image_url?: string | null;
+    it_girl_edit_heading?: string | null;
+    it_girl_edit_description?: string | null;
+    currency_rates?: Record<string, number> | null;
+    currency_active?: Record<string, boolean> | null;
     [key: string]: unknown;
   };
   updatedAt?: string;
@@ -43,17 +49,55 @@ const DEFAULT_DELIVERY_RETURNS_ITEMS = [
   "100% waterproof and tarnish-resistant, guaranteed",
 ];
 
+// Matches lib/i18n/dictionaries/en.ts's product.whyLoveIt, so this field
+// starts pre-filled with today's live heading instead of an empty box.
+const DEFAULT_WHY_LOVE_IT_LABEL = "Why You'll Love It:";
+
+// Matches components/ITGirlEdit.tsx's own hardcoded fallbacks, so this form
+// starts pre-filled with today's live content instead of an empty section.
+const DEFAULT_IT_GIRL_EDIT_IMAGE = "/images/pages/64e5ed6e-0491-4f3d-a678-b315945972da.png";
+const DEFAULT_IT_GIRL_EDIT_HEADING = "The IT-Girl Edit: Effortless Edge & Sterling Chic";
+const DEFAULT_IT_GIRL_EDIT_DESCRIPTION =
+  "Redefine your everyday sparkle with pieces curated for the modern " +
+  "trendsetter. Blending effortless streetwear cool with high-shine " +
+  "sterling silver sophistication, this collection is designed for the " +
+  "girl who sets the standard instead of following it. From coffee runs to VIP " +
+  "nights out, make every look unforgettable.";
+
+// USD's own rate is always fixed at 1 (it's the list-price currency itself,
+// not something an admin sets) — only EUR/GBP are ever editable here.
+const CURRENCY_ROWS = [
+  { code: "USD", label: "US Dollar", symbol: "$" },
+  { code: "EUR", label: "Euro", symbol: "€" },
+  { code: "GBP", label: "British Pound", symbol: "£" },
+] as const;
+
 export default function AdminSiteSettingsPage() {
   useRequireAdmin();
   const [siteTitle, setSiteTitle] = useState("");
   const [siteDescription, setSiteDescription] = useState("");
   const [ogImage, setOgImage] = useState<string | null>(null);
   const [deliveryReturnsItems, setDeliveryReturnsItems] = useState<string[]>([]);
+  const [whyLoveItLabel, setWhyLoveItLabel] = useState("");
   const [storeName, setStoreName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [freeShippingThreshold, setFreeShippingThreshold] = useState("");
   const [taxPercent, setTaxPercent] = useState("");
+  const [itGirlEditImage, setItGirlEditImage] = useState<string | null>(null);
+  const [itGirlEditHeading, setItGirlEditHeading] = useState("");
+  const [itGirlEditDescription, setItGirlEditDescription] = useState("");
+  // EUR/GBP only — USD is fixed at "1" and never sent to the server.
+  const [currencyRates, setCurrencyRates] = useState<Record<string, string>>({
+    EUR: "1",
+    GBP: "1",
+  });
+  // USD always true — see lib/currency.ts's defaultCurrencyActive comment.
+  const [currencyActive, setCurrencyActive] = useState<Record<string, boolean>>({
+    USD: true,
+    EUR: true,
+    GBP: true,
+  });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +125,31 @@ export default function AdminSiteSettingsPage() {
             ? extra.delivery_returns_items
             : DEFAULT_DELIVERY_RETURNS_ITEMS
         );
+        setWhyLoveItLabel(
+          (extra.why_love_it_label as string) || DEFAULT_WHY_LOVE_IT_LABEL
+        );
+        setItGirlEditImage(
+          (extra.it_girl_edit_image_url as string | null) ?? DEFAULT_IT_GIRL_EDIT_IMAGE
+        );
+        setItGirlEditHeading(
+          (extra.it_girl_edit_heading as string) || DEFAULT_IT_GIRL_EDIT_HEADING
+        );
+        setItGirlEditDescription(
+          (extra.it_girl_edit_description as string) || DEFAULT_IT_GIRL_EDIT_DESCRIPTION
+        );
+        if (extra.currency_rates) {
+          setCurrencyRates({
+            EUR: extra.currency_rates.EUR != null ? String(extra.currency_rates.EUR) : "1",
+            GBP: extra.currency_rates.GBP != null ? String(extra.currency_rates.GBP) : "1",
+          });
+        }
+        if (extra.currency_active) {
+          setCurrencyActive({
+            USD: true,
+            EUR: extra.currency_active.EUR ?? true,
+            GBP: extra.currency_active.GBP ?? true,
+          });
+        }
       })
       .catch((err) => {
         if (cancelled) return;
@@ -123,6 +192,18 @@ export default function AdminSiteSettingsPage() {
       setSaving(false);
       return;
     }
+    const parsedEurRate = Number(currencyRates.EUR);
+    const parsedGbpRate = Number(currencyRates.GBP);
+    if (
+      !Number.isFinite(parsedEurRate) ||
+      parsedEurRate <= 0 ||
+      !Number.isFinite(parsedGbpRate) ||
+      parsedGbpRate <= 0
+    ) {
+      setError("Tỉ giá EUR/GBP phải là số lớn hơn 0");
+      setSaving(false);
+      return;
+    }
     try {
       await apiFetch<SiteSettings>("/api/content/admin/site-settings", {
         method: "PUT",
@@ -130,7 +211,18 @@ export default function AdminSiteSettingsPage() {
           seoTitle: siteTitle,
           seoDescription: siteDescription,
           deliveryReturnsItems: items,
+          whyLoveItLabel: whyLoveItLabel.trim() || DEFAULT_WHY_LOVE_IT_LABEL,
           ogImageUrl: ogImage,
+          itGirlEditImageUrl: itGirlEditImage,
+          itGirlEditHeading: itGirlEditHeading.trim() || DEFAULT_IT_GIRL_EDIT_HEADING,
+          itGirlEditDescription:
+            itGirlEditDescription.trim() || DEFAULT_IT_GIRL_EDIT_DESCRIPTION,
+          currencyRates: { USD: 1, EUR: parsedEurRate, GBP: parsedGbpRate },
+          currencyActive: {
+            USD: true,
+            EUR: currencyActive.EUR,
+            GBP: currencyActive.GBP,
+          },
           storeName: storeName.trim() || undefined,
           contactEmail: contactEmail.trim() || null,
           contactPhone: contactPhone.trim() || null,
@@ -273,6 +365,21 @@ export default function AdminSiteSettingsPage() {
           </div>
 
           <div className="border-t border-black/10 pt-5">
+            <Label>Tiêu đề mô tả sản phẩm (hiển thị trên mọi trang sản phẩm)</Label>
+            <Input
+              value={whyLoveItLabel}
+              onChange={(e) => setWhyLoveItLabel(e.target.value)}
+              placeholder={DEFAULT_WHY_LOVE_IT_LABEL}
+            />
+            <p className="text-xs text-black/40 mt-2">
+              Dòng chữ in đậm phía trên đoạn mô tả sản phẩm (ví dụ:
+              &quot;Why You&apos;ll Love It:&quot;). Áp dụng cho toàn bộ sản
+              phẩm (chưa hỗ trợ theo từng ngôn ngữ — hiện chỉ có bản tiếng
+              Anh).
+            </p>
+          </div>
+
+          <div className="border-t border-black/10 pt-5">
             <Label>Giao hàng & Đổi trả (hiển thị trên mọi trang sản phẩm)</Label>
             <div className="space-y-2">
               {deliveryReturnsItems.map((item, i) => (
@@ -321,6 +428,95 @@ export default function AdminSiteSettingsPage() {
               Áp dụng cho toàn bộ sản phẩm (chưa hỗ trợ theo từng ngôn ngữ — hiện
               chỉ có bản tiếng Anh).
             </p>
+          </div>
+
+          <div className="border-t border-black/10 pt-5">
+            <Label>Mục &quot;The IT-Girl Edit&quot; (trang chủ)</Label>
+            <div className="space-y-4">
+              <ImageField
+                label="Ảnh"
+                value={itGirlEditImage}
+                onChange={setItGirlEditImage}
+              />
+              <div>
+                <Label>Tiêu đề</Label>
+                <Input
+                  value={itGirlEditHeading}
+                  onChange={(e) => setItGirlEditHeading(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Mô tả</Label>
+                <Textarea
+                  value={itGirlEditDescription}
+                  onChange={(e) => setItGirlEditDescription(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-black/10 pt-5">
+            <Label>Tỉ giá quy đổi (USD → EUR/GBP)</Label>
+            <p className="text-xs text-black/40 mb-3">
+              Giá hiển thị = giá niêm yết (USD) × tỉ giá. Chỉ áp dụng ở khu duyệt
+              sản phẩm (trang sản phẩm nổi bật, catalog, mua cùng nhau) — giỏ
+              hàng và thanh toán luôn giữ nguyên USD.
+            </p>
+            <div className="overflow-hidden rounded-xl border border-black/10">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-black/10 bg-black/[0.02] text-left text-xs text-black/50">
+                    <th className="px-3 py-2 font-medium">Mã</th>
+                    <th className="px-3 py-2 font-medium">Tên</th>
+                    <th className="px-3 py-2 font-medium">Ký hiệu</th>
+                    <th className="px-3 py-2 font-medium">Tỉ giá / 1 USD</th>
+                    <th className="px-3 py-2 font-medium">Active</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CURRENCY_ROWS.map((row) => (
+                    <tr key={row.code} className="border-b border-black/5 last:border-0">
+                      <td className="px-3 py-2 font-semibold">{row.code}</td>
+                      <td className="px-3 py-2">{row.label}</td>
+                      <td className="px-3 py-2">{row.symbol}</td>
+                      <td className="px-3 py-2">
+                        {row.code === "USD" ? (
+                          <Input value="1" disabled className="w-28" />
+                        ) : (
+                          <Input
+                            value={currencyRates[row.code]}
+                            onChange={(e) =>
+                              setCurrencyRates((r) => ({ ...r, [row.code]: e.target.value }))
+                            }
+                            type="number"
+                            step="0.0001"
+                            min={0}
+                            className="w-28"
+                          />
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={currencyActive[row.code]}
+                          disabled={row.code === "USD"}
+                          title={
+                            row.code === "USD"
+                              ? "USD là tiền tệ gốc, luôn bật"
+                              : undefined
+                          }
+                          onChange={(e) =>
+                            setCurrencyActive((a) => ({ ...a, [row.code]: e.target.checked }))
+                          }
+                          className="h-4 w-4 accent-ink disabled:opacity-40"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 pt-2">

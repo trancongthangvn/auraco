@@ -5,28 +5,32 @@ import Footer from "@/components/Footer";
 import Gallery from "@/components/product/Gallery";
 import AddToBag from "@/components/product/AddToBag";
 import VariantProvider from "@/components/product/VariantProvider";
-import Description from "@/components/product/Description";
 import Accordion from "@/components/product/Accordion";
 import Reviews from "@/components/product/Reviews";
 import FrequentlyBoughtTogether from "@/components/product/FrequentlyBoughtTogether";
+import SeeItIRL from "@/components/product/SeeItIRL";
 import ProductCarousel from "@/components/ProductCarousel";
 import type { FullProduct } from "@/data/products";
 import type { Product as CarouselProduct } from "@/data/site";
 import { serverApiFetch, ServerApiError } from "@/lib/server-api";
-import { StarRating, SparkleIcon } from "@/components/icons";
+import { StarRating } from "@/components/icons";
 import { toFullProduct, type ApiProduct } from "@/lib/catalog-mappers";
 import { getServerDictionary } from "@/lib/i18n/server";
 
 /** Admin-editable, site-wide (same for every product) — falls back to the
  *  hard-coded dictionary copy until an admin saves a list of their own (see
  *  app/admin/cai-dat-web/page.tsx). */
-async function fetchSiteSettings(): Promise<{ deliveryReturnsItems: string[] | null }> {
+async function fetchSiteSettings(): Promise<{
+  deliveryReturnsItems: string[] | null;
+  whyLoveItLabel: string | null;
+}> {
   try {
-    return await serverApiFetch<{ deliveryReturnsItems: string[] | null }>(
-      "/api/content/site-settings"
-    );
+    return await serverApiFetch<{
+      deliveryReturnsItems: string[] | null;
+      whyLoveItLabel: string | null;
+    }>("/api/content/site-settings");
   } catch {
-    return { deliveryReturnsItems: null };
+    return { deliveryReturnsItems: null, whyLoveItLabel: null };
   }
 }
 
@@ -97,6 +101,7 @@ function toCarouselProducts(list: ApiProduct[]): CarouselProduct[] {
     priceValue: Number(p.price),
     rating: Math.round(Number(p.rating)),
     img: p.images[0],
+    hoverImg: p.images[1],
     badgeLabel: p.badge_label ?? undefined,
   }));
 }
@@ -189,49 +194,44 @@ export default async function ProductPage({
         </nav>
 
         <VariantProvider variants={product.variants ?? []}>
-        <div className="px-4 pt-6 pb-12 grid items-start gap-6 lg:gap-[clamp(2rem,3vw,4.5rem)] lg:grid-cols-[minmax(0,65fr)_minmax(300px,35fr)]">
+        <div className="px-4 pt-6 pb-12 grid grid-cols-1 items-start gap-6 lg:gap-[clamp(2rem,3vw,4.5rem)] lg:grid-cols-[minmax(0,65fr)_minmax(300px,35fr)]">
           <Gallery images={product.images} name={product.name} />
 
           <div>
-            <p className="font-ui text-[11.52px] uppercase leading-[17.856px] tracking-[1.6128px] text-gold mb-2">
-              {product.category}
+            <p className="font-ui text-[11.52px] uppercase leading-[17.856px] tracking-[1.6128px] text-gold mb-3">
+              {product.collections[0]?.replace(/-/g, " ") ?? product.category}
             </p>
-            <h1 className="font-serif-display text-[34px] leading-[35.7px] text-[#2b261f] mt-1 mb-2">
+            <h1 className="font-serif-display text-[34px] leading-[35.7px] text-[#2b261f] mt-1 mb-3">
               {product.name}
             </h1>
-            {product.reviewCount > 0 && (
-              <p className="flex items-center gap-[7.2px] mt-1 mb-3 text-[15.2px] leading-[23.56px] text-[#5c554a]">
-                <StarRating rating={product.rating} size={16} />
-                <span>
-                  {product.rating.toFixed(1)} ({product.reviewCount} {dict.product.reviews})
-                </span>
+            {/* Always shown, like the reference — a product with no reviews
+                yet still gets the dimmed 5-star row (StarRating renders
+                every star at opacity-[0.35] when rating is 0), not a gap
+                where the rating would be. */}
+            <p className="flex items-center gap-[7.2px] mt-1 mb-3 text-[15.2px] leading-[23.56px] text-[#5c554a]">
+              <StarRating rating={product.rating} size={16} />
+              <span>{product.rating.toFixed(1)}</span>
+            </p>
+
+            {/* Explicit request, two rounds: (1) drop the feature-bullets
+                list entirely from this block (not just its star icons,
+                which a prior pass had already stripped) — just the lead
+                line and the description paragraph; (2) always show that
+                paragraph in full, no clamp and no Read more/less toggle —
+                so this no longer needs the Description component at all,
+                just its typography reproduced directly (font-ui 14px/23.1
+                line-height, 0.14px tracking, #302c27, 14px gap between the
+                two lines, matching what Description itself used). */}
+            <div className="mt-8 font-ui text-[14px] leading-[23.1px] tracking-[0.14px] text-[#302c27] [&>*]:mb-[14px] [&>*:last-child]:mb-0">
+              <p className="font-bold">
+                {siteSettings.whyLoveItLabel || dict.product.whyLoveIt}
               </p>
-            )}
-
-            {/* The reference keeps the lead line, the copy and the feature
-                bullets inside one clamped prose block, so "Read more" hides
-                all three rather than the copy alone. */}
-            <Description>
-              <p className="font-bold">{dict.product.whyLoveIt}</p>
               <p className="whitespace-pre-line">{product.description}</p>
-              {product.features.map((f) => {
-                // Admin can save a feature as "Label: value" (two boxes in the
-                // edit form); bold the label when present, otherwise render
-                // the plain sentence as before — keeps the 300+ already-
-                // imported label-less features unchanged.
-                const sep = f.indexOf(": ");
-                const label = sep === -1 ? null : f.slice(0, sep);
-                const rest = sep === -1 ? f : f.slice(sep + 2);
-                return (
-                  <p key={f} className="flex gap-2">
-                    <SparkleIcon size={14} className="text-gold mt-1 shrink-0" />
-                    {label ? <><strong className="font-semibold">{label}:</strong>&nbsp;{rest}</> : rest}
-                  </p>
-                );
-              })}
-            </Description>
+            </div>
 
-            <AddToBag product={product} />
+            <div id="add-to-bag-anchor">
+              <AddToBag product={product} />
+            </div>
 
             <Accordion
               items={[
@@ -272,14 +272,20 @@ export default async function ProductPage({
               companions={frequentlyBoughtCompanions}
               discountPercent={bundleDiscountPercent}
             />
+
+            <SeeItIRL
+              videoUrl={product.videoUrl}
+              thumbnail={product.thumbnailUrl || product.images[0]}
+              name={product.name}
+            />
           </div>
         </div>
         </VariantProvider>
 
         {bestSellers.length > 0 && (
-          <ProductCarousel title={dict.product.bestSellers} products={bestSellers} />
+          <ProductCarousel title={dict.product.bestSellers} products={bestSellers} centerTitle />
         )}
-        <ProductCarousel title={dict.product.youMayAlsoLike} products={related} />
+        <ProductCarousel title={dict.product.youMayAlsoLike} products={related} centerTitle />
         <Reviews product={product} />
       </main>
       <Footer />

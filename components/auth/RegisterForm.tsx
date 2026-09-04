@@ -26,7 +26,7 @@ export default function RegisterForm() {
         setError("");
         setMessage(dict.demoMessage);
       }}
-      className="mx-auto max-w-[560px] px-6 pb-16 space-y-6"
+      className="mx-auto max-w-[620px] px-6 pb-16 space-y-6"
     >
       <label className="block text-sm">
         <span className="block mb-2">{dict.fullName}</span>
@@ -77,7 +77,7 @@ export default function RegisterForm() {
 
       <button
         type="submit"
-        className="w-full rounded-full border border-black bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:border-[#2b261f] transition-colors"
+        className="w-full rounded-none border border-black bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:border-[#2b261f] transition-colors"
       >
         {dict.createAccount}
       </button>
@@ -91,7 +91,7 @@ export default function RegisterForm() {
       <button
         type="button"
         onClick={() => setMessage(dict.googleDemoMessage)}
-        className="w-full rounded-full border border-[#2b261f] px-6 py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:text-white transition-colors flex items-center justify-center gap-2"
+        className="w-full rounded-none border border-[#2b261f] px-6 py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:text-white transition-colors flex items-center justify-center gap-2"
       >
         <GoogleIcon size={18} />
         {dict.continueWithGoogle}

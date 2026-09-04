@@ -5,7 +5,7 @@ export const metadata = { title: "Return Policy | AURA & CO" };
 export default function ReturnPolicyPage() {
   return (
     <LegalPage
-      title="Return Policy"
+      title="Return policy"
       sections={[
         {
           heading: "1. 30-Day Return Window",

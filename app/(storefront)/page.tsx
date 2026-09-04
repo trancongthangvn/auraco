@@ -18,8 +18,9 @@ import WelcomePopup from "@/components/WelcomePopup";
 import type { Product as CarouselProduct } from "@/data/site";
 import { serverApiFetch } from "@/lib/server-api";
 import { toFullProduct, type ApiProduct } from "@/lib/catalog-mappers";
-// Testimonials carry no photo of their own yet; the cards borrow these
-// on-model shots by position.
+// Fallback only — for any testimonial an admin hasn't set a real photo_url
+// for yet, borrow one of these on-model shots by position rather than show
+// a blank card.
 const TESTIMONIAL_PHOTOS = [
   "/images/products/imported/09cc71d8476343cca31538ff35842330.webp",
   "/images/products/imported/bd4c07cbdf55464f93499767a3e9905e.webp",
@@ -45,6 +46,7 @@ type ApiTestimonial = {
   quote: string;
   quote_date: string;
   sort_order: number;
+  photo_url: string | null;
 };
 
 type ApiCollection = {
@@ -70,20 +72,34 @@ function toCarouselProducts(list: ApiProduct[]): CarouselProduct[] {
   }));
 }
 
-// The homepage category rail has no per-category image in our data model
-// (`category` is just a column on `products`), so each tile borrows the first
-// image of the newest product in that category — the shop owner changes a tile
-// by reordering/adding products in the admin catalog.
-const categoryRailSources: { key: CategoryRailKey; category: string }[] = [
-  { key: "necklaces", category: "Necklaces" },
-  { key: "bracelets", category: "Bracelets" },
-  { key: "earrings", category: "Earrings" },
-  { key: "signatureSets", category: "Signature Sets" },
+// The reference site's rail tile is a fixed, dedicated image
+// (/storage/brands/<uuid>) completely independent of the product catalog —
+// not derived from any product. brands.image_url (migration 010) mirrors
+// that. Falls back to the old "first product in category with an image"
+// derivation only for a brand an admin hasn't set a real image_url for yet,
+// so a fresh category never renders a blank tile.
+const categoryRailSources: { key: CategoryRailKey; category: string; brandSlug: string }[] = [
+  { key: "necklaces", category: "Necklaces", brandSlug: "Necklaces" },
+  { key: "bracelets", category: "Bracelets", brandSlug: "Bracelets" },
+  { key: "earrings", category: "Earrings", brandSlug: "Earrings" },
+  { key: "signatureSets", category: "Signature Sets", brandSlug: "Signature-Sets" },
 ];
 
-async function loadCategoryRailImages(): Promise<CategoryRailImages> {
+async function loadCategoryRailImagesForHomepage(): Promise<CategoryRailImages> {
+  const brands = await serverApiFetch<{ slug: string; image_url: string | null }[]>(
+    "/api/brands"
+  ).catch(() => []);
+  return loadCategoryRailImages(brands);
+}
+
+async function loadCategoryRailImages(
+  brands: { slug: string; image_url: string | null }[]
+): Promise<CategoryRailImages> {
   const entries = await Promise.all(
-    categoryRailSources.map(async ({ key, category }) => {
+    categoryRailSources.map(async ({ key, category, brandSlug }) => {
+      const fixedImage = brands.find((b) => b.slug === brandSlug)?.image_url;
+      if (fixedImage) return [key, fixedImage] as const;
+
       const products = await serverApiFetch<ApiProduct[]>(
         `/api/products?category=${encodeURIComponent(category)}`
       ).catch(() => [] as ApiProduct[]);
@@ -120,7 +136,7 @@ export default async function Home() {
       featuredProducts: unknown[];
     }>("/api/content/homepage"),
     serverApiFetch<ApiCollection[]>("/api/collections"),
-    loadCategoryRailImages(),
+    loadCategoryRailImagesForHomepage(),
     serverApiFetch<PressMention[]>("/api/press-mentions").catch(
       () => [] as PressMention[]
     ),
@@ -151,10 +167,9 @@ export default async function Home() {
     name: t.name,
     date: formatQuoteDate(t.quote_date),
     quote: t.quote,
-    // Testimonials have no photo column yet, so each card borrows one of the
-    // on-model shots, assigned by position so the row stays stable between
-    // renders. Swap for a real column once customers can upload their own.
-    photo: TESTIMONIAL_PHOTOS[i % TESTIMONIAL_PHOTOS.length],
+    // Real per-reviewer photo when the admin has set one; otherwise borrow
+    // an on-model shot by position rather than show a blank card.
+    photo: t.photo_url || TESTIMONIAL_PHOTOS[i % TESTIMONIAL_PHOTOS.length],
   }));
 
   const collectionTiles: CollectionTile[] = collections.map((c) => ({

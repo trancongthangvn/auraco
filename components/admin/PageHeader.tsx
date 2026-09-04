@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Package,
   Layers,
+  Tags,
   ShoppingCart,
   CreditCard,
   Star,
@@ -52,6 +53,12 @@ const GUIDES: Record<string, GuideMeta> = {
     icon: Layers,
     guide:
       "Quản lý các bộ sưu tập hiển thị trên trang chủ và bộ lọc catalog (Quiet Luxury, Minimalist...). Thêm collection mới bằng nút bên phải.",
+  },
+  "/admin/brands": {
+    title: "Danh mục thương hiệu",
+    icon: Tags,
+    guide:
+      "Mô tả hiển thị dưới tiêu đề trên trang catalog của từng danh mục (Necklaces, Bracelets, Earrings, Signature Sets) trên thanh menu.",
   },
   "/admin/orders": {
     title: "Đơn hàng",

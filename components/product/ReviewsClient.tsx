@@ -10,6 +10,7 @@ export type ProductReview = {
   rating: number;
   comment: string;
   created_at: string;
+  photo_url?: string | null;
 };
 
 type SortKey = "recent" | "highest" | "lowest";
@@ -124,36 +125,7 @@ export default function ReviewsClient({
 
   return (
     <div>
-      <div className="grid gap-5 items-start mb-6 sm:grid-cols-[1fr_1fr]">
-        <div className={cardClass}>
-          <p className="mb-3 font-ui text-xs font-light leading-[18.6px] text-[#625d56]">
-            See how customers rated this product. Select a row below to filter reviews.
-          </p>
-          <div className="grid gap-[5.6px]">
-            {breakdown.map((b) => (
-              <button
-                key={b.star}
-                type="button"
-                onClick={() => setStarFilter((cur) => (cur === b.star ? null : b.star))}
-                className={`grid grid-cols-[38.4px_1fr_32px] items-center gap-2 rounded px-1 py-0.5 text-left text-[14.08px] leading-[21.824px] text-[#5c554a] transition-colors hover:bg-[#f6f0e6] ${
-                  starFilter === b.star ? "bg-[#f6f0e6]" : ""
-                }`}
-              >
-                <span className="inline-flex items-center gap-1">
-                  {b.star} <StarIcon size={12} className="text-gold" />
-                </span>
-                <span className="h-[6px] rounded-full bg-[#f6f0e6]">
-                  <span
-                    className="block h-full rounded-full bg-gradient-to-r from-gold-light to-gold transition-[width] duration-500"
-                    style={{ width: `${reviews.length ? (b.count / reviews.length) * 100 : 0}%` }}
-                  />
-                </span>
-                <span>{b.count}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
+      <div className="mb-6 max-w-[360px]">
         <div className={cardClass}>
           <div className="flex items-baseline gap-[9.6px]">
             <span className="font-serif-display text-[30px] leading-[30px] text-[#28241f]">
@@ -169,6 +141,30 @@ export default function ReviewsClient({
               {recommendCount} out of {reviews.length} ({recommendPercent}%) reviewers recommend this product
             </p>
           )}
+
+          <div className="mt-4 grid gap-[5.6px]">
+            {breakdown.map((b) => (
+              <button
+                key={b.star}
+                type="button"
+                onClick={() => setStarFilter((cur) => (cur === b.star ? null : b.star))}
+                className={`grid grid-cols-[38.4px_1fr_32px] items-center gap-2 rounded px-1 py-0.5 text-left text-[14.08px] leading-[21.824px] text-[#5c554a] transition-colors hover:bg-[#f6f0e6] ${
+                  starFilter === b.star ? "bg-[#f6f0e6]" : ""
+                }`}
+              >
+                <span className="inline-flex items-center gap-1">
+                  {b.star} <StarIcon size={12} className="text-black" />
+                </span>
+                <span className="h-[6px] rounded-full bg-[#f6f0e6]">
+                  <span
+                    className="block h-full rounded-full bg-gradient-to-r from-gold-light to-gold transition-[width] duration-500"
+                    style={{ width: `${reviews.length ? (b.count / reviews.length) * 100 : 0}%` }}
+                  />
+                </span>
+                <span>{b.count}</span>
+              </button>
+            ))}
+          </div>
 
           <div className="mt-4 border-t border-gold-light/35 pt-4">
             {writing ? (
@@ -189,21 +185,13 @@ export default function ReviewsClient({
                 Thanks! Your review was submitted and will appear once approved.
               </p>
             ) : (
-              <>
-                <p className="mb-2 font-ui text-xs font-semibold uppercase tracking-[0.08em] text-[#5c554a]">
-                  Review this product
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setWriting(true)}
-                  aria-label="Write a review"
-                  className="flex items-center gap-1.5 transition-transform hover:scale-105"
-                >
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <StarIcon key={i} size={20} filled={false} className="text-black/25" />
-                  ))}
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => setWriting(true)}
+                className="rounded-full border border-[#2b261f] px-5 py-2 text-xs font-medium uppercase tracking-[0.08em] text-[#2b261f] transition-colors hover:bg-[#2b261f] hover:text-white"
+              >
+                Write a review
+              </button>
             )}
           </div>
         </div>
@@ -241,10 +229,11 @@ export default function ReviewsClient({
       <div className="grid gap-4">
         {visibleReviews.map((r) => (
           <div key={r.id} className={cardClass}>
-            <div className="flex items-start gap-3">
+            <div className="flex items-center justify-between gap-3">
               <StarRating rating={r.rating} size={16} />
               <p className="text-[14.08px] leading-[21.824px] text-[#5c554a]">
-                <strong className="font-bold">{r.customer_name}</strong>{" "}
+                <strong className="font-bold">{r.customer_name}</strong>
+                {" · "}
                 <time dateTime={r.created_at}>
                   {new Date(r.created_at).toLocaleDateString()}
                 </time>
@@ -253,6 +242,14 @@ export default function ReviewsClient({
             <p className="mt-[9.6px] font-ui text-xs font-light leading-[18.6px] tracking-[0.06px] text-[#4f4a44]">
               {r.comment}
             </p>
+            {r.photo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={r.photo_url}
+                alt={`Photo submitted by ${r.customer_name}`}
+                className="mt-[9.6px] h-16 w-16 rounded-lg border border-gold-light/35 object-cover"
+              />
+            )}
           </div>
         ))}
         {visibleReviews.length === 0 && (
@@ -302,7 +299,7 @@ function ReviewForm({
             <StarIcon
               size={22}
               filled={i < formRating}
-              className={i < formRating ? "text-gold" : "text-black/25"}
+              className={i < formRating ? "text-black" : "text-black/25"}
             />
           </button>
         ))}

@@ -61,8 +61,13 @@ export const collections = [
     img: "/images/categories/e64da900-489a-4701-b0c3-aaf1d7d7e590.webp",
   },
   {
+    // Measured off auracojewelry.com: Best Sellers lives inside this
+    // Collections accordion, not as its own top-level nav mega-menu (see
+    // Header.tsx's `megaCategories` comment). Its href used to be the dead
+    // "/product" route, which made Header.tsx's collectionSlug() resolve to
+    // "product" and the product fetch silently return nothing.
     name: "BEST SELLERS",
-    href: "/product",
+    href: "/catalog/BEST-SELLERS",
     img: "/images/categories/bcdc23ff-1f19-44e0-be10-06d1aaedbe20.webp",
   },
 ];
@@ -253,7 +258,7 @@ export const journalPosts = [
       "Styling Gold & Silver: The Ultimate IT-Girl Guide to Necklaces, Bracelets & Earrings",
     excerpt:
       "Discover how to mix and layer gold and silver necklaces, bracelets, and earrings. Learn the art of balancing high-shine metals and statement pieces for an effortless, modern stack.",
-    img: "/images/posts/dc8e9ad8-ec1e-42c1-9d1d-a7eb2a8e3c06.png",
+    img: "/images/posts/92815f94-0f76-4b00-b587-dee1d32aebbb.png",
     body: [
       "Mixing metals used to be a styling taboo. Not anymore. The modern jewelry stack is built on contrast: warm 18k gold vermeil paired with cool sterling silver, worn together without apology.",
       "Start with your necklaces. Layer a short choker-length chain closest to the neck, a mid-length pendant piece in the middle, and a longer chain as your anchor layer. Keep at least one piece in each metal tone so the eye has somewhere to land.",
@@ -283,7 +288,7 @@ export const journalPosts = [
     title: "The IT-Girl Ritual: How to Cleanse & Charge Your Sterling Silver",
     excerpt:
       "Sunlight, moonlight, sound, and gentle care are simple rituals to refresh your gold, silver, and gemstone pieces between wears.",
-    img: "/images/posts/92815f94-0f76-4b00-b587-dee1d32aebbb.png",
+    img: "/images/posts/dc8e9ad8-ec1e-42c1-9d1d-a7eb2a8e3c06.png",
     body: [
       "A quick refresh ritual keeps your everyday pieces looking their best and gives you a moment to reset before you put them back on. Think of it as maintenance for your jewelry box, not just your metal.",
       "Start with a soft, lint-free cloth and gently buff each piece to lift any surface residue from the day. Avoid anything abrasive, a soft polishing cloth is enough for both gold vermeil and sterling silver.",

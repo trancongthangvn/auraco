@@ -34,7 +34,7 @@ export default function Description({
   }, [children]);
 
   return (
-    <div className="mt-5">
+    <div className="mt-8">
       <div
         ref={ref}
         className={`font-ui text-[14px] leading-[23.1px] tracking-[0.14px] text-[#302c27] [&>*]:mb-[14px] [&>*:last-child]:mb-0 ${

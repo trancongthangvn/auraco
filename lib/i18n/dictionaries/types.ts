@@ -47,11 +47,18 @@ export interface Dictionary {
     empty: string;
   };
   contact: {
+    heading: string;
+    subheading: string;
     fullName: string;
     email: string;
+    emailPlaceholder: string;
     phone: string;
+    phonePlaceholder: string;
+    address: string;
     product: string;
+    productPlaceholder: string;
     message: string;
+    messagePlaceholder: string;
     send: string;
     sending: string;
     sent: string;
@@ -64,6 +71,7 @@ export interface Dictionary {
   };
   news: {
     title: string;
+    subtitle: string;
     all: string;
     searchPlaceholder: string;
     searchButton: string;

@@ -24,36 +24,46 @@ export default function FrequentlyBoughtTogether({
   mainProduct: { slug: string; name: string; price: number; image?: string };
   companions: BundleItem[];
   /** Admin-set discount (server/routes/products.js's product_bundles /
-   *  bundle_discount_percent) applied to the subtotal once every companion
-   *  is selected alongside the main product — the bundle deal, not any one
-   *  item's own compare-at price. */
+   *  bundle_discount_percent) — a flat per-companion discount off each
+   *  companion's own price, matching the reference site exactly (checked
+   *  directly: the main product is never discounted, and every companion
+   *  shows its own struck-through original price at this same percentage
+   *  regardless of which other companions are checked — not a "discount
+   *  the whole subtotal, only once everything is selected" bundle deal). */
   discountPercent?: number;
 }) {
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(companions.map((c) => [c.slug, true]))
   );
   const [added, setAdded] = useState(false);
-  const { currency } = useCurrency();
+  const { currency, rates } = useCurrency();
   const { addItem } = useCart();
 
   if (companions.length === 0) return null;
 
+  // When a real bundle discount is configured, each companion's displayed
+  // price is its own price discounted by that flat percentage, with its
+  // original price struck through — not the companion's own unrelated
+  // `compareAtPrice` (a separate, optional sitewide sale flag). Falls back
+  // to that `compareAtPrice` as-is when there's no bundle discount (the
+  // auto-derived-companions case, which never carries a discountPercent).
+  const displayOf = (c: BundleItem) =>
+    discountPercent > 0
+      ? { price: c.price * (1 - discountPercent / 100), compareAtPrice: c.price }
+      : { price: c.price, compareAtPrice: c.compareAtPrice };
+
   const selectedCompanions = companions.filter((c) => checked[c.slug]);
-  const allSelected = selectedCompanions.length === companions.length;
-  const subtotal =
-    mainProduct.price + selectedCompanions.reduce((sum, c) => sum + c.price, 0);
-  const bundleDiscount =
-    allSelected && discountPercent > 0 ? subtotal * (discountPercent / 100) : 0;
-  const total = subtotal - bundleDiscount;
-  const savings =
-    selectedCompanions.reduce(
-      (sum, c) => sum + (c.compareAtPrice ? c.compareAtPrice - c.price : 0),
-      0
-    ) + bundleDiscount;
+  const selectedDisplays = selectedCompanions.map(displayOf);
+  const total =
+    mainProduct.price + selectedDisplays.reduce((sum, d) => sum + d.price, 0);
+  const savings = selectedDisplays.reduce(
+    (sum, d) => sum + (d.compareAtPrice ? d.compareAtPrice - d.price : 0),
+    0
+  );
 
   const rows: { item: BundleItem; locked: boolean }[] = [
     { item: { ...mainProduct }, locked: true },
-    ...companions.map((c) => ({ item: c, locked: false })),
+    ...companions.map((c) => ({ item: { ...c, ...displayOf(c) }, locked: false })),
   ];
 
   return (
@@ -107,14 +117,14 @@ export default function FrequentlyBoughtTogether({
                   {item.name}
                 </Link>
                 <div className="flex flex-wrap items-baseline gap-x-[10.4px] gap-y-[6.4px]">
+                  <span className="font-ui text-[14px] leading-[21.7px] tracking-[0.14px] text-[#302c27]">
+                    {formatPrice(item.price, currency, rates[currency])}
+                  </span>
                   {item.compareAtPrice && (
                     <span className="text-[14.08px] leading-[21.824px] text-[#5c554a] line-through">
-                      {formatPrice(item.compareAtPrice, currency)}
+                      {formatPrice(item.compareAtPrice, currency, rates[currency])}
                     </span>
                   )}
-                  <span className="font-ui text-[14px] leading-[21.7px] tracking-[0.14px] text-[#302c27]">
-                    {formatPrice(item.price, currency)}
-                  </span>
                 </div>
               </div>
             </label>
@@ -125,45 +135,47 @@ export default function FrequentlyBoughtTogether({
       <button
         type="button"
         onClick={() => {
-          // The bundle discount is a deal on the combined total, not any one
-          // item's own price (see the discountPercent prop note above) — so
-          // each line gets scaled by the same factor on the way into the
-          // cart, which is a real localStorage cart now (not a demo
-          // checkmark), so the total actually charged matches what this
-          // button advertised.
-          const scale = subtotal > 0 ? total / subtotal : 1;
-          const bundleRows = [
-            { slug: mainProduct.slug, name: mainProduct.name, price: mainProduct.price, image: mainProduct.image },
-            ...selectedCompanions,
-          ];
-          for (const item of bundleRows) {
+          // Main product at full price, each selected companion at its own
+          // already-discounted price (see displayOf above) — a real
+          // localStorage cart now (not a demo checkmark), so the total
+          // actually charged matches what this button advertised.
+          addItem({
+            slug: mainProduct.slug,
+            name: mainProduct.name,
+            price: mainProduct.price,
+            image: mainProduct.image ?? null,
+          });
+          for (const c of selectedCompanions) {
             addItem({
-              slug: item.slug,
-              name: item.name,
-              price: Math.round(item.price * scale * 100) / 100,
-              image: item.image ?? null,
+              slug: c.slug,
+              name: c.name,
+              price: Math.round(displayOf(c).price * 100) / 100,
+              image: c.image ?? null,
             });
           }
           setAdded(true);
           setTimeout(() => setAdded(false), 1800);
         }}
-        className="mt-4 flex w-full flex-col items-center gap-1 rounded-[10px] bg-[#2b261f] px-5 py-[15.2px] font-ui text-white transition-colors hover:bg-black"
+        className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-[10px] bg-[#2b261f] px-5 py-[15.2px] font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] text-white transition-colors hover:bg-black"
       >
         {added ? (
-          <span className="flex items-center gap-2 text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px]">
+          <span className="flex items-center gap-2">
             Added <CheckIcon size={15} />
           </span>
         ) : (
+          // Reference (auracojewelry.com) is always "Add to Cart" in one
+          // line — never "Add Both to Bag", which was wrong even for the
+          // 2-companion case (main + 2 companions is 3 items, not "both").
           <>
-            <span className="text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px]">
-              Add Both to Bag
+            <span>Add to Cart -</span>
+            <span className="font-semibold">
+              {currencyMeta[currency].symbol}{total.toFixed(2)}
             </span>
-            <span className="flex items-center gap-2 text-[12px] font-normal text-white/75">
-              <span className="font-semibold text-white">
-                {currencyMeta[currency].symbol}{total.toFixed(2)}
+            {savings > 0 && (
+              <span className="normal-case font-normal text-white/75">
+                (Save {currencyMeta[currency].symbol}{savings.toFixed(2)})
               </span>
-              {savings > 0 && <span>Save {currencyMeta[currency].symbol}{savings.toFixed(2)}</span>}
-            </span>
+            )}
           </>
         )}
       </button>

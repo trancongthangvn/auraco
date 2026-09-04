@@ -65,8 +65,11 @@ export default function CategoryRail({
               key={key}
               role="listitem"
               href={link.href}
-              className="group block text-center text-ink transition-transform duration-300 ease-out hover:scale-[1.04] hover:z-10 relative"
+              className="group block text-center text-ink relative"
             >
+              {/* The lift is on the image only now — scaling the whole card
+                  (including the caption below it) made hovering one tile
+                  visually swallow its neighbors. */}
               <span className="relative block aspect-square overflow-hidden bg-[#e9e4dc]">
                 {img ? (
                   <Image
@@ -74,7 +77,7 @@ export default function CategoryRail({
                     alt={label}
                     fill
                     sizes="(min-width: 1448px) 320px, (min-width: 640px) 25vw, 50vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
                   />
                 ) : null}
               </span>

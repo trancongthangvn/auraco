@@ -23,6 +23,12 @@ export type ImageFieldProps = {
   hint?: string;
   /** Disables every control (e.g. while the parent form is saving). */
   disabled?: boolean;
+  /** Fires whenever this field's own upload-in-flight state changes, so a
+   *  parent form with several ImageFields can track how many are busy and
+   *  block Save until all are done — clicking Save mid-upload used to save
+   *  the still-empty slot as-is (silently dropping that image), since a
+   *  slot only gets its URL once the upload's async response lands. */
+  onUploadingChange?: (uploading: boolean) => void;
 };
 
 export default function ImageField({
@@ -31,6 +37,7 @@ export default function ImageField({
   label,
   hint,
   disabled = false,
+  onUploadingChange,
 }: ImageFieldProps) {
   const [mode, setMode] = useState<"upload" | "url">("upload");
   const [uploading, setUploading] = useState(false);
@@ -43,6 +50,7 @@ export default function ImageField({
   const upload = (file: File) => {
     setError(null);
     setUploading(true);
+    onUploadingChange?.(true);
     const body = new FormData();
     body.append("file", file);
     apiFetch<UploadResult>(UPLOAD_ENDPOINT, { method: "POST", body })
@@ -57,6 +65,7 @@ export default function ImageField({
       })
       .finally(() => {
         setUploading(false);
+        onUploadingChange?.(false);
       });
   };
 

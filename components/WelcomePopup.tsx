@@ -140,20 +140,26 @@ export default function WelcomePopup() {
             <p className="font-ui mt-4 max-w-[410px] text-[11px] leading-[17.05px] font-light tracking-[0.01em] text-[rgba(55,50,45,0.52)]">
               Sharing your email signs you up for our marketing messages, and you
               may opt out whenever you like. Full details are in our{" "}
-              <Link
-                href="/pages/terms-of-service"
-                className="text-[#111] underline underline-offset-2"
-              >
-                Terms Of Service
-              </Link>{" "}
-              &middot;{" "}
-              <Link
-                href="/pages/privacy-policy"
-                className="text-[#111] underline underline-offset-2"
-              >
-                Privacy Policy
-              </Link>
-              .
+              {/* Forced onto one line — the reference wraps this line by
+                  sheer coincidence of its own exact column width, which
+                  isn't a rule to chase, but the user explicitly wants this
+                  phrase itself never split mid-way like it was here. */}
+              <span className="whitespace-nowrap">
+                <Link
+                  href="/pages/terms-of-service"
+                  className="text-[#111] underline underline-offset-2"
+                >
+                  Terms Of Service
+                </Link>{" "}
+                &middot;{" "}
+                <Link
+                  href="/pages/privacy-policy"
+                  className="text-[#111] underline underline-offset-2"
+                >
+                  Privacy Policy
+                </Link>
+                .
+              </span>
             </p>
           </div>
         </div>

@@ -45,6 +45,25 @@ function isStringArray(v) {
   return Array.isArray(v) && v.every((item) => isNonEmptyString(item));
 }
 
+const CURRENCY_CODES = ['USD', 'EUR', 'GBP'];
+
+function isCurrencyRates(v) {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+  return CURRENCY_CODES.every(
+    (code) => v[code] === undefined || (isFiniteNumber(v[code]) && v[code] > 0)
+  );
+}
+
+// Separate from currency_rates on purpose — keeps the already-working
+// numeric rate storage/validation untouched while adding the "Active"
+// per-currency toggle from the reference screenshot.
+function isCurrencyActive(v) {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+  return CURRENCY_CODES.every(
+    (code) => v[code] === undefined || isBoolean(v[code])
+  );
+}
+
 // Public-safe subset of site_settings. Everything else (including the raw
 // `extra` blob, in case future ad hoc settings stored there are internal)
 // is only exposed via the admin endpoints.
@@ -63,7 +82,9 @@ function isStringArray(v) {
 // shown on every product page) is stored the same way. It's English-only —
 // the product page's own dictionary strings stay as the per-locale fallback
 // when this key is absent, so existing i18n content keeps working until an
-// admin sets it.
+// admin sets it. `why_love_it_label` (the "Why You'll Love It:" heading
+// above the product description) follows the identical single-string
+// fallback pattern.
 function toPublicSiteSettings(row) {
   const extra = row.extra || {};
   return {
@@ -79,7 +100,13 @@ function toPublicSiteSettings(row) {
     shippingFee: extra.shipping_fee ?? null,
     taxPercent: extra.tax_percent ?? null,
     deliveryReturnsItems: extra.delivery_returns_items ?? null,
+    whyLoveItLabel: extra.why_love_it_label ?? null,
     ogImageUrl: extra.og_image_url ?? null,
+    itGirlEditImageUrl: extra.it_girl_edit_image_url ?? null,
+    itGirlEditHeading: extra.it_girl_edit_heading ?? null,
+    itGirlEditDescription: extra.it_girl_edit_description ?? null,
+    currencyRates: extra.currency_rates ?? null,
+    currencyActive: extra.currency_active ?? null,
   };
 }
 
@@ -114,7 +141,7 @@ router.get('/homepage', async (req, res) => {
          ORDER BY sort_order ASC, id ASC`
       ),
       query(
-        `SELECT id, initials, name, quote, quote_date, sort_order
+        `SELECT id, initials, name, quote, quote_date, sort_order, photo_url
          FROM testimonials
          WHERE active = TRUE
          ORDER BY sort_order ASC, id ASC`
@@ -219,8 +246,8 @@ router.put('/admin/homepage', authMiddleware, requireAdmin, async (req, res) => 
       let i = 0;
       for (const t of testimonials) {
         await client.query(
-          `INSERT INTO testimonials (initials, name, quote, quote_date, sort_order, active)
-           VALUES ($1, $2, $3, COALESCE($4, CURRENT_DATE), $5, $6)`,
+          `INSERT INTO testimonials (initials, name, quote, quote_date, sort_order, active, photo_url)
+           VALUES ($1, $2, $3, COALESCE($4, CURRENT_DATE), $5, $6, $7)`,
           [
             t.initials,
             t.name,
@@ -228,6 +255,7 @@ router.put('/admin/homepage', authMiddleware, requireAdmin, async (req, res) => 
             t.quoteDate ?? t.quote_date ?? null,
             isFiniteNumber(t.sortOrder ?? t.sort_order) ? (t.sortOrder ?? t.sort_order) : i,
             isBoolean(t.active) ? t.active : true,
+            t.photoUrl ?? t.photo_url ?? null,
           ]
         );
         i += 1;
@@ -238,7 +266,7 @@ router.put('/admin/homepage', authMiddleware, requireAdmin, async (req, res) => 
 
     const [heroResult, testimonialResult] = await Promise.all([
       query('SELECT id, label, title, href, image_url, sort_order, active FROM hero_slides ORDER BY sort_order ASC, id ASC'),
-      query('SELECT id, initials, name, quote, quote_date, sort_order, active FROM testimonials ORDER BY sort_order ASC, id ASC'),
+      query('SELECT id, initials, name, quote, quote_date, sort_order, active, photo_url FROM testimonials ORDER BY sort_order ASC, id ASC'),
     ]);
 
     res.json({ data: { heroSlides: heroResult.rows, testimonials: testimonialResult.rows } });
@@ -357,11 +385,51 @@ router.put('/admin/site-settings', authMiddleware, requireAdmin, async (req, res
     }
     extraPatch.delivery_returns_items = body.deliveryReturnsItems;
   }
+  if (body.whyLoveItLabel !== undefined) {
+    if (body.whyLoveItLabel !== null && !isNonEmptyString(body.whyLoveItLabel)) {
+      return res.status(400).json({ error: 'whyLoveItLabel must be a non-empty string or null' });
+    }
+    extraPatch.why_love_it_label = body.whyLoveItLabel;
+  }
   if (body.ogImageUrl !== undefined) {
     if (body.ogImageUrl !== null && typeof body.ogImageUrl !== 'string') {
       return res.status(400).json({ error: 'ogImageUrl must be a string or null' });
     }
     extraPatch.og_image_url = body.ogImageUrl;
+  }
+  if (body.itGirlEditImageUrl !== undefined) {
+    if (body.itGirlEditImageUrl !== null && typeof body.itGirlEditImageUrl !== 'string') {
+      return res.status(400).json({ error: 'itGirlEditImageUrl must be a string or null' });
+    }
+    extraPatch.it_girl_edit_image_url = body.itGirlEditImageUrl;
+  }
+  if (body.itGirlEditHeading !== undefined) {
+    if (body.itGirlEditHeading !== null && typeof body.itGirlEditHeading !== 'string') {
+      return res.status(400).json({ error: 'itGirlEditHeading must be a string or null' });
+    }
+    extraPatch.it_girl_edit_heading = body.itGirlEditHeading;
+  }
+  if (body.itGirlEditDescription !== undefined) {
+    if (body.itGirlEditDescription !== null && typeof body.itGirlEditDescription !== 'string') {
+      return res.status(400).json({ error: 'itGirlEditDescription must be a string or null' });
+    }
+    extraPatch.it_girl_edit_description = body.itGirlEditDescription;
+  }
+  if (body.currencyRates !== undefined) {
+    if (!isCurrencyRates(body.currencyRates)) {
+      return res.status(400).json({
+        error: 'currencyRates must be an object with positive numeric USD/EUR/GBP rates',
+      });
+    }
+    extraPatch.currency_rates = body.currencyRates;
+  }
+  if (body.currencyActive !== undefined) {
+    if (!isCurrencyActive(body.currencyActive)) {
+      return res.status(400).json({
+        error: 'currencyActive must be an object with boolean USD/EUR/GBP flags',
+      });
+    }
+    extraPatch.currency_active = body.currencyActive;
   }
   if (Object.keys(extraPatch).length > 0) {
     sets.push(`extra = extra || $${idx++}::jsonb`);

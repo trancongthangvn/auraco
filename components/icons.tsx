@@ -127,11 +127,23 @@ export function VerifiedBadgeIcon({ className, size = 24 }: IconProps) {
   );
 }
 
-export function WarrantyBadgeIcon({ className, size }: IconProps) {
+export function WarrantyBadgeIcon({ className, size = 18 }: IconProps) {
   return (
-    <svg {...base(size)} className={className} aria-hidden="true">
-      <path d="M12 2.5 14 4.3l2.7-.4 1 2.6 2.6 1-.4 2.7 1.8 2-1.8 2 .4 2.7-2.6 1-1 2.6-2.7-.4L12 21.5l-2-1.8-2.7.4-1-2.6-2.6-1 .4-2.7-1.8-2 1.8-2-.4-2.7 2.6-1 1-2.6 2.7.4Z" />
-      <polyline points="8.8 12.2 11 14.4 15.4 10" />
+    <svg
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M24 4.5l3.5 3 4.6-1 2 4.2 4.6.8.1 4.7 3.6 3-1.8 4.3 1.8 4.3-3.6 3-.1 4.7-4.6.8-2 4.2-4.6-1-3.5 3-3.5-3-4.6 1-2-4.2-4.6-.8-.1-4.7-3.6-3 1.8-4.3-1.8-4.3 3.6-3 .1-4.7 4.6-.8 2-4.2 4.6 1 3.5-3z" />
+      <circle cx="24" cy="23.5" r="9.5" />
+      <path d="M18.8 23.8l3.7 3.7 6.9-7.4" />
     </svg>
   );
 }
@@ -159,23 +171,94 @@ export function GiftIcon({ className, size }: IconProps) {
   );
 }
 
-export function TruckIcon({ className, size }: IconProps) {
+export function TruckIcon({ className, size = 18 }: IconProps) {
   return (
-    <svg {...base(size)} className={className} aria-hidden="true">
-      <path d="M2.5 6.5h11v9h-11z" />
-      <path d="M13.5 10h3.4l3.6 3v2.5h-7z" />
-      <circle cx="7" cy="17.5" r="1.7" />
-      <circle cx="17" cy="17.5" r="1.7" />
+    <svg
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M5 30h26.5V16H12" />
+      <path d="M31.5 22.5h6.7l4.8 5.2V30h-11.5" />
+      <path d="M10 34.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9z" />
+      <path d="M35.5 34.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9z" />
+      <path d="M4 18h11M2.5 22h9.5M6 26h9" />
     </svg>
   );
 }
 
-export function ReturnBoxIcon({ className, size }: IconProps) {
+/** The cart page's own trust row uses different icons from the homepage's
+ *  TrustBadges band (28x28 viewBox, not 48x48) — matched from the
+ *  reference's `.cart-page__trust` markup directly. */
+export function ShipBagIcon({ className, size = 18 }: IconProps) {
   return (
-    <svg {...base(size)} className={className} aria-hidden="true">
-      <path d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5Z" />
-      <path d="M4 8.5v8L12 21l8-4.5v-8" />
-      <path d="M12 13v8" />
+    <svg
+      viewBox="0 0 28 28"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M6 10.5 4 12v9.5a1.5 1.5 0 0 0 1.5 1.5H22a1.5 1.5 0 0 0 1.5-1.5V12l-2-1.5" />
+      <path d="M6 10.5h16l-1.5-3H7.5L6 10.5z" />
+      <path d="M10 10.5V8M18 10.5V8" />
+      <path d="M3 12h3M22 12h3" />
+    </svg>
+  );
+}
+
+export function CheckCircleIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 28 28"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="14" cy="14" r="10" />
+      <path d="M9.5 14.2l3.2 3.2 6.8-7" />
+    </svg>
+  );
+}
+
+export function ReturnBoxIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M16 10h21v26H16z" />
+      <path d="M16 10l4-5h21l-4 5" />
+      <path d="M37 10l4-5v26l-4 5" />
+      <path d="M20 18h13" />
+      <path d="M15 30H6.5" />
+      <path d="M10 24l-6 6 6 6" />
     </svg>
   );
 }
@@ -228,7 +311,7 @@ export function StarRating({
 }) {
   const full = Math.round(rating);
   return (
-    <span className={`inline-flex items-center gap-[1.6px] text-gold ${className}`}>
+    <span className={`inline-flex items-center gap-[1.6px] text-black ${className}`}>
       {Array.from({ length: 5 }, (_, i) => (
         <StarIcon
           key={i}

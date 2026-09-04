@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAdminAuth } from "./AdminAuthContext";
+import { apiFetch } from "@/lib/api";
+import type { OrderStatus } from "@/data/admin";
 import {
   LayoutDashboard,
   Package,
@@ -13,6 +14,7 @@ import {
   CreditCard,
   Star,
   Tag,
+  Tags,
   MessageSquare,
   Award,
   Newspaper,
@@ -26,6 +28,9 @@ import {
   Menu,
   X,
   ExternalLink,
+  ChevronLeft,
+  Search,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,29 +45,70 @@ type NavItem = {
 // section is admin-only, both here (nav visibility) and server-side
 // (requireAdmin in server/routes/*.js) and per-page (useRequireAdmin, which
 // closes the direct-URL bypass this nav filter alone doesn't cover).
+//
+// Labels and ordering follow the reference admin's own sidebar (Dashboard,
+// Products, Categories, Brands, Certificates, News, Pages, Orders, Payments,
+// Reviews, Contacts, System...) as closely as this app's actual page set
+// allows. Two reference items were deliberately left out rather than faked:
+// "Currency" (there's no FX-rate feature behind it here) and a System /
+// Interface / Custom CSS / About us split (this app has one combined
+// settings page, kept as-is and just relabeled "System") — both per explicit
+// decision, not an oversight. Media, Discount Codes, and News Categories
+// are real features here the reference doesn't have; they're kept, slotted
+// in next to the closest matching reference item instead of hidden.
 const NAV: NavItem[] = [
-  { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, roles: ["admin", "staff"] },
-  { href: "/admin/products", label: "Sản phẩm", icon: Package, roles: ["admin", "staff"] },
-  { href: "/admin/media", label: "Thư viện ảnh", icon: Images, roles: ["admin", "staff"] },
-  { href: "/admin/collections", label: "Collections", icon: Layers, roles: ["admin"] },
-  { href: "/admin/orders", label: "Đơn hàng", icon: ShoppingCart, roles: ["admin", "staff"] },
-  { href: "/admin/payments", label: "Thanh toán", icon: CreditCard, roles: ["admin"] },
-  { href: "/admin/reviews", label: "Đánh giá sản phẩm", icon: Star, roles: ["admin"] },
-  { href: "/admin/discount-codes", label: "Khuyến mãi", icon: Tag, roles: ["admin"] },
-  { href: "/admin/inquiries", label: "Yêu cầu liên hệ", icon: MessageSquare, roles: ["admin"] },
-  { href: "/admin/certificates", label: "Báo chí nhắc đến", icon: Award, roles: ["admin"] },
-  { href: "/admin/posts", label: "Bài viết", icon: Newspaper, roles: ["admin"] },
-  { href: "/admin/post-categories", label: "Danh mục bài viết", icon: FolderTree, roles: ["admin"] },
-  { href: "/admin/homepage", label: "Trang chủ", icon: Layout, roles: ["admin"] },
-  { href: "/admin/cai-dat-web", label: "Cài đặt web", icon: Globe, roles: ["admin"] },
-  { href: "/admin/accounts", label: "Tài khoản", icon: Users, roles: ["admin"] },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "staff"] },
+  { href: "/admin/products", label: "Products", icon: Package, roles: ["admin", "staff"] },
+  { href: "/admin/media", label: "Media", icon: Images, roles: ["admin", "staff"] },
+  { href: "/admin/collections", label: "Categories", icon: Layers, roles: ["admin"] },
+  { href: "/admin/brands", label: "Brands", icon: Tags, roles: ["admin"] },
+  { href: "/admin/certificates", label: "Certificates", icon: Award, roles: ["admin"] },
+  { href: "/admin/posts", label: "News", icon: Newspaper, roles: ["admin"] },
+  { href: "/admin/post-categories", label: "News Categories", icon: FolderTree, roles: ["admin"] },
+  { href: "/admin/homepage", label: "Pages", icon: Layout, roles: ["admin"] },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingCart, roles: ["admin", "staff"] },
+  { href: "/admin/payments", label: "Payments", icon: CreditCard, roles: ["admin"] },
+  { href: "/admin/discount-codes", label: "Discount Codes", icon: Tag, roles: ["admin"] },
+  { href: "/admin/reviews", label: "Reviews", icon: Star, roles: ["admin"] },
+  { href: "/admin/inquiries", label: "Contacts", icon: MessageSquare, roles: ["admin"] },
+  { href: "/admin/cai-dat-web", label: "System", icon: Globe, roles: ["admin"] },
+  { href: "/admin/accounts", label: "Accounts", icon: Users, roles: ["admin"] },
 ];
+
+const COLLAPSE_KEY = "admin-sidebar-collapsed";
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const { session, ready, logout } = useAdminAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // Lazy initializer, not an effect — reading localStorage synchronously
+  // during render (client-only, guarded) avoids a cascading re-render on
+  // mount that a `useEffect(() => setCollapsed(...))` would trigger.
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem(COLLAPSE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [query, setQuery] = useState("");
+  const [pendingCount, setPendingCount] = useState(0);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
+  const toggleCollapsed = () => {
+    setCollapsed((v) => {
+      const next = !v;
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+      } catch {
+        // Same as above — persistence is a nicety, not a requirement.
+      }
+      return next;
+    });
+  };
 
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (pathname !== prevPathname) {
@@ -76,48 +122,107 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     }
   }, [ready, session, router]);
 
+  // Real count, not decorative — the same "Đang xử lý" status Dashboard's
+  // own stat card already tracks, just surfaced as the header bell's badge
+  // like the reference does. A single page of orders is enough for an admin
+  // panel this size; no dedicated count endpoint exists to do this cheaper.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    apiFetch<{ orders: { status: OrderStatus }[] }>("/api/admin/orders?limit=100")
+      .then((res) => {
+        if (cancelled) return;
+        setPendingCount(res.orders.filter((o) => o.status === "Đang xử lý").length);
+      })
+      .catch(() => {
+        // A failed badge count isn't worth surfacing an error for.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
+        setAccountOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [accountOpen]);
+
   if (!ready || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f4f0]">
         <div className="flex items-center gap-2 text-sm text-black/40">
           <span className="w-4 h-4 border-2 border-black/20 border-t-[#2b261f] rounded-full animate-spin" />
-          Đang tải...
+          Loading...
         </div>
       </div>
     );
   }
 
   const visibleNav = NAV.filter((item) => item.roles.includes(session.role));
-  const currentLabel =
-    NAV.find(
-      (n) => n.href === pathname || (n.href !== "/admin" && pathname.startsWith(n.href))
-    )?.label || "Admin";
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    router.push(q ? `/admin/products?q=${encodeURIComponent(q)}` : "/admin/products");
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f4f0] flex">
-      {/* Sidebar */}
+      {/* Sidebar — cream/gold, not the old dark near-black panel: matches
+          the reference admin's own sidebar exactly (measured from a
+          screenshot of its Dashboard). */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-56 bg-[#2b261f] text-white flex flex-col
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-[#f7f1e2] text-[#2b261f] border-r border-[#e8ddc7]
           transition-transform duration-200
           ${open ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:flex`}
+          lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:flex
+          ${collapsed ? "w-[76px]" : "w-60"}`}
       >
-        <div className="h-14 flex items-center px-5 border-b border-white/10 shrink-0">
-          <Link href="/admin" aria-label="AURA & CO" className="flex items-center">
-            <Image
-              src="/images/brand/logo-badge.png"
-              alt="AURA & CO"
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded"
-            />
+        <div className="h-14 flex items-center px-4 border-b border-[#e8ddc7] shrink-0 gap-2">
+          <Link
+            href="/admin"
+            aria-label="AURA & CO"
+            className={`flex min-w-0 items-center gap-2 ${collapsed ? "justify-center flex-1" : ""}`}
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gold-light text-[13px] font-bold text-white">
+              A
+            </span>
+            {!collapsed && (
+              <span className="truncate font-serif-display text-[17px] font-semibold">
+                AURA & CO
+              </span>
+            )}
           </Link>
-          <span className="ml-auto text-[10px] font-medium text-white/50 bg-white/10 px-1.5 py-0.5 rounded">
-            Admin
-          </span>
+          {!collapsed && (
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-label="Collapse menu"
+              className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#e8ddc7] text-[#2b261f]/50 hover:bg-white hover:text-[#2b261f]"
+            >
+              <ChevronLeft size={14} />
+            </button>
+          )}
         </div>
 
-        <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
+        {collapsed && (
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label="Expand menu"
+            className="mx-auto mt-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#e8ddc7] text-[#2b261f]/50 hover:bg-white hover:text-[#2b261f]"
+          >
+            <ChevronLeft size={14} className="rotate-180" />
+          </button>
+        )}
+
+        <nav className="flex-1 py-3 px-2.5 space-y-0.5 overflow-y-auto overflow-x-hidden">
           {visibleNav.map(({ href, label, icon: Icon }) => {
             const active =
               pathname === href || (href !== "/admin" && pathname.startsWith(href));
@@ -125,53 +230,35 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               <Link
                 key={href}
                 href={href}
-                className={`relative flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] ${
+                title={collapsed ? label : undefined}
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] transition-colors ${
+                  collapsed ? "justify-center" : ""
+                } ${
                   active
-                    ? "bg-white/10 text-white font-semibold"
-                    : "text-white/55 font-normal hover:text-white hover:bg-white/5"
+                    ? "bg-gold-light text-white font-semibold shadow-sm"
+                    : "text-[#2b261f]/70 font-normal hover:bg-white/70 hover:text-[#2b261f]"
                 }`}
               >
-                {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-gold" />
-                )}
-                <Icon
-                  size={15}
-                  strokeWidth={1.25}
-                  fill="currentColor"
-                  className={active ? "text-gold-light" : "text-white/35"}
-                />
-                {label}
+                <Icon size={16} strokeWidth={1.5} className="shrink-0" />
+                {!collapsed && <span className="truncate">{label}</span>}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-2 border-t border-white/10 shrink-0">
-          <div className="px-3 py-2 mb-0.5">
-            <p className="text-[11px] text-white/40 leading-tight">
-              {session.role === "admin" ? "Quản trị viên" : "Nhân viên"}
-            </p>
-            <p className="text-[13px] font-medium text-white truncate leading-tight">
-              {session.username}
-            </p>
-          </div>
-          <Link
-            href="/admin/profile"
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-white/60 hover:text-white hover:bg-white/5 rounded-md transition-colors"
+        <div className="p-3 border-t border-[#e8ddc7] shrink-0">
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title={collapsed ? "View storefront" : undefined}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-[#2b261f]/60 hover:bg-white/70 hover:text-[#2b261f] ${
+              collapsed ? "justify-center" : ""
+            }`}
           >
-            <KeyRound size={14} strokeWidth={1.25} fill="currentColor" className="text-white/35" />
-            Đổi mật khẩu
-          </Link>
-          <button
-            onClick={() => {
-              logout();
-              router.replace("/admin/login");
-            }}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-white/60 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-colors"
-          >
-            <LogOut size={14} strokeWidth={1.25} className="text-white/40" />
-            Đăng xuất
-          </button>
+            <ExternalLink size={15} strokeWidth={1.5} className="shrink-0" />
+            {!collapsed && "View storefront"}
+          </a>
         </div>
       </aside>
 
@@ -183,27 +270,88 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-13 bg-white/90 backdrop-blur border-b border-black/10 flex items-center px-4 gap-3 lg:px-6 shrink-0 sticky top-0 z-20">
+        {/* Top bar — search + notification bell + account menu, replacing
+            the old plain page-label header. Matches the reference's own
+            Dashboard header layout/colors exactly. */}
+        <header className="h-16 bg-white border-b border-black/10 flex items-center px-4 gap-3 lg:px-6 shrink-0 sticky top-0 z-20">
           <button
-            aria-label={open ? "Đóng menu" : "Mở menu"}
+            aria-label={open ? "Close menu" : "Open menu"}
             onClick={() => setOpen((v) => !v)}
-            className="lg:hidden text-black/50 hover:text-black -ml-1"
+            className="lg:hidden text-black/50 hover:text-black -ml-1 shrink-0"
           >
             {open ? <X size={18} /> : <Menu size={18} />}
           </button>
-          <span className="text-[13px] text-black/60 font-medium">
-            {currentLabel}
-          </span>
-          <div className="ml-auto flex items-center gap-3">
-            <a
-              href="/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-[12px] text-black/40 hover:text-black transition-colors"
+
+          <form onSubmit={submitSearch} className="min-w-0 flex-1 max-w-md">
+            <div className="flex items-center gap-2 rounded-full border border-black/10 bg-[#f7f4f0] px-4 py-2.5">
+              <Search size={15} className="shrink-0 text-black/35" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search products, categories…"
+                className="min-w-0 flex-1 bg-transparent text-[13px] text-[#2b261f] outline-none placeholder:text-black/35"
+              />
+            </div>
+          </form>
+
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <button
+              type="button"
+              aria-label="Notifications"
+              onClick={() => router.push("/admin/orders")}
+              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-[#2b261f]/70 hover:bg-[#f7f4f0]"
             >
-              <ExternalLink size={12} />
-              Xem website
-            </a>
+              <Bell size={16} />
+              {pendingCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold leading-none text-white">
+                  {pendingCount > 9 ? "9+" : pendingCount}
+                </span>
+              )}
+            </button>
+
+            <div ref={accountRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setAccountOpen((v) => !v)}
+                className="flex items-center gap-2.5 rounded-full py-1 pl-1 pr-2 hover:bg-[#f7f4f0]"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2b261f] text-[13px] font-semibold text-white">
+                  {session.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="hidden text-left leading-tight sm:block">
+                  <span className="block text-[13px] font-semibold text-[#2b261f]">
+                    {session.name}
+                  </span>
+                  <span className="block text-[11px] text-black/45">
+                    {session.role === "admin" ? "Administrator" : "Staff"}
+                  </span>
+                </span>
+              </button>
+              {accountOpen && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-black/10 bg-white py-1.5 shadow-[0_14px_40px_rgba(32,27,22,0.12)]">
+                  <Link
+                    href="/admin/profile"
+                    onClick={() => setAccountOpen(false)}
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-[#2b261f]/80 hover:bg-[#f7f4f0]"
+                  >
+                    <KeyRound size={14} strokeWidth={1.5} />
+                    Change password
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAccountOpen(false);
+                      logout();
+                      router.replace("/admin/login");
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut size={14} strokeWidth={1.5} />
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

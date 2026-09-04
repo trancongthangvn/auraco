@@ -7,6 +7,7 @@ import { ChevronDownIcon } from "@/components/icons";
 import { useDictionary } from "@/components/i18n/LanguageProvider";
 import PaymentIcons from "@/components/PaymentIcons";
 import { apiFetch } from "@/lib/api";
+import { renderPromoNumeric } from "@/lib/renderPromoNumeric";
 
 /** Turns the literal words "Security"/"Privacy" in the disclaimer sentence
  *  into links to those policy pages, leaving the rest of the (translated)
@@ -66,11 +67,11 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className="mt-8 border-t border-black/35 bg-white px-4 pt-8 pb-10 text-ink">
+    <footer className="relative mt-8 overflow-hidden border-t border-black/35 bg-white px-4 pt-8 pb-10 text-ink">
       <div className="mx-auto grid max-w-[1100px] gap-6 md:grid-cols-[2fr_1fr_1fr]">
         <div className="max-w-[352px]">
           <h2 className="font-serif-display mb-4 text-[28px] font-normal uppercase leading-[29.4px] tracking-[0.28px] text-[#28241f]">
-            {dict.footer.newsletterHeading}
+            {renderPromoNumeric(dict.footer.newsletterHeading)}
           </h2>
           <form onSubmit={(e) => e.preventDefault()} className="grid gap-[13.6px]">
             <div className="flex items-center gap-2 border-b border-ink pb-[5.6px]">

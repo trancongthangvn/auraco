@@ -1,5 +1,18 @@
 export type OrderStatus = "Đang xử lý" | "Đã giao" | "Đã hủy";
 
+// The value itself stays Vietnamese — it's what's stored in the DB and what
+// every status comparison in the app (STATUS_TONE, order filters, the order
+// edit dropdown) already keys off. Changing the stored value would mean a
+// data migration and touching that logic everywhere it's compared, for a
+// change that's purely cosmetic. This is a display-only translation for the
+// admin UI, which the site owner asked to be in English to match a reference
+// screenshot: it maps each stored status to the English label shown there.
+export const ORDER_STATUS_LABEL_EN: Record<OrderStatus, string> = {
+  "Đang xử lý": "Pending",
+  "Đã giao": "Delivered",
+  "Đã hủy": "Cancelled",
+};
+
 export type OrderItem = {
   name: string;
   material: string;

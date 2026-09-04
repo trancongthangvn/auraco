@@ -21,8 +21,8 @@ router.post('/inquiries', async (req, res) => {
   if (!subject || typeof subject !== 'string' || !subject.trim()) {
     return res.status(400).json({ error: 'subject is required' });
   }
-  if (!message || typeof message !== 'string' || !message.trim()) {
-    return res.status(400).json({ error: 'message is required' });
+  if (typeof message !== 'string') {
+    return res.status(400).json({ error: 'message must be a string' });
   }
 
   try {
@@ -112,9 +112,15 @@ router.delete('/admin/inquiries/:id', authMiddleware, requireAdmin, async (req, 
 // ============================================================================
 
 // POST /products/:slug/reviews — public: customer submits a review (pending)
+// photoUrl is optional and, today, nothing public writes it — there is no
+// public-facing image upload endpoint in this codebase (the only one,
+// POST /media/admin/images, is admin/staff-gated, same as how testimonial
+// photos are only ever set from the admin homepage editor). Accepting it
+// here just threads the column through end to end so an admin can set it
+// later via PUT /admin/reviews/:id.
 router.post('/products/:slug/reviews', async (req, res) => {
   const { slug } = req.params;
-  const { customerName, rating, comment } = req.body || {};
+  const { customerName, rating, comment, photoUrl } = req.body || {};
 
   if (!customerName || typeof customerName !== 'string' || !customerName.trim()) {
     return res.status(400).json({ error: 'customerName is required' });
@@ -125,6 +131,9 @@ router.post('/products/:slug/reviews', async (req, res) => {
   }
   if (!comment || typeof comment !== 'string' || !comment.trim()) {
     return res.status(400).json({ error: 'comment is required' });
+  }
+  if (photoUrl !== undefined && photoUrl !== null && typeof photoUrl !== 'string') {
+    return res.status(400).json({ error: 'photoUrl must be a string' });
   }
 
   try {
@@ -138,10 +147,10 @@ router.post('/products/:slug/reviews', async (req, res) => {
     const product = productResult.rows[0];
 
     const result = await query(
-      `INSERT INTO product_reviews (product_id, product_name, customer_name, rating, comment, status)
-       VALUES ($1, $2, $3, $4, $5, 'Chờ duyệt')
+      `INSERT INTO product_reviews (product_id, product_name, customer_name, rating, comment, status, photo_url)
+       VALUES ($1, $2, $3, $4, $5, 'Chờ duyệt', $6)
        RETURNING *`,
-      [product.id, product.name, customerName.trim(), ratingNum, comment.trim()]
+      [product.id, product.name, customerName.trim(), ratingNum, comment.trim(), photoUrl || null]
     );
     return res.status(201).json({ data: result.rows[0] });
   } catch (err) {
@@ -200,11 +209,14 @@ router.get('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => {
   }
 });
 
-// PUT /admin/reviews/:id — update status (approve/reject/etc.)
+// PUT /admin/reviews/:id — update status (approve/reject/etc.), and
+// optionally photoUrl — e.g. an admin attaching a customer's product photo
+// to a review, the same way testimonial photos are set from the admin
+// homepage editor (see content.js).
 router.put('/admin/reviews/:id', authMiddleware, requireAdmin, async (req, res) => {
   const VALID_STATUSES = ['Chờ duyệt', 'Đã duyệt', 'Từ chối'];
   const { id } = req.params;
-  const { status } = req.body || {};
+  const { status, photoUrl } = req.body || {};
 
   if (!/^\d+$/.test(id)) {
     return res.status(400).json({ error: 'Invalid review id' });
@@ -212,12 +224,21 @@ router.put('/admin/reviews/:id', authMiddleware, requireAdmin, async (req, res) 
   if (!status || !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of ${VALID_STATUSES.join(', ')}` });
   }
+  if (photoUrl !== undefined && photoUrl !== null && typeof photoUrl !== 'string') {
+    return res.status(400).json({ error: 'photoUrl must be a string' });
+  }
 
   try {
-    const result = await query(
-      `UPDATE product_reviews SET status = $1, updated_at = now() WHERE id = $2 RETURNING *`,
-      [status, id]
-    );
+    const result =
+      photoUrl !== undefined
+        ? await query(
+            `UPDATE product_reviews SET status = $1, photo_url = $2, updated_at = now() WHERE id = $3 RETURNING *`,
+            [status, photoUrl || null, id]
+          )
+        : await query(
+            `UPDATE product_reviews SET status = $1, updated_at = now() WHERE id = $2 RETURNING *`,
+            [status, id]
+          );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Review not found' });
     }

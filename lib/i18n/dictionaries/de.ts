@@ -24,7 +24,7 @@ const dictionary = {
   },
   footer: {
     newsletterHeading: "10% RABATT SICHERN",
-    emailPlaceholder: "E-Mail-Adresse",
+    emailPlaceholder: "Geben Sie Ihre E-Mail-Adresse ein",
     subscribe: "Abonnieren",
     newsletterDisclaimer:
       "Mit der Anmeldung stimmen Sie unserer Sicherheits- und Datenschutzrichtlinie zu.",
@@ -47,15 +47,22 @@ const dictionary = {
   },
   cart: {
     title: "Ihr Warenkorb",
-    empty:
-      "Ihr Warenkorb ist derzeit leer. Entdecken Sie die Kollektion und fügen Sie Ihre Lieblingsstücke hinzu.",
+    empty: "Ihr Warenkorb ist leer.",
   },
   contact: {
+    heading: "Hinterlassen Sie uns eine Nachricht.",
+    subheading:
+      "Teilen Sie uns Ihre Daten mit und unser Team meldet sich telefonisch bei Ihnen.",
     fullName: "Vollständiger Name",
     email: "E-Mail",
-    phone: "Telefonnummer (optional)",
+    emailPlaceholder: "sie@beispiel.de",
+    phone: "Telefonnummer",
+    phonePlaceholder: "+1 (___) ___-____",
+    address: "Adresse",
     product: "Produkt (optional)",
-    message: "Nachricht",
+    productPlaceholder: "Armband, Ring usw.",
+    message: "Nachricht (optional)",
+    messagePlaceholder: "Wie können wir helfen?",
     send: "NACHRICHT SENDEN",
     sending: "WIRD GESENDET...",
     sent: "NACHRICHT GESENDET",
@@ -69,6 +76,7 @@ const dictionary = {
   },
   news: {
     title: "Journal",
+    subtitle: "News, stories, and guides from our studio.",
     all: "Alle",
     searchPlaceholder: "Artikel suchen...",
     searchButton: "Suchen",

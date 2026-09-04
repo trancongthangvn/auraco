@@ -47,6 +47,13 @@ export type FullProduct = {
   /** Optional — absent/undefined for the static demo entries below, always
    *  an array (possibly empty) for real API-backed products. */
   variants?: ProductVariant[];
+  /** Dedicated nav mega-menu thumbnail (reference's `/thumbnails/*`) —
+   *  distinct lifestyle shot from `images[0]`. Undefined for the few
+   *  products the reference itself never generated one for. */
+  thumbnailUrl?: string;
+  /** Small corner badge on the product card ("Statement", "Best Seller"...)
+   *  — admin-set per product, null/undefined hides it. */
+  badgeLabel?: string | null;
 };
 
 const img = {

@@ -49,6 +49,17 @@ type AdminProduct = {
 };
 
 type AdminVariant = {
+  // Client-only React list key — stable across add/remove, unlike the
+  // array index the row used to key off (`v.id ?? \`new-${i}\``). Removing
+  // any variant but the last one shifts every later index down, so React
+  // matched rows to the wrong position and reused each row's ImageField
+  // instance — with its OWN local upload/error/mode state — for a
+  // different variant's data. That's what made a variant several rows
+  // down look like its "add image" control was broken: it was actually
+  // showing a stale uploading/error state left over from the row that
+  // used to sit at that index. Never sent to the API (saveEdit builds the
+  // payload from named fields, not a spread).
+  _key: string;
   id?: number;
   color_name: string;
   color_swatch: string;
@@ -62,7 +73,19 @@ type AdminVariant = {
   active: boolean;
 };
 
+let variantKeySeq = 0;
+const newVariantKey = () => `v${Date.now()}-${variantKeySeq++}`;
+
+// Same stable-key need as variants, for the gallery's ImageField rows —
+// moveImage()/removeImage() shift or swap array positions, and an
+// index-derived key would reuse an ImageField instance (and its own local
+// upload/error/mode state) across a position whose actual image changed.
+type EditImage = { _key: string; url: string };
+let imageKeySeq = 0;
+const newImageKey = () => `img${Date.now()}-${imageKeySeq++}`;
+
 const emptyVariant = (): AdminVariant => ({
+  _key: newVariantKey(),
   color_name: "",
   color_swatch: "#c9a876",
   size: "",
@@ -122,10 +145,20 @@ export default function AdminProductsPage() {
   const [editVideoUrl, setEditVideoUrl] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState("");
   const [editFeatures, setEditFeatures] = useState<string[]>([]);
-  const [editImages, setEditImages] = useState<string[]>([]);
+  const [editImages, setEditImages] = useState<EditImage[]>([]);
   const [editAttributes, setEditAttributes] = useState<AdminAttribute[]>([]);
   const [originalAttributes, setOriginalAttributes] = useState<AdminAttribute[]>([]);
   const [saving, setSaving] = useState(false);
+  // Counts ImageFields currently mid-upload across the form (cover,
+  // thumbnail, sticker, each gallery slot, each variant image). Save used to
+  // stay clickable while a slot's upload was still in flight; that slot's
+  // value was still "" at that moment, so it got silently dropped by the
+  // `images.filter(Boolean)` in saveEdit/createProduct — the image looked
+  // uploaded (its preview was showing) but never made it into the saved
+  // row. Blocking Save while this is > 0 closes that gap.
+  const [uploadingImages, setUploadingImages] = useState(0);
+  const trackUploading = (delta: 1 | -1) =>
+    setUploadingImages((n) => Math.max(0, n + delta));
   const [modalError, setModalError] = useState<string | null>(null);
 
   const isAdmin = session?.role === "admin";
@@ -226,7 +259,9 @@ export default function AdminProductsPage() {
   };
 
   const updateImage = (index: number, url: string | null) => {
-    setEditImages((list) => list.map((img, i) => (i === index ? url ?? "" : img)));
+    setEditImages((list) =>
+      list.map((img, i) => (i === index ? { ...img, url: url ?? "" } : img))
+    );
   };
   const removeImage = (index: number) => {
     setEditImages((list) => list.filter((_, i) => i !== index));
@@ -254,8 +289,9 @@ export default function AdminProductsPage() {
     setEditVideoUrl(p.video_url ?? null);
     setEditDescription(p.description ?? "");
     setEditFeatures(p.features ?? []);
-    setEditImages(p.images ?? []);
+    setEditImages((p.images ?? []).map((url) => ({ _key: newImageKey(), url })));
     setModalError(null);
+    setUploadingImages(0);
     setEditAttributes(p.attributes ?? []);
     setOriginalAttributes(p.attributes ?? []);
     setEditBundleCompanions([]);
@@ -280,6 +316,7 @@ export default function AdminProductsPage() {
         }[]
       >(`/api/products/admin/products/${p.slug}/variants`);
       const mapped: AdminVariant[] = variants.map((v) => ({
+        _key: newVariantKey(),
         id: v.id,
         color_name: v.color_name ?? "",
         color_swatch: v.color_swatch ?? "#c9a876",
@@ -359,6 +396,7 @@ export default function AdminProductsPage() {
     setEditImages([]);
     setEditThumbnail(null);
     setCreateError(null);
+    setUploadingImages(0);
   };
 
   const createProduct = async () => {
@@ -386,7 +424,7 @@ export default function AdminProductsPage() {
           stock: Number.isInteger(parsedStock) ? parsedStock : 0,
           sortOrder: Number.isInteger(parsedSortOrder) ? parsedSortOrder : 0,
           description: editDescription,
-          images: editImages.filter((img) => img.trim().length > 0),
+          images: editImages.map((img) => img.url).filter((url) => url.trim().length > 0),
           thumbnailUrl: editThumbnail,
         }),
       });
@@ -431,7 +469,7 @@ export default function AdminProductsPage() {
             videoUrl: editVideoUrl,
             description: editDescription,
             features: editFeatures.filter((f) => f.trim().length > 0),
-            images: editImages.filter((img) => img.trim().length > 0),
+            images: editImages.map((img) => img.url).filter((url) => url.trim().length > 0),
             brand: editBrand.trim() || null,
             thumbnailUrl: editThumbnail,
             discountPercent: Number.isFinite(parsedDiscountPercent) ? parsedDiscountPercent : 0,
@@ -794,15 +832,23 @@ export default function AdminProductsPage() {
               <div className="mb-2 grid grid-cols-2 gap-3">
                 <ImageField
                   label="Ảnh bìa"
-                  value={editImages[0] ?? null}
-                  onChange={(url) => setEditImages((list) => [url ?? "", ...list.slice(1)])}
+                  value={editImages[0]?.url ?? null}
+                  onChange={(url) =>
+                    setEditImages((list) =>
+                      list.length === 0
+                        ? [{ _key: newImageKey(), url: url ?? "" }]
+                        : [{ ...list[0], url: url ?? "" }, ...list.slice(1)]
+                    )
+                  }
                   disabled={saving}
+                  onUploadingChange={(u) => trackUploading(u ? 1 : -1)}
                 />
                 <ImageField
                   label="Thumbnail riêng (tùy chọn)"
                   value={editThumbnail}
                   onChange={setEditThumbnail}
                   disabled={saving}
+                  onUploadingChange={(u) => trackUploading(u ? 1 : -1)}
                 />
               </div>
               <p className="text-xs text-black/40 mb-2 mt-1">
@@ -817,9 +863,19 @@ export default function AdminProductsPage() {
               <Button
                 variant="primary"
                 onClick={createProduct}
-                disabled={saving || !editName.trim() || !newMaterial.trim() || !editPrice.trim()}
+                disabled={
+                  saving ||
+                  uploadingImages > 0 ||
+                  !editName.trim() ||
+                  !newMaterial.trim() ||
+                  !editPrice.trim()
+                }
               >
-                {saving ? "Đang tạo..." : "Tạo sản phẩm"}
+                {uploadingImages > 0
+                  ? "Đang tải ảnh..."
+                  : saving
+                  ? "Đang tạo..."
+                  : "Tạo sản phẩm"}
               </Button>
             </ModalFooter>
           </ModalPanel>
@@ -963,12 +1019,14 @@ export default function AdminProductsPage() {
                       value={editThumbnail}
                       onChange={setEditThumbnail}
                       disabled={saving}
+                      onUploadingChange={(u) => trackUploading(u ? 1 : -1)}
                     />
                     <ImageField
                       label="Sticker (góc thẻ sản phẩm)"
                       value={editStickerImage}
                       onChange={setEditStickerImage}
                       disabled={saving}
+                      onUploadingChange={(u) => trackUploading(u ? 1 : -1)}
                     />
                   </div>
 
@@ -1038,7 +1096,7 @@ export default function AdminProductsPage() {
                   <p className="text-xs text-black/30 italic">Chưa có điểm nổi bật nào.</p>
                 )}
                 {editFeatures.map((feature, i) => (
-                  <div key={i} className="flex gap-2">
+                  <div key={i} className="flex flex-wrap gap-2">
                     <div className="flex flex-col">
                       <IconButton
                         type="button"
@@ -1067,14 +1125,20 @@ export default function AdminProductsPage() {
                       value={splitFeature(feature).label}
                       onChange={(e) => updateFeatureLabel(i, e.target.value)}
                       placeholder="Tên (VD: Metal) — để trống nếu không cần"
-                      className="w-1/3 text-xs"
+                      className="w-full min-w-[140px] flex-1 basis-40 text-xs sm:w-1/3 sm:flex-none"
                       disabled={saving}
                     />
+                    {/* min-w so this can never collapse below a legible
+                        width in the narrow modal — it used to shrink to a
+                        near-0px sliver next to the label field above,
+                        rendering as a blank rounded stub with no visible
+                        placeholder text. flex-wrap on the row lets it drop
+                        to its own line instead of being crushed. */}
                     <Input
                       value={splitFeature(feature).value}
                       onChange={(e) => updateFeatureValue(i, e.target.value)}
                       placeholder="VD: 100% Waterproof & Tarnish-Free Guarantee"
-                      className="flex-1 text-xs"
+                      className="min-w-[180px] flex-1 basis-60 text-xs"
                       disabled={saving}
                     />
                     <IconButton
@@ -1098,7 +1162,7 @@ export default function AdminProductsPage() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => setEditImages((list) => [...list, ""])}
+                  onClick={() => setEditImages((list) => [...list, { _key: newImageKey(), url: "" }])}
                   disabled={saving}
                 >
                   + Thêm ảnh
@@ -1113,7 +1177,7 @@ export default function AdminProductsPage() {
                   <p className="text-xs text-black/30 italic">Chưa có ảnh nào.</p>
                 )}
                 {editImages.map((image, i) => (
-                  <div key={i} className="flex gap-2 border border-black/10 p-3">
+                  <div key={image._key} className="flex gap-2 border border-black/10 p-3">
                     <div className="flex flex-col shrink-0">
                       <span className="mb-1 text-[10px] font-semibold text-black/40">
                         #{i + 1}
@@ -1143,9 +1207,10 @@ export default function AdminProductsPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <ImageField
-                        value={image || null}
+                        value={image.url || null}
                         onChange={(url) => updateImage(i, url)}
                         disabled={saving}
+                        onUploadingChange={(u) => trackUploading(u ? 1 : -1)}
                       />
                     </div>
                     <IconButton
@@ -1187,18 +1252,18 @@ export default function AdminProductsPage() {
                   </p>
                 )}
                 {editAttributes.map((attr, i) => (
-                  <div key={attr.id ?? `new-${i}`} className="flex gap-2">
+                  <div key={attr.id ?? `new-${i}`} className="flex flex-wrap gap-2">
                     <Input
                       value={attr.name}
                       onChange={(e) => updateAttribute(i, "name", e.target.value)}
                       placeholder="Tên (VD: Chất liệu)"
-                      className="w-1/3 text-xs"
+                      className="min-w-[140px] flex-1 basis-40 text-xs sm:w-1/3 sm:flex-none"
                     />
                     <Input
                       value={attr.value}
                       onChange={(e) => updateAttribute(i, "value", e.target.value)}
                       placeholder="Giá trị (VD: 18k Gold Vermeil)"
-                      className="flex-1 text-xs"
+                      className="min-w-[180px] flex-1 basis-60 text-xs"
                     />
                     <IconButton
                       type="button"
@@ -1233,8 +1298,8 @@ export default function AdminProductsPage() {
                   </p>
                 )}
                 {editVariants.map((v, i) => (
-                  <div key={v.id ?? `new-${i}`} className="rounded-lg border border-black/10 p-3">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div key={v._key} className="rounded-lg border border-black/10 p-3">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                       <input
                         type="color"
                         value={v.color_swatch}
@@ -1247,14 +1312,14 @@ export default function AdminProductsPage() {
                         value={v.color_name}
                         onChange={(e) => updateVariant(i, { color_name: e.target.value })}
                         placeholder="Tên màu (VD: Gold)"
-                        className="flex-1 text-xs"
+                        className="min-w-[140px] flex-1 basis-40 text-xs"
                         disabled={saving}
                       />
                       <Input
                         value={v.size}
                         onChange={(e) => updateVariant(i, { size: e.target.value })}
                         placeholder="Size (VD: One Size)"
-                        className="flex-1 text-xs"
+                        className="min-w-[140px] flex-1 basis-40 text-xs"
                         disabled={saving}
                       />
                       <IconButton
@@ -1312,6 +1377,7 @@ export default function AdminProductsPage() {
                         value={v.front_image}
                         onChange={(url) => updateVariant(i, { front_image: url })}
                         disabled={saving}
+                        onUploadingChange={(u) => trackUploading(u ? 1 : -1)}
                       />
                     </div>
 
@@ -1410,8 +1476,16 @@ export default function AdminProductsPage() {
               <Button variant="secondary" onClick={() => setEditing(null)} disabled={saving}>
                 Hủy
               </Button>
-              <Button variant="primary" onClick={saveEdit} disabled={saving}>
-                {saving ? "Đang lưu..." : "Lưu thay đổi"}
+              <Button
+                variant="primary"
+                onClick={saveEdit}
+                disabled={saving || uploadingImages > 0}
+              >
+                {uploadingImages > 0
+                  ? "Đang tải ảnh..."
+                  : saving
+                  ? "Đang lưu..."
+                  : "Lưu thay đổi"}
               </Button>
             </ModalFooter>
           </ModalPanel>

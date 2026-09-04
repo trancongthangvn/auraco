@@ -24,6 +24,9 @@ export default function ProductCarousel({
   products,
   layout = "carousel",
   feature,
+  centerTitle = false,
+  boxCard = true,
+  showNav = true,
 }: {
   title: string;
   subtitle?: string;
@@ -40,10 +43,25 @@ export default function ProductCarousel({
    *  (2 rows for 6 products) that fills the section width and reflows with
    *  it, instead of the default horizontal scroll-with-arrows carousel. */
   layout?: "carousel" | "grid";
+  /** Centers the heading and matches the reference's plain, non-uppercase
+   *  "Best sellers" title on the cart page — distinct from `.section-title`,
+   *  which forces uppercase and doesn't fit a mixed-case heading. */
+  centerTitle?: boolean;
+  /** The reference wraps homepage sections in a white rounded shadow card
+   *  (`.home-block`), but its cart-page "Best sellers" rail sits flat on
+   *  the page with no box at all — set false there. */
+  boxCard?: boolean;
+  /** Hides the prev/next arrows and the dot row, leaving a touch/drag-only
+   *  strip. The reference itself keeps these on every carousel instance
+   *  (including New Arrivals), but the New Arrivals call on the homepage
+   *  is set false here on explicit request, overriding that match. */
+  showNav?: boolean;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [revealRef, revealClass] = useRevealOnScroll<HTMLElement>();
-  const { currency } = useCurrency();
+  const { currency, rates } = useCurrency();
+  const touchStart = useRef({ x: 0, y: 0 });
+  const dragLockedRef = useRef(false);
 
   // The strip is driven by an index into a tripled product list and moved
   // with a CSS transform, not by scrolling. Scroll-based looping fought the
@@ -55,6 +73,12 @@ export default function ProductCarousel({
   const [index, setIndex] = useState(count);
   const [animate, setAnimate] = useState(true);
   const [viewportWidth, setViewportWidth] = useState(0);
+  // The tablet card-count breakpoint below has to key off the actual
+  // viewport (window) width, not this container's clientWidth — the
+  // section's own padding shrinks the container below 768px well before the
+  // window itself crosses that line, so a container-width check missed the
+  // whole tablet range.
+  const [windowWidth, setWindowWidth] = useState(0);
 
   useEffect(() => {
     const el = viewportRef.current;
@@ -64,6 +88,13 @@ export default function ProductCarousel({
     const ro = new ResizeObserver(sync);
     ro.observe(el);
     return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setWindowWidth(window.innerWidth);
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
   }, []);
 
   // Snap back into the middle copy whenever the index leaves it, so the list
@@ -86,11 +117,86 @@ export default function ProductCarousel({
     return () => clearTimeout(id);
   }, [animate]);
 
-  const step = CAROUSEL_CARD + CAROUSEL_GAP;
-  // Offset that parks card `index` in the middle of the viewport.
-  const offset = index * step - (viewportWidth - CAROUSEL_CARD) / 2;
+  // Below desktop (mobile AND tablet) gets exactly two cards per view
+  // instead of the desktop's fixed 320px card — measured directly against
+  // the reference at both a phone width (390px: ~171-176px cards, third
+  // barely a 1px sliver) and tablet width, both showing the same "exactly
+  // two, no meaningful peek" pattern; only ≥1024px keeps the fixed 320px
+  // card with its intentional third-card peek.
+  const isTabletWidth = windowWidth > 0 && windowWidth < 1024;
+  const cardWidth =
+    isTabletWidth && viewportWidth > 0
+      ? (viewportWidth - CAROUSEL_GAP) / 2
+      : CAROUSEL_CARD;
+
+  const step = cardWidth + CAROUSEL_GAP;
+  // Desktop centers the active card (deliberate peek of a neighbour on both
+  // sides). The two-card mode instead start-aligns card `index` flush with
+  // the left edge — centering there produced a symmetric peek on BOTH
+  // sides (measured: card 1 clipped at x=-4, card 3's sliver 28px wide),
+  // when the reference shows the first card flush left with only a ~7px
+  // sliver of a third card on the right, nothing on the left.
+  const offset = isTabletWidth
+    ? index * step
+    : index * step - (viewportWidth - cardWidth) / 2;
 
   const scrollBy = (dir: 1 | -1) => setIndex((i) => i + dir);
+
+  // Touch-swipe support for the carousel strip, matching Hero.tsx's
+  // detection logic: track the touch start point, then on touch-end compare
+  // deltaX/deltaY to require a horizontal-dominant gesture past a ~45px
+  // threshold before treating it as a swipe (so a vertical page scroll that
+  // starts over the carousel doesn't get misread as a slide change).
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const t = e.changedTouches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+    dragLockedRef.current = false;
+  };
+
+  // React attaches its synthetic `touchmove` as a passive listener (for
+  // scroll-perf reasons), so `preventDefault()` from a JSX `onTouchMove`
+  // handler is silently ignored — this is why swiping could still visibly
+  // drag the whole page frame sideways mid-gesture even with touch-pan-y
+  // set (that only hints the browser about *scroll* ownership, not its own
+  // edge-navigation gesture). Attaching the listener manually with
+  // `{ passive: false }` is the only way `preventDefault()` actually takes
+  // effect once horizontal intent is clear, locking the gesture to this
+  // carousel instead of letting the browser's own page-drag take over.
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      const deltaX = t.clientX - touchStart.current.x;
+      const deltaY = t.clientY - touchStart.current.y;
+      if (dragLockedRef.current || (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY))) {
+        dragLockedRef.current = true;
+        e.preventDefault();
+      }
+    };
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  }, []);
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    const t = e.changedTouches[0];
+    const deltaX = t.clientX - touchStart.current.x;
+    const deltaY = t.clientY - touchStart.current.y;
+    const SWIPE_THRESHOLD = 45;
+
+    if (
+      Math.abs(deltaX) > SWIPE_THRESHOLD &&
+      Math.abs(deltaX) > Math.abs(deltaY)
+    ) {
+      if (deltaX < 0) {
+        scrollBy(1);
+      } else {
+        scrollBy(-1);
+      }
+    }
+    dragLockedRef.current = false;
+  };
 
   // In carousel mode each tile is a distinct white card (rounded, shadowed),
   // so the row reads as separate panels rather than a continuous band — the
@@ -120,21 +226,22 @@ export default function ProductCarousel({
             alt={p.name}
             fill
             sizes={layout === "grid" ? "(min-width: 640px) 33vw, 50vw" : "320px"}
-            className={`object-cover transition-[opacity,transform] duration-500 ${
+            className={`object-cover transition-[opacity,transform] duration-[900ms] ${
               p.hoverImg
                 ? "group-hover:opacity-0"
                 : "group-hover:scale-105"
             }`}
           />
         )}
-        {/* On-model shot revealed on hover, matching the catalog cards. */}
+        {/* On-model shot revealed on hover, matching the catalog cards
+            (slowed from 500ms — felt jarring at that speed). */}
         {p.hoverImg && (
           <Image
             src={p.hoverImg}
             alt=""
             fill
             sizes={layout === "grid" ? "(min-width: 640px) 33vw, 50vw" : "320px"}
-            className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+            className="object-cover opacity-0 transition-opacity duration-[900ms] group-hover:opacity-100"
           />
         )}
         <AddToBagButton
@@ -157,14 +264,16 @@ export default function ProductCarousel({
           {p.material}
         </p>
         <p className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">
-          {p.priceValue !== undefined ? formatPrice(p.priceValue, currency) : p.price}
+          {p.priceValue !== undefined
+            ? formatPrice(p.priceValue, currency, rates[currency])
+            : p.price}
         </p>
       </div>
     </Link>
   );
 
   return (
-    <section ref={revealRef} className={`home-block mx-auto ${revealClass}`}>
+    <section ref={revealRef} className={`${boxCard ? "home-block" : ""} mx-auto ${revealClass}`}>
       <div>
       {/* An empty title means the section is headed by something else.
           Carousel sections (Best Sellers / You May Also Like) get a plain
@@ -172,13 +281,15 @@ export default function ProductCarousel({
           image + caption butted together — rather than the centered,
           uppercase section-title band used on homepage grid sections. */}
       {(title || subtitle) && (
-        <div className={boxed ? "mb-5 flex items-baseline justify-between" : "text-center mb-5"}>
+        <div className={centerTitle || !boxed ? "text-center mb-5" : "mb-5 flex items-baseline justify-between"}>
           {title && (
             <h2
               className={
-                boxed
-                  ? "font-serif-display text-[22px] font-normal text-[#28241f]"
-                  : "font-serif-display section-title"
+                centerTitle
+                  ? "font-serif-display text-[25.6px] font-normal text-[#28241f]"
+                  : boxed
+                    ? "font-serif-display text-[22px] font-normal text-[#28241f]"
+                    : "font-serif-display section-title"
               }
             >
               {title}
@@ -205,7 +316,17 @@ export default function ProductCarousel({
         </div>
       ) : (
         <div className="relative">
-          <div ref={viewportRef} className="overflow-hidden py-6">
+          <div
+            ref={viewportRef}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            // touch-pan-y tells the browser this element handles horizontal
+            // gestures itself — without it a full-width swipe can get
+            // claimed mid-gesture by the browser's own edge-swipe/back
+            // navigation instead of driving the strip (same fix as
+            // Hero.tsx's swipe handling).
+            className="touch-pan-y overflow-hidden py-6"
+          >
             <div
               className={`flex items-start gap-6 ${
                 animate
@@ -219,7 +340,8 @@ export default function ProductCarousel({
                   <div
                     key={`${copy}-${p.name}`}
                     aria-hidden={copy === 1 ? undefined : true}
-                    className="w-[320px] shrink-0"
+                    className="shrink-0"
+                    style={{ width: `${cardWidth}px` }}
                   >
                     {card(p)}
                   </div>
@@ -228,22 +350,26 @@ export default function ProductCarousel({
             </div>
           </div>
 
-          <button
-            aria-label="Previous"
-            onClick={() => scrollBy(-1)}
-            className="hidden sm:flex absolute -left-4 top-1/3 z-20 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
-          >
-            <ChevronLeftIcon size={16} />
-          </button>
-          <button
-            aria-label="Next"
-            onClick={() => scrollBy(1)}
-            className="hidden sm:flex absolute -right-4 top-1/3 z-20 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
-          >
-            <ChevronRightIcon size={16} />
-          </button>
+          {showNav && (
+            <>
+              <button
+                aria-label="Previous"
+                onClick={() => scrollBy(-1)}
+                className="hidden sm:flex absolute -left-4 top-1/3 z-20 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+              >
+                <ChevronLeftIcon size={16} />
+              </button>
+              <button
+                aria-label="Next"
+                onClick={() => scrollBy(1)}
+                className="hidden sm:flex absolute -right-4 top-1/3 z-20 -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+              >
+                <ChevronRightIcon size={16} />
+              </button>
+            </>
+          )}
 
-          {count > 1 && (
+          {showNav && count > 1 && (
             <div className="mt-[13.6px] flex items-center justify-center gap-[7.2px]">
               {products.map((p, i) => (
                 <button

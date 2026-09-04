@@ -17,7 +17,7 @@ export default async function LoginPage() {
       <Announcement />
       <Header />
       <main>
-        <PageHero title={dict.auth.login.title} subtitle={dict.auth.login.subtitle} compact />
+        <PageHero title={dict.auth.login.title} subtitle={dict.auth.login.subtitle} />
         <LoginForm />
       </main>
       <Footer />

@@ -1,38 +1,26 @@
-import type { Metadata } from "next";
-import {
-  Bodoni_Moda,
-  Cormorant_Garamond,
-  Jost,
-  Source_Sans_3,
-} from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Source_Sans_3, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 
-const cormorant = Cormorant_Garamond({
-  variable: "--font-serif",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
+// Source Sans 3 covers body copy, nav/UI labels, and prices/product titles —
+// matching the reference site's own font-family stack for those elements
+// (which declares "Jost, sans-serif" but never actually loads Jost, so real
+// visitors see their browser's generic sans-serif fallback; Source Sans 3 is
+// the closest already-loaded face to that fallback's metrics, per
+// DEPLOYMENT.md's "Jost is declared but never loaded" note).
 const sourceSans = Source_Sans_3({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
-// The reference site's UI face: nav, prices, review quotes, the trust-band
-// labels and every small caps-y label are Jost, not the body serif or the
-// body sans. Without it those all fell back to Source Sans 3 and read wrong.
-const jost = Jost({
-  variable: "--font-ui",
+// Cormorant Garamond is the reference site's actual heading/logo face (h1,
+// h2, the "AURA & CO" wordmark) — see globals.css's .font-serif-display.
+const cormorantGaramond = Cormorant_Garamond({
+  variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-// Used by the reference for one thing only: the collection tile captions.
-const bodoni = Bodoni_Moda({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["500", "600", "700"],
+  style: ["normal", "italic"],
 });
 
 const SITE_URL = "https://aura.maxmin.vn";
@@ -66,6 +54,21 @@ export const metadata: Metadata = {
   },
 };
 
+// Pinch-to-zoom was left open (the reference's own viewport tag is
+// identical — `width=device-width, initial-scale=1`, no scale cap either),
+// but on mobile a fast horizontal swipe near the edge of the screen could
+// get misread as the start of a pinch gesture and zoom the whole page out,
+// which read as the layout "shifting"/showing more content than it should
+// mid-swipe. Capping maximumScale to 1 and disabling userScalable stops
+// that outright — a deliberate divergence from the reference here, per
+// explicit request, not a measured-and-matched value.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 // Intentionally does NOT read cookies() here — that would force every route
 // under this layout (including /admin, which is Vietnamese-only and doesn't
 // use the dictionary at all) to opt out of static rendering. Locale is read
@@ -75,7 +78,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${cormorant.variable} ${sourceSans.variable} ${jost.variable} ${bodoni.variable} h-full antialiased`}
+      className={`${sourceSans.variable} ${cormorantGaramond.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-[#2b261f] font-sans">
         {children}

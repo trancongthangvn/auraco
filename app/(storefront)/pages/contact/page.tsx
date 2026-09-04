@@ -5,9 +5,9 @@ import PageHero from "@/components/PageHero";
 import ContactForm from "@/components/ContactForm";
 
 export const metadata = {
-  title: "Contact Us | AURA & CO",
+  title: "Contact | AURA & CO",
   description:
-    "We'd love to hear from you. Reach out with any questions about your order or our pieces.",
+    "Questions about sizing, materials, or your order? Reach our US-facing support team.",
 };
 
 export default function ContactPage() {
@@ -17,8 +17,8 @@ export default function ContactPage() {
       <Header />
       <main>
         <PageHero
-          title="Contact Us"
-          subtitle="We'd love to hear from you. Reach out with any questions about your order or our pieces."
+          title="Contact"
+          subtitle="Questions about sizing, materials, or your order? Reach our US-facing support team."
         />
         <ContactForm />
       </main>

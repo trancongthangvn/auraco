@@ -21,17 +21,18 @@ import { formatPrice } from "@/lib/currency";
  * is deterministic: the wrap is a single jump with the transition switched off
  * for one tick, which the eye never catches.
  *
- * Advance is driven by the active clip's own `ended` event, not a timer — a
- * fixed interval would cut a slow clip short or leave a dead pause after a
- * quick one. That means the video must NOT loop (a looping `<video>` never
- * fires `ended`), so each clip plays exactly once before the strip steps to
- * the next.
+ * Advance is on a fixed timer (every AUTO_ADVANCE_MS), not the active clip's
+ * `ended` event — waiting for `ended` let a long clip stall the strip for
+ * its full length and left different clips' advance timing out of sync with
+ * each other, which read as slow/uneven. A flat interval keeps every step
+ * the same regardless of how long the clip itself runs.
  */
 
 const SLIDE_WIDTH = 300;
 const GAP = 24;
 const STEP = SLIDE_WIDTH + GAP;
 const DURATION = 520;
+const AUTO_ADVANCE_MS = 3000;
 
 type Slide = {
   key: string;
@@ -48,7 +49,7 @@ export default function VideoCarousel({
   products: FullProduct[];
 }) {
   const [revealRef, revealClass] = useRevealOnScroll<HTMLElement>();
-  const { currency } = useCurrency();
+  const { currency, rates } = useCurrency();
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [viewportWidth, setViewportWidth] = useState(0);
@@ -61,13 +62,13 @@ export default function VideoCarousel({
           key: p.slug,
           slug: p.slug,
           name: p.name,
-          price: formatPrice(p.price, currency),
+          price: formatPrice(p.price, currency, rates[currency]),
           thumb: p.images[0] ?? "",
           // `#t=0.1` makes the browser paint the first frame as a poster
           // before playback starts — without it the tile is a black box.
           videoUrl: `${p.videoUrl as string}#t=0.1`,
         })),
-    [products, currency]
+    [products, currency, rates]
   );
 
   const count = slides.length;
@@ -111,47 +112,51 @@ export default function VideoCarousel({
     return () => cancelAnimationFrame(id);
   }, [animate]);
 
-  // Step to the next clip when the active one finishes playing — see the
-  // file-level comment on why this listens for `ended` instead of running a
-  // fixed-interval timer. `videoRefs` holds a stable per-slot DOM reference
-  // (the tripled list's membership never changes, only which slot is
-  // active), so `videoRefs.current[index]` is always the one actually
-  // playing right now.
+  // Step to the next clip every AUTO_ADVANCE_MS, regardless of playback
+  // state — see the file-level comment for why this replaced an
+  // `ended`-driven advance. Resets whenever `index` changes (including a
+  // manual prev/next click) so a manual step gets its own full interval
+  // rather than an immediate follow-up jump.
   useEffect(() => {
-    const video = videoRefs.current[index];
-    if (!video) return;
-    const onEnded = () => setIndex((i) => i + 1);
-    video.addEventListener("ended", onEnded);
-    return () => video.removeEventListener("ended", onEnded);
-  }, [index]);
+    if (count === 0) return;
+    const id = setInterval(() => setIndex((i) => i + 1), AUTO_ADVANCE_MS);
+    return () => clearInterval(id);
+  }, [index, count]);
 
-  // Play the muted clips only while they are on screen, so an off-screen strip
-  // never decodes video in the background. Never unmuted — autoplay with sound
-  // is both hostile and blocked by browsers. Not gated on
-  // prefers-reduced-motion: the shop owner runs with it on and still wants the
-  // clips, and every tile carries a poster so a blocked play() is invisible.
+  // Play only the centred (active) clip — every neighbouring tile is also
+  // partly visible at 0.3 threshold, so the previous IntersectionObserver
+  // approach played several clips at once instead of just the one the
+  // customer is actually looking at. Tied directly to `index` instead: only
+  // `videoRefs.current[index]` ever plays, and it starts automatically the
+  // moment it becomes centred (auto-advance or a manual prev/next click),
+  // exactly mirroring the `isActive` scale-up already driving the visual
+  // state below. Still gated on the whole carousel being on screen at all,
+  // so an off-screen strip doesn't decode video in the background. Never
+  // unmuted — autoplay with sound is both hostile and blocked by browsers.
+  const [inView, setInView] = useState(false);
   useEffect(() => {
     const root = viewportRef.current;
-    if (!root || count === 0) return;
-
+    if (!root) return;
     const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const video = entry.target as HTMLVideoElement;
-          video.muted = true;
-          if (entry.isIntersecting) {
-            void video.play().catch(() => {});
-          } else {
-            video.pause();
-          }
-        }
-      },
+      ([entry]) => setInView(entry.isIntersecting),
       { threshold: 0.3 }
     );
-
-    root.querySelectorAll("video").forEach((v) => observer.observe(v));
+    observer.observe(root);
     return () => observer.disconnect();
-  }, [count]);
+  }, []);
+
+  useEffect(() => {
+    if (count === 0) return;
+    videoRefs.current.forEach((video, i) => {
+      if (!video) return;
+      video.muted = true;
+      if (inView && i === index) {
+        void video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    });
+  }, [index, count, inView]);
 
   // Nothing to show on a fresh install where no product has a video yet.
   if (count === 0) return null;
@@ -223,9 +228,6 @@ export default function VideoCarousel({
                       )}
                     </span>
                     <span className="grid min-w-0 gap-1">
-                      <span className="font-serif-display line-clamp-2 text-[16px] font-normal leading-[20px] text-[#28241f]">
-                        {slide.name}
-                      </span>
                       <span className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">
                         {slide.price}
                       </span>

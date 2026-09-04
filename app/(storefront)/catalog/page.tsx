@@ -6,7 +6,7 @@ import CatalogClient, {
 } from "@/components/catalog/CatalogClient";
 import type { FullProduct } from "@/data/products";
 import { serverApiFetch } from "@/lib/server-api";
-import { toFullProduct, toCollectionFilters, type ApiProduct, type ApiCollection } from "@/lib/catalog-mappers";
+import { toFullProduct, toCollectionFilters, type ApiProduct, type ApiCollection, type ApiBrand } from "@/lib/catalog-mappers";
 import { getServerDictionary } from "@/lib/i18n/server";
 
 export const metadata = {
@@ -22,10 +22,11 @@ export default async function CatalogPage({
   // CatalogClient. That hook forces the component into a Suspense boundary,
   // and that boundary never resolved in the browser — the catalog rendered
   // as a blank page. Passing the values down as props removes the boundary.
-  const [{ brand, q }, apiProducts, apiCollections, { dict }] = await Promise.all([
+  const [{ brand, q }, apiProducts, apiCollections, apiBrands, { dict }] = await Promise.all([
     searchParams,
     serverApiFetch<ApiProduct[]>("/api/products"),
     serverApiFetch<ApiCollection[]>("/api/collections"),
+    serverApiFetch<ApiBrand[]>("/api/brands").catch(() => [] as ApiBrand[]),
     getServerDictionary(),
   ]);
 
@@ -38,6 +39,9 @@ export default async function CatalogPage({
 
   const products: FullProduct[] = apiProducts.map(toFullProduct);
   const collectionFilters: CollectionFilter[] = toCollectionFilters(apiCollections);
+  const brandDescription = brand
+    ? apiBrands.find((b) => b.slug === brand)?.description ?? undefined
+    : undefined;
 
   return (
     <>
@@ -51,6 +55,7 @@ export default async function CatalogPage({
           subheading={dict.catalog.subheading}
           brandParam={brand}
           queryParam={q}
+          brandDescription={brandDescription}
         />
       </main>
       <Footer />

@@ -213,28 +213,29 @@ export default async function ProductPage({
               <span>{product.rating.toFixed(1)}</span>
             </p>
 
-            {/* Explicit request, two rounds: (1) drop the feature-bullets
-                list entirely from this block (not just its star icons,
-                which a prior pass had already stripped) — just the lead
-                line and the description paragraph; (2) always show that
-                paragraph in full, no clamp and no Read more/less toggle —
-                so this no longer needs the Description component at all,
-                just its typography reproduced directly (font-ui 14px/23.1
-                line-height, 0.14px tracking, #302c27, 14px gap between the
-                two lines, matching what Description itself used). */}
-            <div className="mt-8 font-ui text-[14px] leading-[23.1px] tracking-[0.14px] text-[#302c27] [&>*]:mb-[14px] [&>*:last-child]:mb-0">
-              <p className="font-bold">
-                {siteSettings.whyLoveItLabel || dict.product.whyLoveIt}
-              </p>
-              <p className="whitespace-pre-line">{product.description}</p>
-            </div>
-
             <div id="add-to-bag-anchor">
               <AddToBag product={product} />
             </div>
 
+            {/* "Why You'll Love It" used to render always-expanded, no
+                toggle, right above Add to Bag (explicit request at the
+                time). Reversed on a later explicit request to match
+                missoma.com's own product page instead, which collapses it
+                into the same accordion as Details/Delivery & Returns,
+                closed by default like every other row there (confirmed
+                live: all of Missoma's rows start collapsed). */}
             <Accordion
               items={[
+                {
+                  // Trailing ":" (the punctuation made sense as an always-
+                  // visible lead-in line, less so as a standalone accordion
+                  // row title alongside "Details"/"Delivery & Returns",
+                  // neither of which has one) is stripped only for this
+                  // display — the admin-set/dictionary value itself is
+                  // untouched.
+                  title: (siteSettings.whyLoveItLabel || dict.product.whyLoveIt).replace(/:\s*$/, ""),
+                  content: product.description,
+                },
                 product.detailsHtml
                   ? {
                       title: dict.product.details,

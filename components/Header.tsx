@@ -82,6 +82,24 @@ export default function Header({
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accountCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mobileCurrencyRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Publishes this header's own rendered height as a CSS var, the same
+  // pattern Announcement.tsx uses for --announcement-h — lets any element
+  // elsewhere on the page (the product gallery's sticky column, so far) sit
+  // exactly below the sticky header without a hard-coded pixel guess that
+  // would drift whenever the header's own height changes across
+  // breakpoints (mobile hamburger row vs. desktop nav row).
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () =>
+      document.documentElement.style.setProperty("--header-h", `${el.getBoundingClientRect().height}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Click-outside-to-close for the mobile drawer's currency dropdown —
   // tapping anywhere else in the drawer (or on the backdrop) left it open
@@ -211,7 +229,10 @@ export default function Header({
 
   return (
     <>
-    <header className="sticky top-[var(--announcement-h,0px)] z-40 border-b border-black/5 bg-white/95 backdrop-blur-sm">
+    <header
+      ref={headerRef}
+      className="sticky top-[var(--announcement-h,0px)] z-40 border-b border-black/5 bg-white/95 backdrop-blur-sm"
+    >
       {/* Always a 3-column grid (auto/1fr/auto), not flex+mx-auto: at every
           width there are exactly 3 visible children (hamburger+logo+icons on
           mobile, logo+nav+icons on desktop — the 4th is always display:none

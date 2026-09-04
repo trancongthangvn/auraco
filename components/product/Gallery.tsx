@@ -155,7 +155,22 @@ export default function Gallery({
   }, [active, effectiveImages.length]);
 
   return (
-    <div className="min-w-0">
+    // Explicit request, confirmed against missoma.com's own
+    // `.product__column-sticky` (measured live: position: sticky; top: 97px
+    // — the height of their sticky header): the image column used to
+    // scroll away with the page like any other element, so a long product
+    // description or a wide-open accordion left it out of view while the
+    // customer kept reading. Sticky only at `lg` (1024px), matching the
+    // page's own breakpoint for splitting into the two-column layout
+    // (app/(storefront)/product/[slug]/page.tsx's `lg:grid-cols-[...]`) —
+    // below that the page is a single stacked column, where "sticky" has no
+    // side-by-side content to stay level with. `self-start` stops the grid
+    // from stretching this column to match the (often taller) info
+    // column's height, which would otherwise leave sticky nothing to
+    // scroll past. Top offset composes Announcement's and Header's own
+    // published heights (see their own components) so it sits exactly
+    // below both, however tall either currently is.
+    <div className="min-w-0 lg:sticky lg:top-[calc(var(--announcement-h,0px)+var(--header-h,64px)+16px)] lg:self-start">
       {/* Desktop mosaic — >= 1000px only.
           Fixed-ratio columns and object-cover on every tile: every box
           filled edge-to-edge (no empty frame), accepting some edge cropping

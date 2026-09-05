@@ -26,6 +26,20 @@
    though the page itself has no horizontal overflow (verified: scrollWidth
    === clientWidth at 375px). Disabling horizontal overscroll here removes
    that "traveling frame" without touching any layout. */
+html {
+  /* Explicit request: the "Sort by" <select> (and every other native form
+     control — checkboxes, the scrollbar, etc.) was rendering in a dark,
+     rounded, checkmarked style on a device with the OS set to dark mode,
+     jarringly different from the rest of this always-light site — the
+     browser draws native controls per the OS theme whenever a page never
+     says otherwise. `color-scheme: light` tells every browser this page is
+     light-only, so its own dropdown/checkbox/scrollbar chrome renders
+     light regardless of the visitor's OS setting, consistently across
+     every page and device instead of only ever looking right on a
+     light-mode system. */
+  color-scheme: light;
+}
+
 html,
 body {
   overscroll-behavior-x: none;

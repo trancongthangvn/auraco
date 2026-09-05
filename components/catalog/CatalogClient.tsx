@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -193,6 +193,29 @@ export default function CatalogClient({
     "newest" | "price-asc" | "price-desc" | "featured"
   >("featured");
   const [visible, setVisible] = useState(12);
+
+  // Explicit request: the mobile inline filter panel (Category/Type/.../
+  // Reset, below `lg`) used to just sit in normal flow right under the
+  // sticky toolbar — scrolling the page carried it away like any other
+  // content, so "Category"/"Type" disappeared behind the still-pinned
+  // toolbar instead of staying put alongside it. Making the panel sticky
+  // too needs its own `top` to sit exactly below the toolbar, which needs
+  // the toolbar's real rendered height (not a guess — its content wraps
+  // to a second line at some widths). Measured with a ResizeObserver
+  // rather than published as a CSS var like Header/Announcement's own
+  // heights, since this offset is only ever consumed here in the same
+  // component, not by anything elsewhere on the page.
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [toolbarHeight, setToolbarHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+    const update = () => setToolbarHeight(el.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   // Explicit request: filters open by default on landing (not just once the
   // customer clicks "Show Filters" themselves) — but only on tablet/desktop.
   // On mobile they default closed instead, since the panel there renders
@@ -734,7 +757,10 @@ export default function CatalogClient({
            where the two overlap in the viewport. A fully opaque background
            still covers whatever scrolls behind it (expected for any sticky
            bar), it just does so cleanly instead of looking broken. */
-        <div className="sticky top-[calc(var(--announcement-h,0px)+var(--header-h,64px))] z-30 mb-1 flex items-center justify-between gap-4 bg-white py-[10.4px]">
+        <div
+          ref={toolbarRef}
+          className="sticky top-[calc(var(--announcement-h,0px)+var(--header-h,64px))] z-30 mb-1 flex items-center justify-between gap-4 bg-white py-[10.4px]"
+        >
           <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
             {filterToggleAndCount}
           </div>
@@ -782,9 +808,24 @@ export default function CatalogClient({
               "Hide Filters" toggle above; each facet inside is its own
               open/close accordion section (+ / − icon), matching the reference's
               own filter layout rather than a full-screen slide-in drawer. Only
-              below `lg`: at `lg`+ the sidebar above takes over. */}
+              below `lg`: at `lg`+ the sidebar above takes over.
+              Explicit request: sticky like the toolbar above it, sitting
+              exactly at its bottom edge (top adds the measured toolbarHeight
+              on top of Announcement/Header's own published heights) — the
+              panel used to just scroll away with the page, so "Category"/
+              "Type" disappeared behind the toolbar instead of staying
+              visible together with it. max-height + its own scroll is the
+              same safety net the desktop sidebar already uses, in case the
+              panel (with an accordion section open) is ever taller than
+              the viewport space left below the toolbar. */}
           {!query && filtersOpen && (
-            <div className="mb-4 border-[0.667px] border-t-0 border-[#2b261f]/[0.14] bg-white px-[13.6px] lg:hidden">
+            <div
+              className="sticky mb-4 overflow-y-auto border-[0.667px] border-t-0 border-[#2b261f]/[0.14] bg-white px-[13.6px] lg:hidden"
+              style={{
+                top: `calc(var(--announcement-h,0px) + var(--header-h,64px) + ${toolbarHeight ?? 75}px)`,
+                maxHeight: `calc(100vh - var(--announcement-h,0px) - var(--header-h,64px) - ${toolbarHeight ?? 75}px)`,
+              }}
+            >
               {filterPanelBody}
             </div>
           )}

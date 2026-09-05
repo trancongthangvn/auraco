@@ -112,6 +112,25 @@ export default function Gallery({
     };
   }, [effectiveImages.length, heroHeight, syncThumbScrollState]);
 
+  // Scroll the rail so the clicked thumbnail becomes its TOP visible item —
+  // measured frame-by-frame off the reference video (missoma.com, product
+  // page, ~1920px): clicking the lower of the two visible thumbnails moves
+  // that photo up into the upper slot and pulls the next (previously
+  // hidden) one into the slot it left. Aligning the clicked thumb to the
+  // container's top reproduces that exactly, and correctly does nothing
+  // when the already-top thumb is clicked (a blind one-step scroll would
+  // wrongly page forward there).
+  const scrollThumbToTop = (index: number) => {
+    const el = thumbViewportRef.current;
+    if (!el) return;
+    const thumb = el.children[index] as HTMLElement | undefined;
+    if (!thumb) return;
+    const delta = thumb.getBoundingClientRect().top - el.getBoundingClientRect().top;
+    if (Math.abs(delta) < 1) return;
+    el.scrollBy({ top: delta, behavior: "smooth" });
+    setTimeout(syncThumbScrollState, 600);
+  };
+
   const scrollThumbsDown = () => {
     const el = thumbViewportRef.current;
     if (!el) return;
@@ -140,6 +159,61 @@ export default function Gallery({
     setPrevVariantId(selectedVariant?.id);
     setActive(0);
   }
+
+  // Desktop hero slide transition. Measured off the reference video: the
+  // outgoing photo slides out to the left while the incoming one slides in
+  // from the right, over ~7 frames at 25.7fps ≈ 280ms, rather than the hero
+  // src swapping instantly. Direction follows the index, so clicking a
+  // thumbnail above the current one (or the 5s auto-advance wrapping back
+  // to the first photo) slides the other way.
+  //
+  // Driven by the Web Animations API rather than the usual "render the
+  // incoming layer off-screen, then flip a transition class on the next
+  // frame" trick: that pattern needs requestAnimationFrame to actually
+  // fire, and when it doesn't (a background/undisplayed tab throttles it)
+  // the hero stays parked off-screen — reproduced here, the hero went
+  // blank with its layer stuck at translateX(+100%). With .animate() the
+  // element's own resting position IS the correct one, so the worst case
+  // when the animation never runs is an instant swap, never a blank hero.
+  const currentSrc = effectiveImages[active];
+  const prevShownRef = useRef<{ index: number; src: string | undefined }>({
+    index: active,
+    src: currentSrc,
+  });
+  const outgoingRef = useRef<HTMLDivElement | null>(null);
+  const incomingRef = useRef<HTMLDivElement | null>(null);
+  const [slide, setSlide] = useState<{ src: string; dir: 1 | -1 } | null>(null);
+
+  useEffect(() => {
+    const prev = prevShownRef.current;
+    prevShownRef.current = { index: active, src: currentSrc };
+    if (prev.index === active || !prev.src || prev.src === currentSrc) return;
+    setSlide({ src: prev.src, dir: active > prev.index ? 1 : -1 });
+  }, [active, currentSrc]);
+
+  useEffect(() => {
+    if (!slide) return;
+    const off = slide.dir === 1 ? "-100%" : "100%";
+    const from = slide.dir === 1 ? "100%" : "-100%";
+    const timing: KeyframeAnimationOptions = {
+      duration: 300,
+      easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+    };
+    const outAnim = outgoingRef.current?.animate(
+      [{ transform: "translateX(0)" }, { transform: `translateX(${off})` }],
+      { ...timing, fill: "forwards" }
+    );
+    const inAnim = incomingRef.current?.animate(
+      [{ transform: `translateX(${from})` }, { transform: "translateX(0)" }],
+      timing
+    );
+    const done = setTimeout(() => setSlide(null), 320);
+    return () => {
+      clearTimeout(done);
+      outAnim?.cancel();
+      inAnim?.cancel();
+    };
+  }, [slide]);
 
   // Auto-advance the hero image every 5s, looping back to the first. Keyed
   // off `active` itself (not a fixed-interval timer) so a manual thumbnail
@@ -217,16 +291,34 @@ export default function Gallery({
           onClick={() => effectiveImages[active] && setLightboxOpen(true)}
           className="group relative aspect-[4/5] self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
         >
+          {/* Outgoing photo — mounted only while a slide is running, and
+              only ever the one being replaced, so a jump across several
+              indexes slides straight from old to new rather than running
+              through every photo in between (matches the reference, where
+              clicking the second thumbnail slid directly to it). */}
+          {slide && (
+            <div key={slide.src} ref={outgoingRef} className="absolute inset-0">
+              <Image
+                src={slide.src}
+                alt=""
+                fill
+                sizes="(min-width: 1000px) 47vw, 100vw"
+                className="object-cover"
+              />
+            </div>
+          )}
           {/* No `key` here either — see the mobile hero below for why. */}
           {effectiveImages[active] && (
-            <Image
-              src={effectiveImages[active]}
-              alt={name}
-              fill
-              priority
-              sizes="(min-width: 1000px) 47vw, 100vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            />
+            <div ref={incomingRef} className="absolute inset-0">
+              <Image
+                src={effectiveImages[active]}
+                alt={name}
+                fill
+                priority
+                sizes="(min-width: 1000px) 47vw, 100vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+              />
+            </div>
           )}
         </button>
         {effectiveImages.length > 1 && (
@@ -250,14 +342,7 @@ export default function Gallery({
                   aria-current={active === i ? "true" : undefined}
                   onClick={() => {
                     setActive(i);
-                    // Explicit request: clicking a thumbnail also advances
-                    // the rail one slot forward (same step the "show more"
-                    // chevron already does below) — the clicked thumbnail
-                    // scrolls up into the slot above it and the next hidden
-                    // one scrolls up to take its place, so clicking keeps
-                    // surfacing further photos instead of leaving the rail
-                    // parked wherever it was.
-                    scrollThumbsDown();
+                    scrollThumbToTop(i);
                   }}
                   className={`group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6] ${
                     active === i ? "ring-2 ring-[#2b261f]" : ""

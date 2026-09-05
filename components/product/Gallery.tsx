@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Lightbox from "./Lightbox";
 import { useVariant } from "./VariantProvider";
@@ -446,15 +447,26 @@ export default function Gallery({
         )}
       </div>
 
-      {lightboxOpen && (
-        <Lightbox
-          images={effectiveImages}
-          name={name}
-          index={active}
-          onIndexChange={setActive}
-          onClose={() => setLightboxOpen(false)}
-        />
-      )}
+      {/* Portaled straight to <body> rather than rendered in place: this
+          whole column is `lg:sticky`, and once it's actually stuck, a
+          `position: fixed` descendant confirmed live to get its position
+          computed relative to THIS sticky column instead of the viewport —
+          the lightbox rendered confined to the gallery's own on-screen box
+          instead of covering the page, leaving the carousels above/below
+          it fully visible around it. A portal makes the lightbox a direct
+          child of <body>, outside the sticky column entirely, so there's
+          no sticky ancestor left for that miscomputation to happen against. */}
+      {lightboxOpen &&
+        createPortal(
+          <Lightbox
+            images={effectiveImages}
+            name={name}
+            index={active}
+            onIndexChange={setActive}
+            onClose={() => setLightboxOpen(false)}
+          />,
+          document.body
+        )}
     </div>
   );
 }

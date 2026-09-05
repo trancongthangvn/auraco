@@ -198,11 +198,18 @@ export default function Gallery({
       {/* Explicit request: the width used to grow with the page's own
           responsive column track, so on a wide screen the (height-capped)
           tiles got stretched wider and wider — more of each photo cropped
-          off by object-cover the wider the window got. max-w-[750px]
-          matches the frame size confirmed against a reference screenshot;
-          past that the block just stops growing and centers, leaving blank
-          space on a wide screen rather than cropping further. */}
-      <div className="hidden min-[1000px]:mx-auto min-[1000px]:grid min-[1000px]:max-w-[750px] min-[1000px]:grid-cols-[2.2fr_1fr] min-[1000px]:gap-[10px]">
+          off by object-cover the wider the window got. max-w matches the
+          frame size confirmed against a reference screenshot; past that
+          the block just stops growing and centers, leaving blank space on
+          a wide screen rather than cropping further.
+          750px → 900px: explicit follow-up request, re-measured against a
+          1920×1080 @100% reference — the whole product-detail block also
+          gained an outer page max-width at the same time (see the product
+          page's own wrapper), which shrinks how much of that page-level
+          margin's own extra room this cap needs to give back; the two
+          together land close to the new reference proportions without
+          either one doing the whole job alone. */}
+      <div className="hidden min-[1000px]:mx-auto min-[1000px]:grid min-[1000px]:max-w-[900px] min-[1000px]:grid-cols-[2.2fr_1fr] min-[1000px]:gap-[10px]">
         <button
           ref={heroRef}
           type="button"

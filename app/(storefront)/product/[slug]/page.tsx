@@ -188,6 +188,18 @@ export default async function ProductPage({
       <Announcement />
       <Header />
       <main>
+        {/* max-w-[1740px] mx-auto — explicit request, measured against a
+            1920×1080 @100% reference screenshot: the whole product-detail
+            block (gallery + info) used to run edge-to-edge (just the 16px
+            px-4 gutter), reading as no margin at all on a wide monitor.
+            Wraps both the breadcrumb and the grid below so they stay
+            aligned with each other rather than only capping one. Composes
+            with Gallery's own internal max-w cap (750px → 900px, same
+            change) rather than replacing it: that cap still protects the
+            mosaic from over-stretching/over-cropping on viewports between
+            ~1024px and this new 1740px ceiling, where the page-level
+            max-width doesn't engage yet. */}
+        <div className="mx-auto max-w-[1740px]">
         <nav className="px-4 pt-6 text-xs text-black/50">
           <span>{dict.product.breadcrumbHome}</span> / <span>{product.category}</span> /{" "}
           <span className="text-black">{product.name}</span>
@@ -282,6 +294,7 @@ export default async function ProductPage({
           </div>
         </div>
         </VariantProvider>
+        </div>
 
         {bestSellers.length > 0 && (
           <ProductCarousel title={dict.product.bestSellers} products={bestSellers} centerTitle />

@@ -21,18 +21,20 @@ import { formatPrice } from "@/lib/currency";
  * is deterministic: the wrap is a single jump with the transition switched off
  * for one tick, which the eye never catches.
  *
- * Advance is on a fixed timer (every AUTO_ADVANCE_MS), not the active clip's
- * `ended` event — waiting for `ended` let a long clip stall the strip for
- * its full length and left different clips' advance timing out of sync with
- * each other, which read as slow/uneven. A flat interval keeps every step
- * the same regardless of how long the clip itself runs.
+ * Advance is driven by the active clip's own `ended` event (explicit
+ * request, reversing an earlier fixed-timer approach that kept every step
+ * the same length regardless of clip duration — deliberately accepting that
+ * different clips now advance at uneven intervals, since the requirement is
+ * to let each video finish playing before moving on). AUTO_ADVANCE_FALLBACK_MS
+ * covers a clip that fails to fire `ended` (autoplay blocked, load error, a
+ * clip with no video at all) so the strip never stalls indefinitely.
  */
 
 const SLIDE_WIDTH = 300;
 const GAP = 24;
 const STEP = SLIDE_WIDTH + GAP;
 const DURATION = 520;
-const AUTO_ADVANCE_MS = 3000;
+const AUTO_ADVANCE_FALLBACK_MS = 8000;
 
 type Slide = {
   key: string;
@@ -112,15 +114,22 @@ export default function VideoCarousel({
     return () => cancelAnimationFrame(id);
   }, [animate]);
 
-  // Step to the next clip every AUTO_ADVANCE_MS, regardless of playback
-  // state — see the file-level comment for why this replaced an
-  // `ended`-driven advance. Resets whenever `index` changes (including a
-  // manual prev/next click) so a manual step gets its own full interval
-  // rather than an immediate follow-up jump.
+  // Advance when the active clip finishes playing — see the file-level
+  // comment. The fallback timer guards a clip that never fires `ended`
+  // (autoplay blocked, a load error, or no video source at all); it resets
+  // whenever `index` changes, same as the `ended` listener below, so a
+  // manual prev/next click gets its own full window rather than an
+  // immediate follow-up jump.
   useEffect(() => {
     if (count === 0) return;
-    const id = setInterval(() => setIndex((i) => i + 1), AUTO_ADVANCE_MS);
-    return () => clearInterval(id);
+    const video = videoRefs.current[index];
+    const advance = () => setIndex((i) => i + 1);
+    video?.addEventListener("ended", advance);
+    const id = setTimeout(advance, AUTO_ADVANCE_FALLBACK_MS);
+    return () => {
+      video?.removeEventListener("ended", advance);
+      clearTimeout(id);
+    };
   }, [index, count]);
 
   // Play only the centred (active) clip — every neighbouring tile is also
@@ -228,6 +237,9 @@ export default function VideoCarousel({
                       )}
                     </span>
                     <span className="grid min-w-0 gap-1">
+                      <span className="truncate text-[13px] text-ink">
+                        {slide.name}
+                      </span>
                       <span className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">
                         {slide.price}
                       </span>

@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { authMiddleware, requireStaffOrAdmin, requireAdmin } = require('../middleware/auth');
 const { upload, verifyMagicBytes, UPLOAD_DIR } = require('../lib/upload');
+const { purgeUploadedFiles } = require('../lib/cloudflare');
 
 const router = express.Router();
 
@@ -87,6 +88,12 @@ router.delete('/admin/images/:filename', authMiddleware, requireAdmin, (req, res
       console.error(err);
       return res.status(500).json({ error: 'Failed to delete file' });
     }
+    // Fire-and-forget: the file is already gone from disk (the part the
+    // admin is actually waiting on), so this response doesn't wait on
+    // Cloudflare's own round-trip, and a purge failure (logged, never
+    // thrown — see lib/cloudflare.js) can't turn a successful delete into
+    // an error response.
+    purgeUploadedFiles([filename]);
     res.json({ data: { filename } });
   });
 });

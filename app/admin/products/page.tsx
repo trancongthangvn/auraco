@@ -8,7 +8,7 @@ import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import Button from "@/components/admin/ui/Button";
 import IconButton from "@/components/admin/ui/IconButton";
-import { Input, Label, Textarea } from "@/components/admin/ui/Field";
+import { Input, Label, Textarea, Select } from "@/components/admin/ui/Field";
 import VideoField from "@/components/admin/VideoField";
 import ImageField from "@/components/admin/ImageField";
 import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
@@ -983,18 +983,18 @@ export default function AdminProductsPage() {
               />
 
               <Label>Danh mục (Brand)</Label>
-              <select
+              <Select
                 value={editCategory}
                 onChange={(e) => setEditCategory(e.target.value)}
                 disabled={saving}
-                className="mb-4 w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-ink"
+                className="mb-4"
               >
                 {CATEGORY_OPTIONS.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
                 ))}
-              </select>
+              </Select>
 
               <Label>Chất liệu</Label>
               <Input
@@ -1178,18 +1178,18 @@ export default function AdminProductsPage() {
               />
 
               <Label>Danh mục (Brand)</Label>
-              <select
+              <Select
                 value={editCategory}
                 onChange={(e) => setEditCategory(e.target.value)}
                 disabled={saving}
-                className="mb-6 w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-ink"
+                className="mb-6"
               >
                 {CATEGORY_OPTIONS.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
                 ))}
-              </select>
+              </Select>
 
               <Label>Category (bộ sưu tập)</Label>
               <div className="mb-6 flex flex-wrap gap-2">

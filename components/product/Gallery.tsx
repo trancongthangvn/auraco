@@ -248,7 +248,17 @@ export default function Gallery({
                   type="button"
                   aria-label={`Show image ${i + 1} of ${effectiveImages.length}`}
                   aria-current={active === i ? "true" : undefined}
-                  onClick={() => setActive(i)}
+                  onClick={() => {
+                    setActive(i);
+                    // Explicit request: clicking a thumbnail also advances
+                    // the rail one slot forward (same step the "show more"
+                    // chevron already does below) — the clicked thumbnail
+                    // scrolls up into the slot above it and the next hidden
+                    // one scrolls up to take its place, so clicking keeps
+                    // surfacing further photos instead of leaving the rail
+                    // parked wherever it was.
+                    scrollThumbsDown();
+                  }}
                   className={`group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6] ${
                     active === i ? "ring-2 ring-[#2b261f]" : ""
                   }`}

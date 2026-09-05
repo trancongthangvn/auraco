@@ -726,8 +726,15 @@ export default function CatalogClient({
            covered it while scrolling ("thanh Filter mất khi lướt xuống",
            explicit bug report). Composing both published heights instead
            keeps this flush under the header regardless of which state
-           it's in. */
-        <div className="sticky top-[calc(var(--announcement-h,0px)+var(--header-h,64px))] z-30 mb-1 flex items-center justify-between gap-4 bg-white/[0.96] py-[10.4px]">
+           it's in.
+           bg-white (was bg-white/[0.96]): explicit bug report — while
+           scrolling with the mobile inline filter panel open, this bar's
+           4% transparency let the "Category" section heading directly
+           underneath it bleed through as a ghosted double-exposure right
+           where the two overlap in the viewport. A fully opaque background
+           still covers whatever scrolls behind it (expected for any sticky
+           bar), it just does so cleanly instead of looking broken. */
+        <div className="sticky top-[calc(var(--announcement-h,0px)+var(--header-h,64px))] z-30 mb-1 flex items-center justify-between gap-4 bg-white py-[10.4px]">
           <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
             {filterToggleAndCount}
           </div>
@@ -815,7 +822,12 @@ export default function CatalogClient({
       )}
 
       {!query && activeFilterCount > 0 && (
-        <div className="mt-6 flex flex-wrap items-center gap-2">
+        // mb-[5px]: explicit request — this row had no bottom margin at all
+        // (the product grid below has its own mt-6 only when `!showHero`,
+        // so on a collection page like this one the two sat directly
+        // adjacent with zero gap), which read as the chips touching/
+        // pressing into the product images' top edge.
+        <div className="mt-6 mb-[5px] flex flex-wrap items-center gap-2">
           {categoryFilter.map((c) => (
             <button
               key={c}
@@ -862,10 +874,15 @@ export default function CatalogClient({
               <span className="sr-only">Remove filter</span>
             </button>
           )}
+          {/* Explicit request: matches the pill/border style of every
+              removable chip beside it (was a plain underlined text link,
+              visually inconsistent with its own row) — same classes minus
+              the "×" remove icon, since this clears everything at once
+              rather than one filter. */}
           <button
             type="button"
             onClick={resetFilters}
-            className="text-xs font-medium text-[#5c554a] underline hover:text-ink"
+            className="inline-flex items-center gap-2 rounded-full border border-black/20 px-3 py-1.5 text-xs hover:border-ink"
           >
             Clear all
           </button>

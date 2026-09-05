@@ -583,6 +583,51 @@ export default function CatalogClient({
   // left sidebar (desktop, once filters are open).
   const filterPanelBody = (
     <>
+      {/* lg:hidden — explicit report: filterPanelBody is shared verbatim
+          between the mobile inline panel AND the desktop sidebar (both
+          just render `{filterPanelBody}`), so this accordion copy of Sort
+          was showing at `lg`+ too, right alongside the toolbar's own
+          separate hover-opened "Sort" dropdown — the exact duplication
+          being fixed for mobile also existed on desktop the whole time.
+          Desktop keeps only the toolbar dropdown; below `lg`, where that
+          dropdown is now hidden (see sortSelect above), this is the only
+          way to change sort.
+          Explicit request: moved to the top of the list, above Category —
+          matches the reference's own "FILTER & SORT" sheet, where Sort By
+          is the first row. */}
+      <div className="lg:hidden">
+        <FilterSection
+          title="Sort by"
+          isOpen={openSections.sort}
+          onToggle={() => setOpenSections((s) => ({ ...s, sort: !s.sort }))}
+          onClear={sort !== "featured" ? () => setSort("featured") : undefined}
+        >
+          <div className="space-y-3">
+            {(
+              [
+                { value: "featured", label: "Featured" },
+                { value: "newest", label: "Newest" },
+                { value: "price-asc", label: "Price: low to high" },
+                { value: "price-desc", label: "Price: high to low" },
+              ] as const
+            ).map((opt) => (
+              <label
+                key={opt.value}
+                className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
+              >
+                <input
+                  type="checkbox"
+                  checked={sort === opt.value}
+                  onChange={() => setSort(opt.value)}
+                  className="h-4 w-4 accent-ink"
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </FilterSection>
+      </div>
+
       <FilterSection
         title="Category"
         count={categoryFilter.length}
@@ -708,48 +753,6 @@ export default function CatalogClient({
           ))}
         </div>
       </FilterSection>
-
-      {/* lg:hidden — explicit report: filterPanelBody is shared verbatim
-          between the mobile inline panel AND the desktop sidebar (both
-          just render `{filterPanelBody}`), so this accordion copy of Sort
-          was showing at `lg`+ too, right alongside the toolbar's own
-          separate hover-opened "Sort" dropdown — the exact duplication
-          being fixed for mobile also existed on desktop the whole time.
-          Desktop keeps only the toolbar dropdown; below `lg`, where that
-          dropdown is now hidden (see sortSelect above), this is the only
-          way to change sort. */}
-      <div className="lg:hidden">
-        <FilterSection
-          title="Sort by"
-          isOpen={openSections.sort}
-          onToggle={() => setOpenSections((s) => ({ ...s, sort: !s.sort }))}
-          onClear={sort !== "featured" ? () => setSort("featured") : undefined}
-        >
-          <div className="space-y-3">
-            {(
-              [
-                { value: "featured", label: "Featured" },
-                { value: "newest", label: "Newest" },
-                { value: "price-asc", label: "Price: low to high" },
-                { value: "price-desc", label: "Price: high to low" },
-              ] as const
-            ).map((opt) => (
-              <label
-                key={opt.value}
-                className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
-              >
-                <input
-                  type="checkbox"
-                  checked={sort === opt.value}
-                  onChange={() => setSort(opt.value)}
-                  className="h-4 w-4 accent-ink"
-                />
-                <span>{opt.label}</span>
-              </label>
-            ))}
-          </div>
-        </FilterSection>
-      </div>
 
       <div className="flex items-center py-6">
         <button

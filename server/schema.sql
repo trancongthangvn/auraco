@@ -98,7 +98,8 @@ CREATE TABLE products (
   stock             INTEGER      NOT NULL DEFAULT 0 CHECK (stock >= 0),
   active            BOOLEAN      NOT NULL DEFAULT TRUE,
   sort_order        INTEGER      NOT NULL DEFAULT 0, -- manual priority, lower shows first; 0 = falls back to created_at DESC
-  video_url         TEXT, -- optional looping product video for the homepage video carousel
+  video_url         TEXT, -- optional looping product video for the homepage video carousel; kept in sync as video_urls[0] on every write
+  video_urls        JSONB        NOT NULL DEFAULT '[]', -- ordered array of video paths/URLs; the admin's real multi-video list
   bundle_discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0
                     CHECK (bundle_discount_percent >= 0 AND bundle_discount_percent <= 100),
   brand             VARCHAR(160), -- free-text designer/collection name, distinct from category (Necklaces/...) and collections (Quiet Luxury/...)

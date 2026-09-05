@@ -37,6 +37,7 @@ type AdminProduct = {
   stock: number;
   active: boolean;
   video_url: string | null;
+  video_urls?: string[];
   sort_order: number;
   attributes?: AdminAttribute[];
   collections?: string[];
@@ -93,6 +94,13 @@ const newImageKey = () => `img${Date.now()}-${imageKeySeq++}`;
 type EditDescriptionSection = { _key: string; title: string; content: string };
 let descriptionSectionKeySeq = 0;
 const newDescriptionSectionKey = () => `sec${Date.now()}-${descriptionSectionKeySeq++}`;
+
+// Same stable-key need again — each row owns a VideoField with its own
+// local upload/error/mode state, which must stay with the row it belongs
+// to across an add/remove elsewhere in the list.
+type EditVideo = { _key: string; url: string };
+let videoKeySeq = 0;
+const newVideoKey = () => `vid${Date.now()}-${videoKeySeq++}`;
 
 const emptyVariant = (): AdminVariant => ({
   _key: newVariantKey(),
@@ -196,6 +204,68 @@ function DescriptionSectionsField({
   );
 }
 
+/** Replaces the old single VideoField, which only ever let a product carry
+ *  one video. Explicit request: allow several — each row is still the same
+ *  upload-or-paste-URL widget, just repeated, so uploading/pasting/removing
+ *  a video works exactly as it always did per row. */
+function VideoUrlsField({
+  videos,
+  onAdd,
+  onUpdate,
+  onRemove,
+  disabled,
+}: {
+  videos: EditVideo[];
+  onAdd: () => void;
+  onUpdate: (index: number, url: string | null) => void;
+  onRemove: (index: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="mb-6">
+      <div className="mb-2 flex items-center justify-between">
+        <Label className="mb-0">Video sản phẩm</Label>
+        <Button type="button" size="sm" variant="ghost" onClick={onAdd} disabled={disabled}>
+          + Thêm video
+        </Button>
+      </div>
+      <p className="mb-3 text-xs text-black/40">
+        Video MP4 ngắn, lặp — video đầu tiên hiển thị ở băng video trên trang
+        chủ, tất cả hiển thị lần lượt ở mục &quot;See It IRL&quot; trên trang
+        sản phẩm. Để trống nếu sản phẩm không có video.
+      </p>
+      <div className="space-y-3">
+        {videos.length === 0 && (
+          <p className="text-xs italic text-black/30">Chưa có video nào.</p>
+        )}
+        {videos.map((video, i) => (
+          <div key={video._key} className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <VideoField
+                value={video.url || null}
+                onChange={(url) => onUpdate(i, url)}
+                disabled={disabled}
+              />
+            </div>
+            <IconButton
+              type="button"
+              tone="danger"
+              className="shrink-0"
+              aria-label="Xóa video"
+              disabled={disabled}
+              onClick={() => onRemove(i)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+              </svg>
+            </IconButton>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminProductsPage() {
   const { session } = useAdminAuth();
   const [products, setProducts] = useState<AdminProduct[]>([]);
@@ -235,7 +305,7 @@ export default function AdminProductsPage() {
   const [editBundleCompanions, setEditBundleCompanions] = useState<string[]>([]);
   const [bundleSearch, setBundleSearch] = useState("");
   const [editBundleDiscount, setEditBundleDiscount] = useState("0");
-  const [editVideoUrl, setEditVideoUrl] = useState<string | null>(null);
+  const [editVideos, setEditVideos] = useState<EditVideo[]>([]);
   const [editShortDescription, setEditShortDescription] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editDescriptionSections, setEditDescriptionSections] = useState<
@@ -309,6 +379,16 @@ export default function AdminProductsPage() {
 
   const removeDescriptionSection = (index: number) => {
     setEditDescriptionSections((list) => list.filter((_, i) => i !== index));
+  };
+
+  const updateVideo = (index: number, url: string | null) => {
+    setEditVideos((list) =>
+      list.map((v, i) => (i === index ? { ...v, url: url ?? "" } : v))
+    );
+  };
+
+  const removeVideo = (index: number) => {
+    setEditVideos((list) => list.filter((_, i) => i !== index));
   };
 
   function moveItem<T>(list: T[], index: number, direction: -1 | 1): T[] {
@@ -397,7 +477,13 @@ export default function AdminProductsPage() {
     setEditMetaTitle(p.meta_title ?? "");
     setEditMetaDescription(p.meta_description ?? "");
     setEditShowAtHome(Boolean(p.show_at_home));
-    setEditVideoUrl(p.video_url ?? null);
+    setEditVideos(
+      p.video_urls && p.video_urls.length > 0
+        ? p.video_urls.map((url) => ({ _key: newVideoKey(), url }))
+        : p.video_url
+          ? [{ _key: newVideoKey(), url: p.video_url }]
+          : []
+    );
     setEditMaterial(p.material ?? "");
     setEditShortDescription(p.short_description ?? "");
     setEditDescription(p.description ?? "");
@@ -608,7 +694,7 @@ export default function AdminProductsPage() {
             collections: editCollections,
             sortOrder: Number.isInteger(parsedSortOrder) ? parsedSortOrder : 0,
             stock: Number.isInteger(parsedStock) ? parsedStock : editing.stock,
-            videoUrl: editVideoUrl,
+            videoUrls: editVideos.map((v) => v.url).filter((url) => url.trim().length > 0),
             material: editMaterial.trim() || editing.material,
             shortDescription: editShortDescription.trim() || null,
             description: editDescription,
@@ -1244,15 +1330,15 @@ export default function AdminProductsPage() {
                 </div>
               </details>
 
-              <div className="mb-6">
-                <VideoField
-                  label="Video sản phẩm"
-                  hint="Video MP4 ngắn, lặp — hiển thị ở băng video trên trang chủ. Để trống nếu sản phẩm không có video."
-                  value={editVideoUrl}
-                  onChange={setEditVideoUrl}
-                  disabled={saving}
-                />
-              </div>
+              <VideoUrlsField
+                videos={editVideos}
+                onAdd={() =>
+                  setEditVideos((list) => [...list, { _key: newVideoKey(), url: "" }])
+                }
+                onUpdate={updateVideo}
+                onRemove={removeVideo}
+                disabled={saving}
+              />
 
               <DescriptionSectionsField
                 sections={editDescriptionSections}

@@ -46,8 +46,14 @@ export type FullProduct = {
   descriptionSections?: { title: string; content: string }[];
   features: string[];
   stock: number;
-  /** Optional looping product video (MP4) shown in the homepage video carousel. */
+  /** Optional looping product video (MP4) shown in the homepage video
+   *  carousel — always videoUrls[0], kept untouched so that carousel keeps
+   *  seeing exactly one video per product regardless of how many are set. */
   videoUrl?: string;
+  /** Every video attached to this product, in order (see migration 018).
+   *  Used by the product page's own "See It IRL" section, which queues all
+   *  of them before moving on to similar products' videos. */
+  videoUrls?: string[];
   attributes?: ProductAttribute[];
   /** Real per-product "Details & Fit" + "How To Style It" HTML imported from
    * the reference site (see docs/product-details.sql). Undefined/null for

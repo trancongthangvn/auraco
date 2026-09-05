@@ -44,8 +44,16 @@ export type ApiProduct = {
   features: string[];
   stock: number;
   active: boolean;
-  /** Optional looping product video (MP4). Null/absent for most products. */
+  /** Optional looping product video (MP4). Null/absent for most products.
+   *  Always kept as video_urls[0] by the API on every write — read
+   *  video_urls when you need the FULL list; this stays untouched
+   *  specifically so the homepage's "has a video" filter/VideoCarousel
+   *  keep working unchanged, seeing exactly the first video. */
   video_url?: string | null;
+  /** Ordered list of every video attached to this product (see migration
+   *  018). Absent/empty on older rows that predate it — falls back to
+   *  `video_url` as a single-item list. */
+  video_urls?: string[];
   attributes?: { name: string; value: string }[];
   collections?: string[];
   /** Real per-product "Details & Fit" + "How To Style It" HTML, scraped/
@@ -126,6 +134,12 @@ export function toFullProduct(api: ApiProduct): FullProduct {
     features: api.features,
     stock: api.stock,
     videoUrl: api.video_url ?? undefined,
+    videoUrls:
+      api.video_urls && api.video_urls.length > 0
+        ? api.video_urls
+        : api.video_url
+          ? [api.video_url]
+          : [],
     attributes: api.attributes,
     detailsHtml: api.details_html ?? undefined,
     variants: (api.variants || []).map(toProductVariant),

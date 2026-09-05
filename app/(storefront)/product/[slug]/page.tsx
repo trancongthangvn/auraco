@@ -185,13 +185,17 @@ export default async function ProductPage({
 
   // "See It IRL" auto-advances through videos of similar products (same
   // collection/category as the one being viewed, via fetchRelatedRaw) once
-  // the current clip ends — the current product's own video plays first,
-  // then whichever related products have one, deduped and capped so the
-  // loop doesn't grow unbounded on a big collection.
+  // the current clip ends — every one of the current product's OWN videos
+  // plays first (a product can now have several, see migration 018), then
+  // whichever related products have one, deduped and capped so the loop
+  // doesn't grow unbounded on a big collection.
   const seeItIrlVideos = [
-    product.videoUrl
-      ? { slug: product.slug, name: product.name, videoUrl: product.videoUrl, thumbnail: product.thumbnailUrl || product.images[0] }
-      : null,
+    ...(product.videoUrls ?? []).map((videoUrl) => ({
+      slug: product.slug,
+      name: product.name,
+      videoUrl,
+      thumbnail: product.thumbnailUrl || product.images[0],
+    })),
     ...rawRelated
       .filter((p) => p.video_url && p.slug !== product.slug)
       .slice(0, 9)

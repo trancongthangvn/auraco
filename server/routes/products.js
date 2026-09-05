@@ -178,6 +178,20 @@ function normalizeNullableString(v) {
   return trimmed === '' ? null : trimmed;
 }
 
+/** Multiple product videos (see migration 018): an ordered array of
+ *  strings, blank entries dropped. `video_url` (singular) is always
+ *  derived from this — see normalizeVideoUrls's caller in each route —
+ *  so every existing reader of the singular column keeps working
+ *  unchanged, seeing exactly the first video of the list. */
+function isValidVideoUrls(v) {
+  return Array.isArray(v) && v.every((u) => typeof u === 'string');
+}
+
+function normalizeVideoUrls(v) {
+  if (!Array.isArray(v)) return [];
+  return v.map((u) => (typeof u === 'string' ? u.trim() : '')).filter((u) => u !== '');
+}
+
 // ----------------------------------------------------------------------------
 // Public: GET /api/products  (list, filter by collection/category)
 // ----------------------------------------------------------------------------
@@ -330,6 +344,7 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
       active,
       videoUrl,
       video_url: videoUrlSnake,
+      videoUrls,
       collections, // array of collection slugs
       brand,
       thumbnailUrl,
@@ -343,6 +358,16 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
     } = req.body || {};
 
     const videoUrlInput = videoUrl !== undefined ? videoUrl : videoUrlSnake;
+    // The array (multiple videos) always wins over the singular field when
+    // both are sent; a caller that only ever knew about the singular field
+    // (none left in this codebase, but the shape stays accepted) still
+    // works exactly as before.
+    const effectiveVideoUrls =
+      videoUrls !== undefined
+        ? normalizeVideoUrls(videoUrls)
+        : videoUrlInput !== undefined
+          ? [normalizeVideoUrl(videoUrlInput)].filter((u) => u !== null)
+          : undefined;
 
     if (!isNonEmptyString(slug)) return res.status(400).json({ error: 'slug is required' });
     if (!isNonEmptyString(name)) return res.status(400).json({ error: 'name is required' });
@@ -365,6 +390,9 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
     if (descriptionSections !== undefined && !isValidDescriptionSections(descriptionSections)) {
       return res.status(400).json({ error: 'descriptionSections must be an array of {title, content} strings' });
     }
+    if (videoUrls !== undefined && !isValidVideoUrls(videoUrls)) {
+      return res.status(400).json({ error: 'videoUrls must be an array of strings' });
+    }
     if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
       return res.status(400).json({ error: 'stock must be a non-negative integer' });
     }
@@ -384,10 +412,10 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
     const result = await query(
       `INSERT INTO products
          (slug, name, category, material, price, compare_at_price, rating,
-          review_count, images, short_description, description, description_sections, features, stock, active, video_url,
+          review_count, images, short_description, description, description_sections, features, stock, active, video_url, video_urls,
           brand, thumbnail_url, discount_percent, badge_label, sticker_image_url,
           meta_title, meta_description, show_at_home, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
        RETURNING *`,
       [
         slug.trim(),
@@ -405,7 +433,8 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
         JSON.stringify(features || []),
         Number.isInteger(stock) ? stock : 0,
         active === undefined ? true : Boolean(active),
-        normalizeVideoUrl(videoUrlInput),
+        effectiveVideoUrls && effectiveVideoUrls.length > 0 ? effectiveVideoUrls[0] : null,
+        JSON.stringify(effectiveVideoUrls || []),
         normalizeNullableString(brand),
         normalizeNullableString(thumbnailUrl),
         isFiniteNumber(discountPercent) ? discountPercent : 0,
@@ -469,6 +498,7 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
       active,
       videoUrl,
       video_url: videoUrlSnake,
+      videoUrls,
       collections,
       sortOrder,
       bundleDiscountPercent,
@@ -483,6 +513,15 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
     } = req.body || {};
 
     const videoUrlInput = videoUrl !== undefined ? videoUrl : videoUrlSnake;
+    // The array (multiple videos) always wins over the singular field when
+    // both are sent; undefined (neither sent) means "leave untouched" and
+    // is handled at the UPDATE below, same as every other optional column.
+    const effectiveVideoUrls =
+      videoUrls !== undefined
+        ? normalizeVideoUrls(videoUrls)
+        : videoUrlInput !== undefined
+          ? [normalizeVideoUrl(videoUrlInput)].filter((u) => u !== null)
+          : undefined;
 
     if (category !== undefined && !VALID_CATEGORIES.includes(category)) {
       return res.status(400).json({ error: `category must be one of: ${VALID_CATEGORIES.join(', ')}` });
@@ -501,6 +540,9 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
     }
     if (descriptionSections !== undefined && !isValidDescriptionSections(descriptionSections)) {
       return res.status(400).json({ error: 'descriptionSections must be an array of {title, content} strings' });
+    }
+    if (videoUrls !== undefined && !isValidVideoUrls(videoUrls)) {
+      return res.status(400).json({ error: 'videoUrls must be an array of strings' });
     }
     if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
       return res.status(400).json({ error: 'stock must be a non-negative integer' });
@@ -541,18 +583,19 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
          stock = $13,
          active = $14,
          video_url = $15,
-         sort_order = $16,
-         bundle_discount_percent = $17,
-         brand = $18,
-         thumbnail_url = $19,
-         discount_percent = $20,
-         badge_label = $21,
-         sticker_image_url = $22,
-         meta_title = $23,
-         meta_description = $24,
-         show_at_home = $25,
+         video_urls = $16,
+         sort_order = $17,
+         bundle_discount_percent = $18,
+         brand = $19,
+         thumbnail_url = $20,
+         discount_percent = $21,
+         badge_label = $22,
+         sticker_image_url = $23,
+         meta_title = $24,
+         meta_description = $25,
+         show_at_home = $26,
          updated_at = now()
-       WHERE slug = $26
+       WHERE slug = $27
        RETURNING *`,
       [
         name !== undefined ? name : current.name,
@@ -571,7 +614,12 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
         features !== undefined ? JSON.stringify(features) : JSON.stringify(current.features),
         stock !== undefined ? stock : current.stock,
         active !== undefined ? Boolean(active) : current.active,
-        videoUrlInput !== undefined ? normalizeVideoUrl(videoUrlInput) : current.video_url,
+        effectiveVideoUrls !== undefined
+          ? (effectiveVideoUrls.length > 0 ? effectiveVideoUrls[0] : null)
+          : current.video_url,
+        effectiveVideoUrls !== undefined
+          ? JSON.stringify(effectiveVideoUrls)
+          : JSON.stringify(current.video_urls),
         sortOrder !== undefined ? sortOrder : current.sort_order,
         bundleDiscountPercent !== undefined ? bundleDiscountPercent : current.bundle_discount_percent,
         brand !== undefined ? normalizeNullableString(brand) : current.brand,

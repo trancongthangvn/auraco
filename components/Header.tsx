@@ -171,13 +171,13 @@ export default function Header({
     setMegaProducts((prev) => ({ ...prev, [key]: "loading" }));
     apiFetch<ApiProduct[]>(`/api/products?category=${encodeURIComponent(category)}`)
       .then((rows) => {
-        // Explicit request: cap each mega-menu dropdown at 6 products,
-        // sorted A-Z, dropping the rest — a deliberate departure from the
-        // reference site (which caps at 12, not 6).
+        // Reversed an earlier explicit decision that hard-capped this list
+        // at 6 (dropping the rest outright). Now the full list is kept,
+        // sorted A-Z, and the panel itself scrolls — see the product-list
+        // div's max-h-[240px] below, sized to show ~6 rows before scrolling.
         const mapped = rows
           .map(toFullProduct)
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .slice(0, 6);
+          .sort((a, b) => a.name.localeCompare(b.name));
         setMegaProducts((prev) => ({ ...prev, [key]: mapped }));
       })
       .catch(() => {
@@ -465,30 +465,38 @@ export default function Header({
                             No products found.
                           </p>
                         ) : (
-                          products.map((p) => (
-                            <Link
-                              key={p.slug}
-                              href={`/product/${p.slug}`}
-                              className="flex items-center gap-3 border-b border-black/10 last:border-b-0 py-2 uppercase text-xs tracking-[0.055em] text-ink hover:text-gold"
-                            >
-                              <span className="relative shrink-0 w-9 h-9 overflow-hidden bg-[#f5f2ee]">
-                                {/* Products can be saved without images. The
-                                    reference uses a dedicated lifestyle
-                                    thumbnail here, distinct from the plain
-                                    catalog shot used everywhere else. */}
-                                {(p.thumbnailUrl || p.images[0]) && (
-                                  <Image
-                                    src={p.thumbnailUrl || p.images[0]}
-                                    alt=""
-                                    fill
-                                    sizes="36px"
-                                    className="object-cover"
-                                  />
-                                )}
-                              </span>
-                              <span className="truncate">{p.name}</span>
-                            </Link>
-                          ))
+                          // Capped to ~6 visible rows with its own scrollbar
+                          // instead of the earlier hard 6-item cap that
+                          // dropped every product past the 6th outright —
+                          // now the full category list is here, just
+                          // scrollable, matching the collection sub-lists'
+                          // own max-h/overflow pattern above.
+                          <div className="max-h-[312px] overflow-y-auto pr-1">
+                            {products.map((p) => (
+                              <Link
+                                key={p.slug}
+                                href={`/product/${p.slug}`}
+                                className="flex items-center gap-3 border-b border-black/10 last:border-b-0 py-2 uppercase text-xs tracking-[0.055em] text-ink hover:text-gold"
+                              >
+                                <span className="relative shrink-0 w-9 h-9 overflow-hidden bg-[#f5f2ee]">
+                                  {/* Products can be saved without images. The
+                                      reference uses a dedicated lifestyle
+                                      thumbnail here, distinct from the plain
+                                      catalog shot used everywhere else. */}
+                                  {(p.thumbnailUrl || p.images[0]) && (
+                                    <Image
+                                      src={p.thumbnailUrl || p.images[0]}
+                                      alt=""
+                                      fill
+                                      sizes="36px"
+                                      className="object-cover"
+                                    />
+                                  )}
+                                </span>
+                                <span className="truncate">{p.name}</span>
+                              </Link>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>

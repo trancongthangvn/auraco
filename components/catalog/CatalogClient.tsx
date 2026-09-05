@@ -843,9 +843,26 @@ export default function CatalogClient({
             // content even while grid-template-columns says 0px — the track
             // and the item need to shrink together for the collapse to
             // actually read as a slide rather than a jump-cut at the end.
-            className={`hidden lg:sticky lg:top-20 lg:block lg:min-w-0 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:overflow-x-hidden lg:transition-opacity lg:duration-300 lg:ease-out ${
+            //
+            // top/maxHeight are inline (not lg:top-20/lg:max-h-[calc(100vh-
+            // 6rem)]) — explicit bug report: that fixed 80px only matched
+            // Header's own ~65px height plus a 15px gap when Announcement
+            // was dismissed. With it showing, Header's real footprint grows
+            // to ~105px (Announcement's own height + Header's), so the
+            // sidebar started 25px too high — its own top edge, and the
+            // "Category" heading inside it, sat behind the opaque header.
+            // Composing both published heights (same pattern as the
+            // toolbar and mobile panel above) keeps this flush below
+            // Header regardless of which state it's in. Only ever applied
+            // at `lg`+ in practice — hidden below that — so no lg: prefix
+            // is needed on the inline style itself.
+            className={`hidden lg:sticky lg:block lg:min-w-0 lg:self-start lg:overflow-y-auto lg:overflow-x-hidden lg:transition-opacity lg:duration-300 lg:ease-out ${
               filtersOpen ? "lg:opacity-100" : "lg:pointer-events-none lg:opacity-0"
             }`}
+            style={{
+              top: "calc(var(--announcement-h,0px) + var(--header-h,64px) + 16px)",
+              maxHeight: "calc(100vh - var(--announcement-h,0px) - var(--header-h,64px) - 32px)",
+            }}
           >
             {/* No toggle/count copy here — it used to live in this sidebar
                 AND in the toolbar row below simultaneously, discretely

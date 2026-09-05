@@ -32,6 +32,7 @@ type AdminProduct = {
   images: string[];
   short_description?: string | null;
   description: string;
+  description_sections?: { title: string; content: string }[];
   features: string[];
   stock: number;
   active: boolean;
@@ -85,6 +86,14 @@ type EditImage = { _key: string; url: string };
 let imageKeySeq = 0;
 const newImageKey = () => `img${Date.now()}-${imageKeySeq++}`;
 
+// Same stable-key need again, for the product page's accordion rows — an
+// index-derived key would reuse a row's own local focus/cursor state across
+// a position whose actual title/content changed when a row is added or
+// removed above it.
+type EditDescriptionSection = { _key: string; title: string; content: string };
+let descriptionSectionKeySeq = 0;
+const newDescriptionSectionKey = () => `sec${Date.now()}-${descriptionSectionKeySeq++}`;
+
 const emptyVariant = (): AdminVariant => ({
   _key: newVariantKey(),
   color_name: "",
@@ -109,6 +118,77 @@ type AdminCollection = { id: number; slug: string; name: string };
  *  any number of. Kept in sync with server/routes/products.js's own
  *  VALID_CATEGORIES allow-list. */
 const CATEGORY_OPTIONS = ["Necklaces", "Bracelets", "Earrings", "Signature Sets"];
+
+/** Replaces the old single "Mô tả sản phẩm" textarea, which only ever fed
+ *  one fixed accordion row ("Why You'll Love It") on the product page.
+ *  Explicit request: split it into a repeatable list of {tên, nội dung}
+ *  rows, each becoming its own accordion row there, in the order added —
+ *  same shared UI in both the create and edit forms, since both had the
+ *  identical single box before. */
+function DescriptionSectionsField({
+  sections,
+  onAdd,
+  onUpdate,
+  onRemove,
+  disabled,
+}: {
+  sections: EditDescriptionSection[];
+  onAdd: () => void;
+  onUpdate: (index: number, field: "title" | "content", value: string) => void;
+  onRemove: (index: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="mb-4">
+      <div className="mb-2 flex items-center justify-between">
+        <Label className="mb-0">Mô tả sản phẩm</Label>
+        <Button type="button" size="sm" variant="ghost" onClick={onAdd} disabled={disabled}>
+          + Thêm mục
+        </Button>
+      </div>
+      <p className="mb-3 text-xs text-black/40">
+        Mỗi mục hiển thị thành một khối riêng trên trang sản phẩm (VD: &quot;Why
+        You&apos;ll Love It&quot;), theo đúng thứ tự thêm vào.
+      </p>
+      <div className="space-y-2">
+        {sections.length === 0 && (
+          <p className="text-xs italic text-black/30">Chưa có mục mô tả nào.</p>
+        )}
+        {sections.map((section, i) => (
+          <div key={section._key} className="flex gap-2">
+            <Input
+              value={section.title}
+              onChange={(e) => onUpdate(i, "title", e.target.value)}
+              placeholder="Tên (VD: Why You'll Love It)"
+              className="w-[38%] shrink-0 text-xs"
+              disabled={disabled}
+            />
+            <Textarea
+              value={section.content}
+              onChange={(e) => onUpdate(i, "content", e.target.value)}
+              rows={3}
+              placeholder="Nội dung mô tả theo tên trên"
+              className="min-w-0 flex-1 text-xs"
+              disabled={disabled}
+            />
+            <IconButton
+              type="button"
+              tone="danger"
+              className="shrink-0 self-start"
+              aria-label="Xóa mục mô tả"
+              disabled={disabled}
+              onClick={() => onRemove(i)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+              </svg>
+            </IconButton>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminProductsPage() {
   const { session } = useAdminAuth();
@@ -152,6 +232,9 @@ export default function AdminProductsPage() {
   const [editVideoUrl, setEditVideoUrl] = useState<string | null>(null);
   const [editShortDescription, setEditShortDescription] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editDescriptionSections, setEditDescriptionSections] = useState<
+    EditDescriptionSection[]
+  >([]);
   const [editFeatures, setEditFeatures] = useState<string[]>([]);
   const [editImages, setEditImages] = useState<EditImage[]>([]);
   const [editAttributes, setEditAttributes] = useState<AdminAttribute[]>([]);
@@ -206,6 +289,20 @@ export default function AdminProductsPage() {
 
   const removeAttribute = (index: number) => {
     setEditAttributes((list) => list.filter((_, i) => i !== index));
+  };
+
+  const updateDescriptionSection = (
+    index: number,
+    field: "title" | "content",
+    value: string
+  ) => {
+    setEditDescriptionSections((list) =>
+      list.map((s, i) => (i === index ? { ...s, [field]: value } : s))
+    );
+  };
+
+  const removeDescriptionSection = (index: number) => {
+    setEditDescriptionSections((list) => list.filter((_, i) => i !== index));
   };
 
   function moveItem<T>(list: T[], index: number, direction: -1 | 1): T[] {
@@ -298,6 +395,28 @@ export default function AdminProductsPage() {
     setEditMaterial(p.material ?? "");
     setEditShortDescription(p.short_description ?? "");
     setEditDescription(p.description ?? "");
+    // Seed one row from the old single description field when a product
+    // has no named sections yet, so its existing content shows up in the
+    // new UI instead of looking empty — the admin can rename or add to it.
+    // Sent back unchanged unless edited, since saveEdit's fallback (only
+    // clearing the row list wipes it) never runs while a row exists.
+    setEditDescriptionSections(
+      p.description_sections && p.description_sections.length > 0
+        ? p.description_sections.map((s) => ({
+            _key: newDescriptionSectionKey(),
+            title: s.title,
+            content: s.content,
+          }))
+        : p.description && p.description.trim()
+          ? [
+              {
+                _key: newDescriptionSectionKey(),
+                title: "Why You'll Love It",
+                content: p.description,
+              },
+            ]
+          : []
+    );
     setEditFeatures(p.features ?? []);
     setEditImages((p.images ?? []).map((url) => ({ _key: newImageKey(), url })));
     setModalError(null);
@@ -404,6 +523,7 @@ export default function AdminProductsPage() {
     setEditStock("0");
     setEditShortDescription("");
     setEditDescription("");
+    setEditDescriptionSections([]);
     setEditImages([]);
     setEditThumbnail(null);
     setCreateError(null);
@@ -436,6 +556,10 @@ export default function AdminProductsPage() {
           sortOrder: Number.isInteger(parsedSortOrder) ? parsedSortOrder : 0,
           shortDescription: editShortDescription.trim() || null,
           description: editDescription,
+          descriptionSections: editDescriptionSections.map((s) => ({
+            title: s.title,
+            content: s.content,
+          })),
           images: editImages.map((img) => img.url).filter((url) => url.trim().length > 0),
           thumbnailUrl: editThumbnail,
         }),
@@ -482,6 +606,10 @@ export default function AdminProductsPage() {
             material: editMaterial.trim() || editing.material,
             shortDescription: editShortDescription.trim() || null,
             description: editDescription,
+            descriptionSections: editDescriptionSections.map((s) => ({
+              title: s.title,
+              content: s.content,
+            })),
             features: editFeatures.filter((f) => f.trim().length > 0),
             images: editImages.map((img) => img.url).filter((url) => url.trim().length > 0),
             brand: editBrand.trim() || null,
@@ -847,13 +975,16 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              <Label>Mô tả sản phẩm</Label>
-              <Textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                rows={3}
-                placeholder="Mô tả hiển thị ở mục &quot;Why You'll Love It&quot;"
-                className="mb-4"
+              <DescriptionSectionsField
+                sections={editDescriptionSections}
+                onAdd={() =>
+                  setEditDescriptionSections((list) => [
+                    ...list,
+                    { _key: newDescriptionSectionKey(), title: "", content: "" },
+                  ])
+                }
+                onUpdate={updateDescriptionSection}
+                onRemove={removeDescriptionSection}
                 disabled={saving}
               />
 
@@ -1117,13 +1248,16 @@ export default function AdminProductsPage() {
                 />
               </div>
 
-              <Label>Mô tả sản phẩm</Label>
-              <Textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                rows={5}
-                placeholder="Mô tả hiển thị ở mục &quot;Why You'll Love It&quot; trên trang sản phẩm"
-                className="mb-6"
+              <DescriptionSectionsField
+                sections={editDescriptionSections}
+                onAdd={() =>
+                  setEditDescriptionSections((list) => [
+                    ...list,
+                    { _key: newDescriptionSectionKey(), title: "", content: "" },
+                  ])
+                }
+                onUpdate={updateDescriptionSection}
+                onRemove={removeDescriptionSection}
                 disabled={saving}
               />
 

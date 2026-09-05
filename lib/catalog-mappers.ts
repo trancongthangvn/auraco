@@ -36,6 +36,11 @@ export type ApiProduct = {
    *  collapsed "Why You'll Love It" accordion. Null/absent hides the line. */
   short_description?: string | null;
   description: string;
+  /** Ordered {title, content} pairs, each its own accordion row on the
+   *  product page, ahead of the fixed Details/Delivery & Returns rows.
+   *  Empty/absent falls back to the single `description` above, rendered
+   *  as one "Why You'll Love It" row (pre-existing behaviour, unchanged). */
+  description_sections?: { title: string; content: string }[];
   features: string[];
   stock: number;
   active: boolean;
@@ -117,6 +122,7 @@ export function toFullProduct(api: ApiProduct): FullProduct {
     images: api.images,
     shortDescription: api.short_description ?? undefined,
     description: api.description,
+    descriptionSections: api.description_sections ?? [],
     features: api.features,
     stock: api.stock,
     videoUrl: api.video_url ?? undefined,

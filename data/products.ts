@@ -39,6 +39,11 @@ export type FullProduct = {
    *  Love It" accordion. Undefined/null hides the line. */
   shortDescription?: string;
   description: string;
+  /** Ordered {title, content} pairs, each its own accordion row on the
+   *  product page, ahead of the fixed Details/Delivery & Returns rows.
+   *  Undefined/empty falls back to `description` above, rendered as a
+   *  single "Why You'll Love It" row (pre-existing behaviour, unchanged). */
+  descriptionSections?: { title: string; content: string }[];
   features: string[];
   stock: number;
   /** Optional looping product video (MP4) shown in the homepage video carousel. */

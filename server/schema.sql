@@ -93,6 +93,7 @@ CREATE TABLE products (
   images            JSONB        NOT NULL DEFAULT '[]', -- ordered array of image URLs
   short_description VARCHAR(200), -- always-visible one-line tagline under the product name; distinct from the long description below
   description       TEXT         NOT NULL DEFAULT '',
+  description_sections JSONB     NOT NULL DEFAULT '[]', -- ordered [{title, content}], each its own accordion row; falls back to `description` when empty
   features          JSONB        NOT NULL DEFAULT '[]', -- array of short strings
   stock             INTEGER      NOT NULL DEFAULT 0 CHECK (stock >= 0),
   active            BOOLEAN      NOT NULL DEFAULT TRUE,

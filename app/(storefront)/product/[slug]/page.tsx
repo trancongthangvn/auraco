@@ -263,16 +263,32 @@ export default async function ProductPage({
                 live: all of Missoma's rows start collapsed). */}
             <Accordion
               items={[
-                {
-                  // Trailing ":" (the punctuation made sense as an always-
-                  // visible lead-in line, less so as a standalone accordion
-                  // row title alongside "Details"/"Delivery & Returns",
-                  // neither of which has one) is stripped only for this
-                  // display — the admin-set/dictionary value itself is
-                  // untouched.
-                  title: (siteSettings.whyLoveItLabel || dict.product.whyLoveIt).replace(/:\s*$/, ""),
-                  content: product.description,
-                },
+                // Explicit request: the admin's single description box
+                // (which only ever fed this one fixed row) is now a
+                // repeatable list of {title, content} rows, each its own
+                // accordion entry here — an admin can add as many named
+                // sections as a product needs. Falls back to the old
+                // single-row shape (product.description under the site-wide
+                // "Why You'll Love It" label) for any product that hasn't
+                // been given rows yet, so nothing already live changes
+                // until an admin actually edits that product.
+                ...(product.descriptionSections && product.descriptionSections.length > 0
+                  ? product.descriptionSections.map((section) => ({
+                      title: section.title,
+                      content: section.content,
+                    }))
+                  : [
+                      {
+                        // Trailing ":" (the punctuation made sense as an
+                        // always-visible lead-in line, less so as a
+                        // standalone accordion row title alongside
+                        // "Details"/"Delivery & Returns", neither of which
+                        // has one) is stripped only for this display — the
+                        // admin-set/dictionary value itself is untouched.
+                        title: (siteSettings.whyLoveItLabel || dict.product.whyLoveIt).replace(/:\s*$/, ""),
+                        content: product.description,
+                      },
+                    ]),
                 product.detailsHtml
                   ? {
                       title: dict.product.details,

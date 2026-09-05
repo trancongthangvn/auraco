@@ -139,6 +139,30 @@ function isStringOrNull(v) {
   return v === null || typeof v === 'string';
 }
 
+/** Admin-authored accordion rows for the product page (see migration 017):
+ *  an ordered array of {title, content} pairs, both plain strings. Rows with
+ *  a blank title AND blank content are dropped rather than rejected, since
+ *  the admin form's "add row" button starts a row out empty. */
+function isValidDescriptionSections(v) {
+  return (
+    Array.isArray(v) &&
+    v.every(
+      (row) =>
+        row &&
+        typeof row === 'object' &&
+        typeof row.title === 'string' &&
+        typeof row.content === 'string'
+    )
+  );
+}
+
+function normalizeDescriptionSections(v) {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter((row) => row && (row.title.trim() || row.content.trim()))
+    .map((row) => ({ title: row.title.trim(), content: row.content }));
+}
+
 /** Empty/blank video URLs are stored as NULL so "has a video" stays IS NOT NULL. */
 function normalizeVideoUrl(v) {
   if (typeof v !== 'string') return null;
@@ -300,6 +324,7 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
       images,
       shortDescription,
       description,
+      descriptionSections,
       features,
       stock,
       active,
@@ -337,6 +362,9 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
     if (features !== undefined && !Array.isArray(features)) {
       return res.status(400).json({ error: 'features must be an array' });
     }
+    if (descriptionSections !== undefined && !isValidDescriptionSections(descriptionSections)) {
+      return res.status(400).json({ error: 'descriptionSections must be an array of {title, content} strings' });
+    }
     if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
       return res.status(400).json({ error: 'stock must be a non-negative integer' });
     }
@@ -356,10 +384,10 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
     const result = await query(
       `INSERT INTO products
          (slug, name, category, material, price, compare_at_price, rating,
-          review_count, images, short_description, description, features, stock, active, video_url,
+          review_count, images, short_description, description, description_sections, features, stock, active, video_url,
           brand, thumbnail_url, discount_percent, badge_label, sticker_image_url,
           meta_title, meta_description, show_at_home, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
        RETURNING *`,
       [
         slug.trim(),
@@ -373,6 +401,7 @@ router.post('/admin/products', authMiddleware, requireStaffOrAdmin, async (req, 
         JSON.stringify(images || []),
         normalizeNullableString(shortDescription),
         typeof description === 'string' ? description : '',
+        JSON.stringify(normalizeDescriptionSections(descriptionSections)),
         JSON.stringify(features || []),
         Number.isInteger(stock) ? stock : 0,
         active === undefined ? true : Boolean(active),
@@ -434,6 +463,7 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
       images,
       shortDescription,
       description,
+      descriptionSections,
       features,
       stock,
       active,
@@ -469,6 +499,9 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
     if (features !== undefined && !Array.isArray(features)) {
       return res.status(400).json({ error: 'features must be an array' });
     }
+    if (descriptionSections !== undefined && !isValidDescriptionSections(descriptionSections)) {
+      return res.status(400).json({ error: 'descriptionSections must be an array of {title, content} strings' });
+    }
     if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
       return res.status(400).json({ error: 'stock must be a non-negative integer' });
     }
@@ -503,22 +536,23 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
          images = $8,
          short_description = $9,
          description = $10,
-         features = $11,
-         stock = $12,
-         active = $13,
-         video_url = $14,
-         sort_order = $15,
-         bundle_discount_percent = $16,
-         brand = $17,
-         thumbnail_url = $18,
-         discount_percent = $19,
-         badge_label = $20,
-         sticker_image_url = $21,
-         meta_title = $22,
-         meta_description = $23,
-         show_at_home = $24,
+         description_sections = $11,
+         features = $12,
+         stock = $13,
+         active = $14,
+         video_url = $15,
+         sort_order = $16,
+         bundle_discount_percent = $17,
+         brand = $18,
+         thumbnail_url = $19,
+         discount_percent = $20,
+         badge_label = $21,
+         sticker_image_url = $22,
+         meta_title = $23,
+         meta_description = $24,
+         show_at_home = $25,
          updated_at = now()
-       WHERE slug = $25
+       WHERE slug = $26
        RETURNING *`,
       [
         name !== undefined ? name : current.name,
@@ -531,6 +565,9 @@ router.put('/admin/products/:slug', authMiddleware, requireStaffOrAdmin, async (
         images !== undefined ? JSON.stringify(images) : JSON.stringify(current.images),
         shortDescription !== undefined ? normalizeNullableString(shortDescription) : current.short_description,
         description !== undefined ? description : current.description,
+        descriptionSections !== undefined
+          ? JSON.stringify(normalizeDescriptionSections(descriptionSections))
+          : JSON.stringify(current.description_sections),
         features !== undefined ? JSON.stringify(features) : JSON.stringify(current.features),
         stock !== undefined ? stock : current.stock,
         active !== undefined ? Boolean(active) : current.active,

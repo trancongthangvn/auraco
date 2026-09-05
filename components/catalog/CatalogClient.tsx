@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FullProduct } from "@/data/products";
 import { collectionFilters as fallbackCollectionFilters } from "@/data/products";
-import { StarRating, PlusIcon, MinusIcon } from "@/components/icons";
+import { StarRating, PlusIcon, MinusIcon, ChevronDownIcon, CheckIcon } from "@/components/icons";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { formatPrice } from "@/lib/currency";
 import AddToBagButton from "@/components/AddToBagButton";
@@ -17,6 +17,13 @@ const PRICE_BANDS: { value: string; label: string; test: (n: number) => boolean 
   { value: "u80", label: "Under $80", test: (n) => n < 80 },
   { value: "80-110", label: "$80 – $110", test: (n) => n >= 80 && n <= 110 },
   { value: "o110", label: "Over $110", test: (n) => n > 110 },
+];
+
+const SORT_OPTIONS: { value: "featured" | "newest" | "price-asc" | "price-desc"; label: string }[] = [
+  { value: "featured", label: "Featured" },
+  { value: "newest", label: "Newest" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
 ];
 
 
@@ -193,6 +200,29 @@ export default function CatalogClient({
     "newest" | "price-asc" | "price-desc" | "featured"
   >("featured");
   const [visible, setVisible] = useState(12);
+
+  // Explicit request: a plain native <select>'s OPEN dropdown popup is
+  // drawn entirely by the OS/browser, not this site's CSS — the exact same
+  // element rendered as a clean light list with a blue highlight on one
+  // device and a dark, rounded, checkmarked list on another (macOS/Safari
+  // in dark mode; `color-scheme: light` didn't fully override it there — a
+  // known WebKit inconsistency for native form-control popups). A custom-
+  // built dropdown (same pattern as CurrencyPicker.tsx) is the only way to
+  // guarantee the identical look "áp dụng cho tất cả các trang" actually
+  // asked for, on every browser and OS, since it's rendered by this
+  // component instead of the platform.
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sortOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (sortRootRef.current && !sortRootRef.current.contains(e.target as Node)) {
+        setSortOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [sortOpen]);
 
   // Explicit request: the mobile inline filter panel (Category/Type/.../
   // Reset, below `lg`) used to just sit in normal flow right under the
@@ -459,19 +489,48 @@ export default function CatalogClient({
   );
 
   const sortSelect = (
-    <label className="block min-w-0 flex-1 px-3 py-2 sm:flex-none">
-      <span className="sr-only">Sort by</span>
-      <select
-        value={sort}
-        onChange={(e) => setSort(e.target.value as typeof sort)}
-        className="font-ui w-full rounded-lg border-[0.667px] border-[#2b261f]/[0.14] bg-white px-3 py-2 text-[12.48px] font-semibold leading-[19.344px] text-[#2b261f] sm:w-[156px]"
+    <div ref={sortRootRef} className="relative min-w-0 flex-1 px-3 py-2 sm:flex-none">
+      <button
+        type="button"
+        onClick={() => setSortOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={sortOpen}
+        className="font-ui flex w-full items-center justify-between gap-2 rounded-lg border-[0.667px] border-[#2b261f]/[0.14] bg-white px-3 py-2 text-[12.48px] font-semibold leading-[19.344px] text-[#2b261f] sm:w-[156px]"
       >
-        <option value="featured">Featured</option>
-        <option value="newest">Newest</option>
-        <option value="price-asc">Price: low to high</option>
-        <option value="price-desc">Price: high to low</option>
-      </select>
-    </label>
+        <span className="sr-only">Sort by: </span>
+        {SORT_OPTIONS.find((o) => o.value === sort)?.label}
+        <ChevronDownIcon size={14} className={`shrink-0 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
+      </button>
+      {sortOpen && (
+        <ul
+          role="listbox"
+          className="absolute right-0 top-full z-40 mt-2 w-[220px] rounded-[14px] bg-white p-[7.2px] shadow-[0_16px_42px_rgba(31,26,20,0.16)] sm:w-[240px]"
+        >
+          {SORT_OPTIONS.map((opt) => {
+            const active = opt.value === sort;
+            return (
+              <li key={opt.value}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => {
+                    setSort(opt.value);
+                    setSortOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-[11.52px] py-[10.88px] text-left font-ui text-[13.44px] hover:bg-black/5 ${
+                    active ? "bg-[#f4ece3] font-semibold text-[#2b261f]" : "text-[#2b261f]"
+                  }`}
+                >
+                  {opt.label}
+                  {active && <CheckIcon size={16} className="shrink-0 text-gold" />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 
   // The five collapsible facet groups plus Reset — identical content shown

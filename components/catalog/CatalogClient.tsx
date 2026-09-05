@@ -459,10 +459,18 @@ export default function CatalogClient({
           the reference exactly: no button border/background, no uppercase
           transform, no heavy weight/tracking (all of that was this button's
           own decoration, not something the reference does). */}
+      {/* w-full justify-center (was: sm:w-auto sm:justify-start) —
+          explicit bug report: below the `sm` breakpoint this button
+          stretched to fill its flex-1 parent, centering the icon+label
+          inside that stretched width instead of sitting flush left next to
+          the item count beside it — the button visibly drifted away from
+          the toolbar's left edge on real phones even though it already
+          looked correct on tablet/desktop. Always left-aligned at its own
+          natural width now, matching what `sm:` already did. */}
       <button
         type="button"
         onClick={filtersOpen ? () => setFiltersOpen(false) : openFilters}
-        className="font-ui flex w-full items-center justify-center gap-[7.2px] px-3 py-2 text-[12.48px] font-normal leading-[19.344px] hover:text-gold sm:w-auto sm:justify-start"
+        className="font-ui flex w-auto items-center justify-start gap-[7.2px] px-3 py-2 text-[12.48px] font-normal leading-[19.344px] hover:text-gold"
       >
         <svg
           width="18"

@@ -183,6 +183,26 @@ export default async function ProductPage({
   const bundleDiscountPercent = bundle.companions.length > 0 ? bundle.discountPercent : 0;
   const { dict } = await getServerDictionary();
 
+  // "See It IRL" auto-advances through videos of similar products (same
+  // collection/category as the one being viewed, via fetchRelatedRaw) once
+  // the current clip ends — the current product's own video plays first,
+  // then whichever related products have one, deduped and capped so the
+  // loop doesn't grow unbounded on a big collection.
+  const seeItIrlVideos = [
+    product.videoUrl
+      ? { slug: product.slug, name: product.name, videoUrl: product.videoUrl, thumbnail: product.thumbnailUrl || product.images[0] }
+      : null,
+    ...rawRelated
+      .filter((p) => p.video_url && p.slug !== product.slug)
+      .slice(0, 9)
+      .map((p) => ({
+        slug: p.slug,
+        name: p.name,
+        videoUrl: p.video_url as string,
+        thumbnail: p.thumbnail_url || p.images[0],
+      })),
+  ].filter((v): v is { slug: string; name: string; videoUrl: string; thumbnail: string } => v !== null);
+
   return (
     <>
       <Announcement />
@@ -291,11 +311,7 @@ export default async function ProductPage({
               discountPercent={bundleDiscountPercent}
             />
 
-            <SeeItIRL
-              videoUrl={product.videoUrl}
-              thumbnail={product.thumbnailUrl || product.images[0]}
-              name={product.name}
-            />
+            <SeeItIRL videos={seeItIrlVideos} />
           </div>
         </div>
         </VariantProvider>

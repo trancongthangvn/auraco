@@ -91,6 +91,7 @@ CREATE TABLE products (
   rating            NUMERIC(2,1) NOT NULL DEFAULT 0 CHECK (rating >= 0 AND rating <= 5),
   review_count      INTEGER      NOT NULL DEFAULT 0 CHECK (review_count >= 0),
   images            JSONB        NOT NULL DEFAULT '[]', -- ordered array of image URLs
+  short_description VARCHAR(200), -- always-visible one-line tagline under the product name; distinct from the long description below
   description       TEXT         NOT NULL DEFAULT '',
   features          JSONB        NOT NULL DEFAULT '[]', -- array of short strings
   stock             INTEGER      NOT NULL DEFAULT 0 CHECK (stock >= 0),

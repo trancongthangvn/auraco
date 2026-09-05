@@ -31,6 +31,10 @@ export type ApiProduct = {
   rating: string;
   review_count: number;
   images: string[];
+  /** Always-visible one-line tagline shown directly under the product name —
+   *  distinct from `description`, which only ever renders inside the
+   *  collapsed "Why You'll Love It" accordion. Null/absent hides the line. */
+  short_description?: string | null;
   description: string;
   features: string[];
   stock: number;
@@ -111,6 +115,7 @@ export function toFullProduct(api: ApiProduct): FullProduct {
     rating: Number(api.rating),
     reviewCount: api.review_count,
     images: api.images,
+    shortDescription: api.short_description ?? undefined,
     description: api.description,
     features: api.features,
     stock: api.stock,

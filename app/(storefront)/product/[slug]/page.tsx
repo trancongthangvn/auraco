@@ -216,6 +216,11 @@ export default async function ProductPage({
             <h1 className="font-serif-display text-[34px] leading-[35.7px] text-[#2b261f] mt-1 mb-3">
               {product.name}
             </h1>
+            {product.shortDescription && (
+              <p className="text-[15px] leading-[22px] text-[#5c554a] mb-3">
+                {product.shortDescription}
+              </p>
+            )}
             {/* Always shown, like the reference — a product with no reviews
                 yet still gets the dimmed 5-star row (StarRating renders
                 every star at opacity-[0.35] when rating is 0), not a gap

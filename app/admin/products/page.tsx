@@ -30,6 +30,7 @@ type AdminProduct = {
   rating: number;
   review_count: number;
   images: string[];
+  short_description?: string | null;
   description: string;
   features: string[];
   stock: number;
@@ -143,6 +144,7 @@ export default function AdminProductsPage() {
   const [bundleSearch, setBundleSearch] = useState("");
   const [editBundleDiscount, setEditBundleDiscount] = useState("0");
   const [editVideoUrl, setEditVideoUrl] = useState<string | null>(null);
+  const [editShortDescription, setEditShortDescription] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editFeatures, setEditFeatures] = useState<string[]>([]);
   const [editImages, setEditImages] = useState<EditImage[]>([]);
@@ -287,6 +289,7 @@ export default function AdminProductsPage() {
     setEditMetaDescription(p.meta_description ?? "");
     setEditShowAtHome(Boolean(p.show_at_home));
     setEditVideoUrl(p.video_url ?? null);
+    setEditShortDescription(p.short_description ?? "");
     setEditDescription(p.description ?? "");
     setEditFeatures(p.features ?? []);
     setEditImages((p.images ?? []).map((url) => ({ _key: newImageKey(), url })));
@@ -392,6 +395,7 @@ export default function AdminProductsPage() {
     setEditCollections([]);
     setEditSortOrder("0");
     setEditStock("0");
+    setEditShortDescription("");
     setEditDescription("");
     setEditImages([]);
     setEditThumbnail(null);
@@ -423,6 +427,7 @@ export default function AdminProductsPage() {
           price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
           stock: Number.isInteger(parsedStock) ? parsedStock : 0,
           sortOrder: Number.isInteger(parsedSortOrder) ? parsedSortOrder : 0,
+          shortDescription: editShortDescription.trim() || null,
           description: editDescription,
           images: editImages.map((img) => img.url).filter((url) => url.trim().length > 0),
           thumbnailUrl: editThumbnail,
@@ -467,6 +472,7 @@ export default function AdminProductsPage() {
             sortOrder: Number.isInteger(parsedSortOrder) ? parsedSortOrder : 0,
             stock: Number.isInteger(parsedStock) ? parsedStock : editing.stock,
             videoUrl: editVideoUrl,
+            shortDescription: editShortDescription.trim() || null,
             description: editDescription,
             features: editFeatures.filter((f) => f.trim().length > 0),
             images: editImages.map((img) => img.url).filter((url) => url.trim().length > 0),
@@ -734,6 +740,20 @@ export default function AdminProductsPage() {
                 disabled={saving}
               />
 
+              {/* Always-visible one-line tagline under the product name on
+                  the product page — distinct from "Mô tả sản phẩm" below,
+                  which only shows inside the collapsed "Why You'll Love It"
+                  accordion. */}
+              <Label>Mô tả ngắn</Label>
+              <Input
+                value={editShortDescription}
+                onChange={(e) => setEditShortDescription(e.target.value)}
+                placeholder='VD: "The iconic mixed metal Knot Hoops in a medium size"'
+                maxLength={200}
+                className="mb-4"
+                disabled={saving}
+              />
+
               <Label>Danh mục (Brand)</Label>
               <select
                 value={editCategory}
@@ -905,6 +925,16 @@ export default function AdminProductsPage() {
                 onChange={(e) => setEditPrice(e.target.value)}
                 type="number"
                 className="mb-6"
+              />
+
+              <Label>Mô tả ngắn</Label>
+              <Input
+                value={editShortDescription}
+                onChange={(e) => setEditShortDescription(e.target.value)}
+                placeholder='VD: "The iconic mixed metal Knot Hoops in a medium size"'
+                maxLength={200}
+                className="mb-6"
+                disabled={saving}
               />
 
               <Label>Danh mục (Brand)</Label>

@@ -34,6 +34,10 @@ export type FullProduct = {
   rating: number;
   reviewCount: number;
   images: string[];
+  /** Always-visible one-line tagline under the product name — distinct from
+   *  `description`, which only renders inside the collapsed "Why You'll
+   *  Love It" accordion. Undefined/null hides the line. */
+  shortDescription?: string;
   description: string;
   features: string[];
   stock: number;

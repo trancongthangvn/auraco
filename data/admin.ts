@@ -1,17 +1,14 @@
 export type OrderStatus = "Đang xử lý" | "Đã giao" | "Đã hủy";
 
-// The value itself stays Vietnamese — it's what's stored in the DB and what
-// every status comparison in the app (STATUS_TONE, order filters, the order
-// edit dropdown) already keys off. Changing the stored value would mean a
-// data migration and touching that logic everywhere it's compared, for a
-// change that's purely cosmetic. This is a display-only translation for the
-// admin UI, which the site owner asked to be in English to match a reference
-// screenshot: it maps each stored status to the English label shown there.
-export const ORDER_STATUS_LABEL_EN: Record<OrderStatus, string> = {
-  "Đang xử lý": "Pending",
-  "Đã giao": "Delivered",
-  "Đã hủy": "Cancelled",
-};
+// A display-only map to English labels used to live here, because the owner
+// had asked for the dashboard's status column to match an English reference
+// screenshot. That was reversed on a later explicit request to put the whole
+// admin in Vietnamese, and since the stored values ARE the Vietnamese labels
+// the map had become an identity — the dashboard now prints `o.status`
+// directly, the same way the orders, payments and reviews pages always have.
+// The stored values themselves stay untouched: every status comparison in the
+// app (STATUS_TONE, order filters, the order edit dropdown) and the server's
+// own ORDER_STATUSES allow-list key off them.
 
 export type OrderItem = {
   name: string;

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Home, ArrowRight } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { apiFetch, ApiError } from "@/lib/api";
-import { ORDER_STATUS_LABEL_EN, type OrderStatus } from "@/data/admin";
+import { type OrderStatus } from "@/data/admin";
 import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
 import Badge from "@/components/admin/ui/Badge";
 
@@ -55,7 +55,7 @@ export default function AdminDashboardPage() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "Failed to load dashboard data.");
+          setError(err instanceof ApiError ? err.message : "Không tải được dữ liệu tổng quan.");
         }
       })
       .finally(() => {
@@ -77,14 +77,14 @@ export default function AdminDashboardPage() {
       <nav className="mb-3 flex items-center gap-1.5 text-[13px] text-black/45">
         <Home size={13} />
         <span>/</span>
-        <span className="text-[#2b261f]">Dashboard</span>
+        <span className="text-[#2b261f]">Tổng quan</span>
       </nav>
-      <h1 className="font-serif-display text-[26px] font-bold text-[#2b261f]">Dashboard</h1>
+      <h1 className="font-serif-display text-[26px] font-bold text-[#2b261f]">Tổng quan</h1>
       <p className="mt-1 mb-6 text-[13px] text-black/45">
-        Welcome back. Quick overview of your store.
+        Chào bạn trở lại. Xem nhanh tình hình cửa hàng.
       </p>
 
-      {loading && <p className="text-sm text-black/40 py-8 text-center">Loading...</p>}
+      {loading && <p className="text-sm text-black/40 py-8 text-center">Đang tải...</p>}
       {error && <p className="text-sm text-red-700 py-4">{error}</p>}
 
       {!loading && !error && (
@@ -97,7 +97,7 @@ export default function AdminDashboardPage() {
           <div className="mb-6 rounded-2xl border border-black/10 bg-white p-5 lg:p-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="rounded-xl bg-[#f7f1e2] p-5">
-                <p className="text-[13px] text-black/55">Products</p>
+                <p className="text-[13px] text-black/55">Sản phẩm</p>
                 <p className="mt-1 font-serif-display text-[32px] font-bold text-[#2b261f]">
                   {productCount}
                 </p>
@@ -105,11 +105,11 @@ export default function AdminDashboardPage() {
                   href="/admin/products"
                   className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-gold hover:underline"
                 >
-                  Manage catalog <ArrowRight size={13} />
+                  Quản lý sản phẩm <ArrowRight size={13} />
                 </Link>
               </div>
               <div className="rounded-xl bg-[#f7f1e2] p-5">
-                <p className="text-[13px] text-black/55">Orders</p>
+                <p className="text-[13px] text-black/55">Đơn hàng</p>
                 <p className="mt-1 font-serif-display text-[32px] font-bold text-[#2b261f]">
                   {orderTotal}
                 </p>
@@ -117,11 +117,11 @@ export default function AdminDashboardPage() {
                   href="/admin/orders"
                   className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-gold hover:underline"
                 >
-                  Review orders <ArrowRight size={13} />
+                  Xem đơn hàng <ArrowRight size={13} />
                 </Link>
               </div>
               <div className="rounded-xl bg-[#f7f1e2] p-5">
-                <p className="text-[13px] text-black/55">Pending</p>
+                <p className="text-[13px] text-black/55">Chờ xử lý</p>
                 <p className="mt-1 font-serif-display text-[32px] font-bold text-[#2b261f]">
                   {orders.filter((o) => o.status === "Đang xử lý").length}
                 </p>
@@ -129,7 +129,7 @@ export default function AdminDashboardPage() {
                   href="/admin/orders"
                   className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-gold hover:underline"
                 >
-                  Process now <ArrowRight size={13} />
+                  Xử lý ngay <ArrowRight size={13} />
                 </Link>
               </div>
             </div>
@@ -137,19 +137,19 @@ export default function AdminDashboardPage() {
 
           <div className="rounded-2xl border border-black/10 bg-white p-5 lg:p-6">
             <h2 className="mb-4 text-[15px] font-semibold text-[#2b261f]">
-              Recent orders
+              Đơn hàng gần đây
             </h2>
             {orders.length === 0 ? (
-              <EmptyState>No orders yet.</EmptyState>
+              <EmptyState>Chưa có đơn hàng nào.</EmptyState>
             ) : (
               <TableCard>
                 <table className="w-full text-sm min-w-[560px]">
                   <thead>
                     <tr className="rounded-lg bg-[#f7f1e2] text-left">
-                      <Th>Number</Th>
-                      <Th>Customer</Th>
-                      <Th align="right">Total</Th>
-                      <Th align="right">Status</Th>
+                      <Th>Mã đơn</Th>
+                      <Th>Khách hàng</Th>
+                      <Th align="right">Tổng tiền</Th>
+                      <Th align="right">Trạng thái</Th>
                       <Th align="right"></Th>
                     </tr>
                   </thead>
@@ -163,7 +163,7 @@ export default function AdminDashboardPage() {
                         <Td align="right">${o.total}</Td>
                         <Td align="right">
                           <Badge tone={STATUS_TONE[o.status]}>
-                            {ORDER_STATUS_LABEL_EN[o.status]}
+                            {o.status}
                           </Badge>
                         </Td>
                         <Td align="right">
@@ -171,7 +171,7 @@ export default function AdminDashboardPage() {
                             href={`/admin/orders/${o.id}`}
                             className="inline-flex items-center rounded-full border border-black/15 px-3.5 py-1.5 text-[12px] font-medium text-[#2b261f] hover:bg-[#f7f4f0]"
                           >
-                            View
+                            Xem
                           </Link>
                         </Td>
                       </tr>

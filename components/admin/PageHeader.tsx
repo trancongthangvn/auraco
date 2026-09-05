@@ -49,7 +49,7 @@ const GUIDES: Record<string, GuideMeta> = {
       "Toàn bộ ảnh đã tải lên từ mọi form trong admin, gộp một chỗ. Bấm Sao chép URL để dùng lại ở nơi khác thay vì tải trùng ảnh.",
   },
   "/admin/collections": {
-    title: "Collections",
+    title: "Bộ sưu tập",
     icon: Layers,
     guide:
       "Quản lý các bộ sưu tập hiển thị trên trang chủ và bộ lọc catalog (Quiet Luxury, Minimalist...). Thêm collection mới bằng nút bên phải.",

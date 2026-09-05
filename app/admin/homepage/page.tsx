@@ -54,14 +54,14 @@ type HomepageData = {
   featuredProducts?: unknown[];
 };
 
-const TABS = ["Hero banner", "Sản phẩm nổi bật", "Đánh giá khách hàng"] as const;
+const TABS = ["Ảnh bìa lớn", "Sản phẩm nổi bật", "Đánh giá khách hàng"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function AdminHomepagePage() {
   const { session } = useAdminAuth();
   useRequireAdmin();
   const isAdmin = session?.role === "admin";
-  const [tab, setTab] = useState<Tab>("Hero banner");
+  const [tab, setTab] = useState<Tab>("Ảnh bìa lớn");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -283,7 +283,7 @@ export default function AdminHomepagePage() {
         <div className="text-sm text-black/50">Đang tải...</div>
       ) : (
         <>
-          {tab === "Hero banner" && (
+          {tab === "Ảnh bìa lớn" && (
             <TableCard>
               <table className="w-full text-sm min-w-[600px]">
                 <thead>

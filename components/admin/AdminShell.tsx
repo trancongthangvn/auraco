@@ -57,22 +57,22 @@ type NavItem = {
 // are real features here the reference doesn't have; they're kept, slotted
 // in next to the closest matching reference item instead of hidden.
 const NAV: NavItem[] = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "staff"] },
-  { href: "/admin/products", label: "Products", icon: Package, roles: ["admin", "staff"] },
-  { href: "/admin/media", label: "Media", icon: Images, roles: ["admin", "staff"] },
-  { href: "/admin/collections", label: "Categories", icon: Layers, roles: ["admin"] },
-  { href: "/admin/brands", label: "Brands", icon: Tags, roles: ["admin"] },
-  { href: "/admin/certificates", label: "Certificates", icon: Award, roles: ["admin"] },
-  { href: "/admin/posts", label: "News", icon: Newspaper, roles: ["admin"] },
-  { href: "/admin/post-categories", label: "News Categories", icon: FolderTree, roles: ["admin"] },
-  { href: "/admin/homepage", label: "Pages", icon: Layout, roles: ["admin"] },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingCart, roles: ["admin", "staff"] },
-  { href: "/admin/payments", label: "Payments", icon: CreditCard, roles: ["admin"] },
-  { href: "/admin/discount-codes", label: "Discount Codes", icon: Tag, roles: ["admin"] },
-  { href: "/admin/reviews", label: "Reviews", icon: Star, roles: ["admin"] },
-  { href: "/admin/inquiries", label: "Contacts", icon: MessageSquare, roles: ["admin"] },
-  { href: "/admin/cai-dat-web", label: "System", icon: Globe, roles: ["admin"] },
-  { href: "/admin/accounts", label: "Accounts", icon: Users, roles: ["admin"] },
+  { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, roles: ["admin", "staff"] },
+  { href: "/admin/products", label: "Sản phẩm", icon: Package, roles: ["admin", "staff"] },
+  { href: "/admin/media", label: "Thư viện ảnh", icon: Images, roles: ["admin", "staff"] },
+  { href: "/admin/collections", label: "Bộ sưu tập", icon: Layers, roles: ["admin"] },
+  { href: "/admin/brands", label: "Danh mục", icon: Tags, roles: ["admin"] },
+  { href: "/admin/certificates", label: "Chứng nhận", icon: Award, roles: ["admin"] },
+  { href: "/admin/posts", label: "Tin tức", icon: Newspaper, roles: ["admin"] },
+  { href: "/admin/post-categories", label: "Chuyên mục tin", icon: FolderTree, roles: ["admin"] },
+  { href: "/admin/homepage", label: "Trang", icon: Layout, roles: ["admin"] },
+  { href: "/admin/orders", label: "Đơn hàng", icon: ShoppingCart, roles: ["admin", "staff"] },
+  { href: "/admin/payments", label: "Thanh toán", icon: CreditCard, roles: ["admin"] },
+  { href: "/admin/discount-codes", label: "Mã giảm giá", icon: Tag, roles: ["admin"] },
+  { href: "/admin/reviews", label: "Đánh giá", icon: Star, roles: ["admin"] },
+  { href: "/admin/inquiries", label: "Liên hệ", icon: MessageSquare, roles: ["admin"] },
+  { href: "/admin/cai-dat-web", label: "Hệ thống", icon: Globe, roles: ["admin"] },
+  { href: "/admin/accounts", label: "Tài khoản", icon: Users, roles: ["admin"] },
 ];
 
 const COLLAPSE_KEY = "admin-sidebar-collapsed";
@@ -158,7 +158,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <div className="min-h-screen flex items-center justify-center bg-[#f7f4f0]">
         <div className="flex items-center gap-2 text-sm text-black/40">
           <span className="w-4 h-4 border-2 border-black/20 border-t-[#2b261f] rounded-full animate-spin" />
-          Loading...
+          Đang tải...
         </div>
       </div>
     );
@@ -203,7 +203,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <button
               type="button"
               onClick={toggleCollapsed}
-              aria-label="Collapse menu"
+              aria-label="Thu gọn menu"
               className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#e8ddc7] text-[#2b261f]/50 hover:bg-white hover:text-[#2b261f]"
             >
               <ChevronLeft size={14} />
@@ -215,7 +215,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <button
             type="button"
             onClick={toggleCollapsed}
-            aria-label="Expand menu"
+            aria-label="Mở rộng menu"
             className="mx-auto mt-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#e8ddc7] text-[#2b261f]/50 hover:bg-white hover:text-[#2b261f]"
           >
             <ChevronLeft size={14} className="rotate-180" />
@@ -251,13 +251,13 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             href="/"
             target="_blank"
             rel="noopener noreferrer"
-            title={collapsed ? "View storefront" : undefined}
+            title={collapsed ? "Xem trang bán hàng" : undefined}
             className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-[#2b261f]/60 hover:bg-white/70 hover:text-[#2b261f] ${
               collapsed ? "justify-center" : ""
             }`}
           >
             <ExternalLink size={15} strokeWidth={1.5} className="shrink-0" />
-            {!collapsed && "View storefront"}
+            {!collapsed && "Xem trang bán hàng"}
           </a>
         </div>
       </aside>
@@ -275,7 +275,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             Dashboard header layout/colors exactly. */}
         <header className="h-16 bg-white border-b border-black/10 flex items-center px-4 gap-3 lg:px-6 shrink-0 sticky top-0 z-20">
           <button
-            aria-label={open ? "Close menu" : "Open menu"}
+            aria-label={open ? "Đóng menu" : "Mở menu"}
             onClick={() => setOpen((v) => !v)}
             className="lg:hidden text-black/50 hover:text-black -ml-1 shrink-0"
           >
@@ -288,7 +288,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search products, categories…"
+                placeholder="Tìm sản phẩm, danh mục…"
                 className="min-w-0 flex-1 bg-transparent text-[13px] text-[#2b261f] outline-none placeholder:text-black/35"
               />
             </div>
@@ -297,7 +297,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <button
               type="button"
-              aria-label="Notifications"
+              aria-label="Thông báo"
               onClick={() => router.push("/admin/orders")}
               className="relative flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-[#2b261f]/70 hover:bg-[#f7f4f0]"
             >
@@ -323,7 +323,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                     {session.name}
                   </span>
                   <span className="block text-[11px] text-black/45">
-                    {session.role === "admin" ? "Administrator" : "Staff"}
+                    {session.role === "admin" ? "Quản trị viên" : "Nhân viên"}
                   </span>
                 </span>
               </button>
@@ -335,7 +335,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                     className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-[#2b261f]/80 hover:bg-[#f7f4f0]"
                   >
                     <KeyRound size={14} strokeWidth={1.5} />
-                    Change password
+                    Đổi mật khẩu
                   </Link>
                   <button
                     type="button"
@@ -347,7 +347,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                     className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] text-red-600 hover:bg-red-50"
                   >
                     <LogOut size={14} strokeWidth={1.5} />
-                    Log out
+                    Đăng xuất
                   </button>
                 </div>
               )}

@@ -1050,7 +1050,7 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div>
-                      <Label>Badge (VD: HOT, LIMITED)</Label>
+                      <Label>Nhãn (VD: HOT, LIMITED)</Label>
                       <Input
                         value={editBadgeLabel}
                         onChange={(e) => setEditBadgeLabel(e.target.value)}
@@ -1088,7 +1088,7 @@ export default function AdminProductsPage() {
                     Hiện ở băng video trang chủ
                   </label>
 
-                  <Label>SEO — Meta title</Label>
+                  <Label>SEO — Tiêu đề Meta</Label>
                   <Input
                     value={editMetaTitle}
                     onChange={(e) => setEditMetaTitle(e.target.value)}
@@ -1096,7 +1096,7 @@ export default function AdminProductsPage() {
                     className="mb-4"
                     disabled={saving}
                   />
-                  <Label>SEO — Meta description</Label>
+                  <Label>SEO — Mô tả Meta</Label>
                   <Textarea
                     value={editMetaDescription}
                     onChange={(e) => setEditMetaDescription(e.target.value)}

@@ -67,9 +67,9 @@ const DEFAULT_IT_GIRL_EDIT_DESCRIPTION =
 // USD's own rate is always fixed at 1 (it's the list-price currency itself,
 // not something an admin sets) — only EUR/GBP are ever editable here.
 const CURRENCY_ROWS = [
-  { code: "USD", label: "US Dollar", symbol: "$" },
+  { code: "USD", label: "Đô la Mỹ", symbol: "$" },
   { code: "EUR", label: "Euro", symbol: "€" },
-  { code: "GBP", label: "British Pound", symbol: "£" },
+  { code: "GBP", label: "Bảng Anh", symbol: "£" },
 ] as const;
 
 export default function AdminSiteSettingsPage() {

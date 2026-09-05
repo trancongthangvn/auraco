@@ -155,12 +155,20 @@ function DescriptionSectionsField({
           <p className="text-xs italic text-black/30">Chưa có mục mô tả nào.</p>
         )}
         {sections.map((section, i) => (
-          <div key={section._key} className="flex gap-2">
+          <div key={section._key} className="flex flex-wrap gap-2 sm:flex-nowrap">
+            {/* `basis-*` (not `w-*`), matching the attributes list below —
+                Field.tsx's Input/Textarea both carry a base `w-full`, which
+                a plain `w-[N%]` utility can't reliably out-cascade since
+                Tailwind doesn't guarantee arbitrary-value utilities sort
+                after named ones in the generated stylesheet (confirmed
+                live: the title input rendered full-width, the content box
+                squeezed to ~30px). Flex-basis takes over sizing a flex
+                child from `width` regardless of that ordering. */}
             <Input
               value={section.title}
               onChange={(e) => onUpdate(i, "title", e.target.value)}
               placeholder="Tên (VD: Why You'll Love It)"
-              className="w-[38%] shrink-0 text-xs"
+              className="min-w-[140px] flex-1 basis-40 text-xs sm:flex-none"
               disabled={disabled}
             />
             <Textarea
@@ -168,7 +176,7 @@ function DescriptionSectionsField({
               onChange={(e) => onUpdate(i, "content", e.target.value)}
               rows={3}
               placeholder="Nội dung mô tả theo tên trên"
-              className="min-w-0 flex-1 text-xs"
+              className="min-w-[180px] flex-1 basis-60 text-xs"
               disabled={disabled}
             />
             <IconButton

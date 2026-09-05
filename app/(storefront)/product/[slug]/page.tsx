@@ -289,22 +289,10 @@ export default async function ProductPage({
                         content: product.description,
                       },
                     ]),
-                product.detailsHtml
-                  ? {
-                      title: dict.product.details,
-                      content: product.detailsHtml,
-                      html: true,
-                    }
-                  : {
-                      title: dict.product.details,
-                      content:
-                        (product.attributes && product.attributes.length > 0
-                          ? product.attributes
-                              .map((a) => `${a.name}: ${a.value}`)
-                              .join("\n")
-                          : `${dict.product.material}: ${product.material}`) +
-                        `\n\n${dict.product.handFinishedNote}`,
-                    },
+                // "Details" row removed per explicit request — the
+                // underlying data (product.attributes, product.detailsHtml,
+                // the admin's own "Thuộc tính sản phẩm" editor) is left
+                // completely alone, just no longer rendered here.
                 {
                   title: dict.product.deliveryReturns,
                   content: "",

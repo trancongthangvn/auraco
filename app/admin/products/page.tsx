@@ -155,34 +155,32 @@ function DescriptionSectionsField({
           <p className="text-xs italic text-black/30">Chưa có mục mô tả nào.</p>
         )}
         {sections.map((section, i) => (
-          <div key={section._key} className="flex flex-wrap gap-2 sm:flex-nowrap">
-            {/* `basis-*` (not `w-*`), matching the attributes list below —
-                Field.tsx's Input/Textarea both carry a base `w-full`, which
-                a plain `w-[N%]` utility can't reliably out-cascade since
-                Tailwind doesn't guarantee arbitrary-value utilities sort
-                after named ones in the generated stylesheet (confirmed
-                live: the title input rendered full-width, the content box
-                squeezed to ~30px). Flex-basis takes over sizing a flex
-                child from `width` regardless of that ordering. */}
+          // CSS Grid, not flex — a flex child's `basis-*`/`w-*` utility has
+          // to out-cascade Field.tsx's own base `w-full` on Input/Textarea,
+          // and that ordering isn't guaranteed (confirmed live: the title
+          // input rendered full-width, the content box squeezed to ~30px).
+          // A grid TRACK sizes its child regardless of the child's own
+          // width class, so there's no cascade to fight. Tên gets a fixed,
+          // short column; Nội dung takes whatever's left and wraps freely.
+          <div key={section._key} className="grid grid-cols-[112px_1fr_auto] items-start gap-2">
             <Input
               value={section.title}
               onChange={(e) => onUpdate(i, "title", e.target.value)}
-              placeholder="Tên (VD: Why You'll Love It)"
-              className="min-w-[140px] flex-1 basis-40 text-xs sm:flex-none"
+              placeholder="Tên"
+              className="min-w-0 text-xs"
               disabled={disabled}
             />
             <Textarea
               value={section.content}
               onChange={(e) => onUpdate(i, "content", e.target.value)}
-              rows={3}
+              rows={2}
               placeholder="Nội dung mô tả theo tên trên"
-              className="min-w-[180px] flex-1 basis-60 text-xs"
+              className="min-w-0 text-xs"
               disabled={disabled}
             />
             <IconButton
               type="button"
               tone="danger"
-              className="shrink-0 self-start"
               aria-label="Xóa mục mô tả"
               disabled={disabled}
               onClick={() => onRemove(i)}

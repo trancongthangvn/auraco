@@ -123,6 +123,12 @@ export default function AdminProductsPage() {
   const [creating, setCreating] = useState(false);
   const [newSlug, setNewSlug] = useState("");
   const [newMaterial, setNewMaterial] = useState("");
+  // "Chất liệu" existed only on the create form, and saveEdit never sent
+  // `material`, so the field vanished the moment a product was created (the
+  // create flow opens the edit modal straight after) with no way to see or
+  // change it again. The value itself was never lost — the API keeps the
+  // current column when the key is absent — it just had no UI.
+  const [editMaterial, setEditMaterial] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
@@ -289,6 +295,7 @@ export default function AdminProductsPage() {
     setEditMetaDescription(p.meta_description ?? "");
     setEditShowAtHome(Boolean(p.show_at_home));
     setEditVideoUrl(p.video_url ?? null);
+    setEditMaterial(p.material ?? "");
     setEditShortDescription(p.short_description ?? "");
     setEditDescription(p.description ?? "");
     setEditFeatures(p.features ?? []);
@@ -472,6 +479,7 @@ export default function AdminProductsPage() {
             sortOrder: Number.isInteger(parsedSortOrder) ? parsedSortOrder : 0,
             stock: Number.isInteger(parsedStock) ? parsedStock : editing.stock,
             videoUrl: editVideoUrl,
+            material: editMaterial.trim() || editing.material,
             shortDescription: editShortDescription.trim() || null,
             description: editDescription,
             features: editFeatures.filter((f) => f.trim().length > 0),
@@ -933,6 +941,15 @@ export default function AdminProductsPage() {
                 onChange={(e) => setEditShortDescription(e.target.value)}
                 placeholder='VD: "The iconic mixed metal Knot Hoops in a medium size"'
                 maxLength={200}
+                className="mb-6"
+                disabled={saving}
+              />
+
+              <Label>Chất liệu</Label>
+              <Input
+                value={editMaterial}
+                onChange={(e) => setEditMaterial(e.target.value)}
+                placeholder="VD: 18k Gold Vermeil"
                 className="mb-6"
                 disabled={saving}
               />

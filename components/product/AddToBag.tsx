@@ -80,6 +80,22 @@ export default function AddToBag({ product }: { product: FullProduct }) {
         )}
       </p>
 
+      {/* The product's own free-text material ("Chất liệu" in the admin) had
+          nowhere to surface: the Details accordion only falls back to it when
+          a product has neither attributes nor imported details HTML, which is
+          almost never true in practice, so an admin would fill the field in
+          and never see it again. Shown here, in the same slot the variant
+          swatch row uses, and deliberately gated on `!showSwatches` — that
+          row already prints "Metal: <colour>" for products that have real
+          variants, and printing both would read as two competing metal rows
+          on the same product. */}
+      {!showSwatches && product.material && (
+        <p className="mb-4 font-ui text-[13px] leading-[18px] text-[#5c554a]">
+          <span className="text-[#302c27]">{dict.metal}:</span>{" "}
+          {product.material}
+        </p>
+      )}
+
       {showSwatches && (
         <div className="mb-4">
           <span className="font-ui text-[11px] uppercase tracking-[0.08em] text-[#5c554a]">

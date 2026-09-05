@@ -490,9 +490,16 @@ export default function CatalogClient({
   );
 
   const sortSelect = (
+    // hidden lg:block — explicit request: below `lg` this duplicated the
+    // "Sort by" facet already inside filterPanelBody's own accordion list
+    // (Category/Type/Material/Price/Sort by/Reset), so a customer had two
+    // different sort controls on screen at once on mobile/tablet. The
+    // accordion's own copy (checkboxes, same options) already covers that
+    // range — this hover-opened dropdown now only renders at `lg`+, next
+    // to "Hide/Show Filters" as before.
     <div
       ref={sortRootRef}
-      className="relative min-w-0 flex-1 px-3 py-2 sm:flex-none"
+      className="relative hidden min-w-0 flex-1 px-3 py-2 sm:flex-none lg:block"
       // Explicit request, confirmed against a reference example: opens on
       // hover, not just click — but only on desktop. mouseenter/mouseleave
       // simply never fire on a touch tap (same reasoning already documented
@@ -702,36 +709,47 @@ export default function CatalogClient({
         </div>
       </FilterSection>
 
-      <FilterSection
-        title="Sort by"
-        isOpen={openSections.sort}
-        onToggle={() => setOpenSections((s) => ({ ...s, sort: !s.sort }))}
-        onClear={sort !== "featured" ? () => setSort("featured") : undefined}
-      >
-        <div className="space-y-3">
-          {(
-            [
-              { value: "featured", label: "Featured" },
-              { value: "newest", label: "Newest" },
-              { value: "price-asc", label: "Price: low to high" },
-              { value: "price-desc", label: "Price: high to low" },
-            ] as const
-          ).map((opt) => (
-            <label
-              key={opt.value}
-              className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
-            >
-              <input
-                type="checkbox"
-                checked={sort === opt.value}
-                onChange={() => setSort(opt.value)}
-                className="h-4 w-4 accent-ink"
-              />
-              <span>{opt.label}</span>
-            </label>
-          ))}
-        </div>
-      </FilterSection>
+      {/* lg:hidden — explicit report: filterPanelBody is shared verbatim
+          between the mobile inline panel AND the desktop sidebar (both
+          just render `{filterPanelBody}`), so this accordion copy of Sort
+          was showing at `lg`+ too, right alongside the toolbar's own
+          separate hover-opened "Sort" dropdown — the exact duplication
+          being fixed for mobile also existed on desktop the whole time.
+          Desktop keeps only the toolbar dropdown; below `lg`, where that
+          dropdown is now hidden (see sortSelect above), this is the only
+          way to change sort. */}
+      <div className="lg:hidden">
+        <FilterSection
+          title="Sort by"
+          isOpen={openSections.sort}
+          onToggle={() => setOpenSections((s) => ({ ...s, sort: !s.sort }))}
+          onClear={sort !== "featured" ? () => setSort("featured") : undefined}
+        >
+          <div className="space-y-3">
+            {(
+              [
+                { value: "featured", label: "Featured" },
+                { value: "newest", label: "Newest" },
+                { value: "price-asc", label: "Price: low to high" },
+                { value: "price-desc", label: "Price: high to low" },
+              ] as const
+            ).map((opt) => (
+              <label
+                key={opt.value}
+                className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
+              >
+                <input
+                  type="checkbox"
+                  checked={sort === opt.value}
+                  onChange={() => setSort(opt.value)}
+                  className="h-4 w-4 accent-ink"
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </FilterSection>
+      </div>
 
       <div className="flex items-center py-6">
         <button

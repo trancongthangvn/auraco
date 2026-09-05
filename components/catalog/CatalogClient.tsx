@@ -715,7 +715,19 @@ export default function CatalogClient({
            itself it still slid sideways by the sidebar's own width as
            grid-template-columns animated between them. Living above the
            grid entirely means neither column's width changes it. */
-        <div className="sticky top-16 z-30 mb-1 flex items-center justify-between gap-4 bg-white/[0.96] py-[10.4px]">
+        /* top-16 (a fixed 64px) matched the header back when the header was
+           simply `sticky top-0` at a stable height. Since Header started
+           publishing its own real height as --header-h and stacking below
+           a separately-sticky Announcement bar (--announcement-h, 0 or
+           ~40px depending on whether the customer has dismissed it), that
+           fixed 64px fell short whenever the announcement bar was still
+           showing — this row would try to stick 64px down, which sits
+           UNDER the now-taller header, so the opaque header visually
+           covered it while scrolling ("thanh Filter mất khi lướt xuống",
+           explicit bug report). Composing both published heights instead
+           keeps this flush under the header regardless of which state
+           it's in. */
+        <div className="sticky top-[calc(var(--announcement-h,0px)+var(--header-h,64px))] z-30 mb-1 flex items-center justify-between gap-4 bg-white/[0.96] py-[10.4px]">
           <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
             {filterToggleAndCount}
           </div>

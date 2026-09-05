@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FullProduct } from "@/data/products";
 import { collectionFilters as fallbackCollectionFilters } from "@/data/products";
-import { StarRating, PlusIcon, MinusIcon, ChevronDownIcon, CheckIcon } from "@/components/icons";
+import { StarRating, PlusIcon, MinusIcon } from "@/components/icons";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { formatPrice } from "@/lib/currency";
 import AddToBagButton from "@/components/AddToBagButton";
@@ -213,6 +213,7 @@ export default function CatalogClient({
   // component instead of the platform.
   const [sortOpen, setSortOpen] = useState(false);
   const sortRootRef = useRef<HTMLDivElement>(null);
+  const sortCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!sortOpen) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -489,7 +490,27 @@ export default function CatalogClient({
   );
 
   const sortSelect = (
-    <div ref={sortRootRef} className="relative min-w-0 flex-1 px-3 py-2 sm:flex-none">
+    <div
+      ref={sortRootRef}
+      className="relative min-w-0 flex-1 px-3 py-2 sm:flex-none"
+      // Explicit request, confirmed against a reference example: opens on
+      // hover, not just click — but only on desktop. mouseenter/mouseleave
+      // simply never fire on a touch tap (same reasoning already documented
+      // on Header.tsx's own mega-menu triggers), so tapping this on mobile
+      // still falls through to the onClick toggle below rather than needing
+      // a second tap. The close is debounced (same 150ms pattern as
+      // Header's openMegaMenu/scheduleCloseMega) so moving the cursor from
+      // the trigger to the list across the small gap between them doesn't
+      // close it before it's reached.
+      onMouseEnter={() => {
+        if (sortCloseTimerRef.current) clearTimeout(sortCloseTimerRef.current);
+        setSortOpen(true);
+      }}
+      onMouseLeave={() => {
+        if (sortCloseTimerRef.current) clearTimeout(sortCloseTimerRef.current);
+        sortCloseTimerRef.current = setTimeout(() => setSortOpen(false), 150);
+      }}
+    >
       <button
         type="button"
         onClick={() => setSortOpen((v) => !v)}
@@ -497,9 +518,18 @@ export default function CatalogClient({
         aria-expanded={sortOpen}
         className="font-ui flex w-full items-center justify-between gap-2 rounded-lg border-[0.667px] border-[#2b261f]/[0.14] bg-white px-3 py-2 text-[12.48px] font-semibold leading-[19.344px] text-[#2b261f] sm:w-[156px]"
       >
-        <span className="sr-only">Sort by: </span>
-        {SORT_OPTIONS.find((o) => o.value === sort)?.label}
-        <ChevronDownIcon size={14} className={`shrink-0 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
+        {/* Explicit request: the trigger always reads "Sort", not the
+            currently-selected option's own label — matching the reference,
+            which never changes its own trigger text either. The selected
+            option is instead shown via the filled radio dot in the list
+            below. */}
+        Sort
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true" className="shrink-0">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <circle cx="14" cy="6" r="2" fill="currentColor" stroke="none" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+          <circle cx="10" cy="18" r="2" fill="currentColor" stroke="none" />
+        </svg>
       </button>
       {sortOpen && (
         <ul
@@ -518,12 +548,20 @@ export default function CatalogClient({
                     setSort(opt.value);
                     setSortOpen(false);
                   }}
-                  className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-[11.52px] py-[10.88px] text-left font-ui text-[13.44px] hover:bg-black/5 ${
-                    active ? "bg-[#f4ece3] font-semibold text-[#2b261f]" : "text-[#2b261f]"
+                  className={`flex w-full items-center gap-[11px] rounded-[10px] px-[11.52px] py-[10.88px] text-left font-ui text-[13.44px] hover:bg-black/5 ${
+                    active ? "font-semibold text-[#2b261f]" : "text-[#2b261f]"
                   }`}
                 >
+                  {/* Radio circle, not a checkmark-on-tinted-row — explicit
+                      request, matching the reference's own list exactly. */}
+                  <span
+                    className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 ${
+                      active ? "border-gold" : "border-[#2b261f]/25"
+                    }`}
+                  >
+                    {active && <span className="h-[9px] w-[9px] rounded-full bg-gold" />}
+                  </span>
                   {opt.label}
-                  {active && <CheckIcon size={16} className="shrink-0 text-gold" />}
                 </button>
               </li>
             );

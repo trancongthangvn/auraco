@@ -1166,25 +1166,23 @@ export default function CatalogClient({
                   />
                 </div>
                 <p className="mb-1 flex items-center"><StarRating rating={p.rating} size={16} /></p>
-                {/* Explicit request: bring name/material/price close together
-                    (name->material 15px, material->price 5px) instead of the
-                    old 2-line reserved boxes below, which kept price
-                    perfectly aligned across a row but padded every 1-line
-                    card (the common case) with a full blank line of dead
-                    space. Desktop (sm:) still clamps to 2 lines with the
-                    user's earlier sign-off accepting slight misalignment
-                    when one card's name/material genuinely wraps twice.
-                    Mobile follow-up request: that misalignment read as
-                    worse there (2 cards per row, so a 2-line neighbor stood
-                    out more), and price should always line up — clamped to
-                    1 line + ellipsis below sm:, which sidesteps the
-                    trade-off entirely since every mobile card then has the
-                    exact same name/material line count, no reserved height
+                {/* name->material and material->price both 4px: explicit
+                    follow-up request, matched against a reference site
+                    screenshot (missoma.com-style card) where all three
+                    lines — name, material, price — sit tightly stacked
+                    with only a hairline gap between each, much closer than
+                    the previous 15px/5px here. Desktop (sm:) still clamps
+                    to 2 lines with the user's earlier sign-off accepting
+                    slight misalignment when one card's name/material
+                    genuinely wraps twice. Mobile clamps to 1 line +
+                    ellipsis below sm:, which sidesteps that trade-off
+                    entirely since every mobile card then has the exact
+                    same name/material line count, no reserved height
                     needed for that guarantee. */}
-                <h3 className="font-serif-display mb-[15px] line-clamp-1 sm:line-clamp-2 text-[20px] font-normal leading-[23px] text-[#28241f]">
+                <h3 className="font-serif-display mb-1 line-clamp-1 sm:line-clamp-2 text-[20px] font-normal leading-[23px] text-[#28241f]">
                   {p.name}
                 </h3>
-                <p className="font-ui mb-[5px] line-clamp-1 sm:line-clamp-2 text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
+                <p className="font-ui mb-1 line-clamp-1 sm:line-clamp-2 text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
                   {p.material}
                 </p>
                 <p className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">

@@ -94,13 +94,22 @@ function TestimonialCard({ t, ariaHidden }: { t: Testimonial; ariaHidden?: true 
             src={t.photo}
             alt={t.name}
             fill
-            sizes="(min-width: 640px) 17vw, 220px"
-            // object-contain, not object-cover: explicit request to show
-            // the customer's full uploaded photo uncropped. The fixed-ratio
-            // container (and its bg color as letterbox fill) is unchanged,
-            // so every card in the row/strip still lines up the same as
-            // before — only how the photo fills that box changed.
-            className="object-contain"
+            // 300px, not 220px: the mobile card is w-[300px] (see
+            // TestimonialCard's wrapper below), so 220px was requesting a
+            // smaller source than actually rendered — undersized once the
+            // photo fills the whole box edge-to-edge below, which is
+            // exactly what the user asked to avoid ("vẫn dư được độ nét").
+            sizes="(min-width: 640px) 17vw, 300px"
+            // object-cover on mobile: explicit request to remove the
+            // beige top/bottom letterbox bars (the aspect-[12/25] box is
+            // much taller/narrower than most uploaded photos, so
+            // object-contain left visible bg-[#e9e4dc] gaps) and have the
+            // photo fill the whole frame, cropping instead of letterboxing.
+            // Desktop (sm:) keeps object-contain, the earlier explicit
+            // request to show the full uncropped photo there — the two
+            // requests are for different breakpoints, not a reversal of
+            // the desktop one.
+            className="object-cover sm:object-contain"
           />
         )}
         <span className="absolute -bottom-[0.825rem] left-1/2 z-10 flex h-[1.65rem] w-[1.65rem] -translate-x-1/2 items-center justify-center rounded-full bg-[#ece9e4] text-[0.65rem] font-bold tracking-[0.02em] text-[#1f1a14] shadow-[0_1px_4px_rgba(31,26,20,0.08)]">
@@ -255,6 +264,15 @@ export default function Testimonials({
     <section
       ref={revealRef}
       className={`home-block mx-auto ${revealClass}`}
+      // Explicit request: the shared .home-block box-shadow (0 10px 30px,
+      // no spread) blurs out evenly on every side, which on this section's
+      // near-full-width card reads as a visible left/right border rather
+      // than a card shadow. Scoped to this section only (an inline style
+      // wins over the shared class without touching it, so every other
+      // .home-block section keeps its original shadow) - negative spread
+      // pulls the blur in from the sides, and the larger downward offset
+      // keeps a soft shadow below without one bleeding out to the left/right.
+      style={{ boxShadow: "0 12px 20px -12px rgba(31, 26, 20, 0.18)" }}
     >
       <div>
         <h2 className="font-serif-display section-title">Feedback</h2>

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FullProduct } from "@/data/products";
 import { collectionFilters as fallbackCollectionFilters } from "@/data/products";
-import { StarRating, PlusIcon, MinusIcon } from "@/components/icons";
+import { StarRating, PlusIcon, MinusIcon, CloseIcon } from "@/components/icons";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { formatPrice } from "@/lib/currency";
 import AddToBagButton from "@/components/AddToBagButton";
@@ -236,17 +236,11 @@ export default function CatalogClient({
   // rather than published as a CSS var like Header/Announcement's own
   // heights, since this offset is only ever consumed here in the same
   // component, not by anything elsewhere on the page.
+  // Only ref left in use: the mobile filter panel that used to need this
+  // element's measured height (to sit flush below it) is now a fixed
+  // full-height drawer instead, so toolbarHeight tracking was removed as
+  // dead code alongside that change.
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const [toolbarHeight, setToolbarHeight] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    const el = toolbarRef.current;
-    if (!el) return;
-    const update = () => setToolbarHeight(el.getBoundingClientRect().height);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
   // Explicit request: filters open by default on landing (not just once the
   // customer clicks "Show Filters" themselves) — but only on tablet/desktop.
   // On mobile they default closed instead, since the panel there renders
@@ -885,7 +879,12 @@ export default function CatalogClient({
            bar), it just does so cleanly instead of looking broken. */
         <div
           ref={toolbarRef}
-          className="sticky top-[calc(var(--announcement-h,0px)+var(--header-h,64px))] z-30 mb-1 flex items-center justify-between gap-4 bg-white py-[10.4px]"
+          // justify-between spread "Hide Filters | N items" and "Sort" (the
+          // latter only rendered at lg+, see sortSelect below) across the
+          // full toolbar width, reading as too wide a gap between them -
+          // explicit request to bring them closer together instead, only at
+          // the breakpoint where both are actually visible side by side.
+          className="sticky top-[calc(var(--announcement-h,0px)+var(--header-h,64px))] z-30 mb-1 flex items-center justify-between gap-4 bg-white py-[10.4px] lg:justify-start"
         >
           <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
             {filterToggleAndCount}
@@ -961,16 +960,49 @@ export default function CatalogClient({
               same safety net the desktop sidebar already uses, in case the
               panel (with an accordion section open) is ever taller than
               the viewport space left below the toolbar. */}
-          {!query && filtersOpen && (
-            <div
-              className="sticky mb-4 overflow-y-auto border-[0.667px] border-t-0 border-[#2b261f]/[0.14] bg-white px-[13.6px] lg:hidden"
-              style={{
-                top: `calc(var(--announcement-h,0px) + var(--header-h,64px) + ${toolbarHeight ?? 75}px)`,
-                maxHeight: `calc(100vh - var(--announcement-h,0px) - var(--header-h,64px) - ${toolbarHeight ?? 75}px)`,
-              }}
-            >
-              {filterPanelBody}
-            </div>
+          {/* Explicit request: on mobile/tablet this used to be an inline
+              panel that pushed the product grid down; now a true slide-in
+              drawer from the left, same pattern (backdrop + fixed panel +
+              own mini-header with a close button) as Header.tsx's mobile nav
+              drawer, for a consistent feel across the site. filterPanelBody
+              itself — the facets, checkboxes, and Category-narrows-the-rest
+              behaviour — is untouched; only the container around it changed.
+              Always mounted (not `{filtersOpen && ...}`) so the close
+              transition can animate instead of the panel just vanishing. */}
+          {!query && (
+            <>
+              <button
+                type="button"
+                aria-label="Close filters"
+                onClick={() => setFiltersOpen(false)}
+                tabIndex={filtersOpen ? 0 : -1}
+                className={`fixed inset-0 z-[100] bg-[rgba(43,38,31,0.38)] backdrop-blur-[4px] transition-opacity duration-300 lg:hidden ${
+                  filtersOpen ? "opacity-100" : "pointer-events-none opacity-0"
+                }`}
+              />
+              <div
+                aria-hidden={!filtersOpen}
+                className={`fixed inset-y-0 left-0 z-[101] flex w-[min(360px,86vw)] flex-col overflow-hidden bg-white transition-transform duration-[480ms] ease-[cubic-bezier(0.32,0.72,0,1)] lg:hidden ${
+                  filtersOpen ? "translate-x-0" : "-translate-x-full"
+                }`}
+              >
+                <div className="flex shrink-0 items-center justify-between border-b border-[#ece8e2] px-5 py-[13px]">
+                  <span className="font-ui text-xs font-semibold uppercase tracking-wide text-[#28241f]">
+                    Filter
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Close filters"
+                    onClick={() => setFiltersOpen(false)}
+                    tabIndex={filtersOpen ? 0 : -1}
+                    className="flex h-10 w-10 items-center justify-center hover:text-gold"
+                  >
+                    <CloseIcon size={20} />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-[13.6px] py-3">{filterPanelBody}</div>
+              </div>
+            </>
           )}
 
           {showHero && (
@@ -1136,10 +1168,18 @@ export default function CatalogClient({
                 {/* Two lines are reserved for the name: a one-line name would
                     otherwise pull its material and price up out of line with
                     the cards beside it. */}
-                <h3 className="font-serif-display mb-1 line-clamp-2 min-h-[30px] text-[20px] font-normal leading-[23px] text-[#28241f]">
+                {/* min-h must cover 2 lines at the 23px leading below (46px)
+                    - the previous 30px was short by a line, so a 2-line
+                    title still sank everything under it relative to a
+                    1-line title in the same row. */}
+                <h3 className="font-serif-display mb-1 line-clamp-2 min-h-[46px] text-[20px] font-normal leading-[23px] text-[#28241f]">
                   {p.name}
                 </h3>
-                <p className="font-ui mb-1 text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
+                {/* Same reserved-height pattern as the title above: a
+                    material string that wraps to 2 lines vs. one that fits
+                    on 1 previously pushed the price down by a different
+                    amount per card, breaking row alignment across the grid. */}
+                <p className="font-ui mb-1 line-clamp-2 min-h-[34px] text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
                   {p.material}
                 </p>
                 <p className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">

@@ -430,15 +430,18 @@ export default function Gallery({
                   // No selected-state outline: explicit request to leave the
                   // thumbnails as plain images. `aria-current` above still
                   // conveys the selection to screen readers.
-                  // aspect-[4/5], not the photo's own measured ratio:
-                  // explicit follow-up request — sizing each thumbnail to
-                  // its own photo (like the hero above) left some tiles
-                  // square-ish and others a tall rectangle, an inconsistent
-                  // mix down the column. Every desktop thumbnail is now the
-                  // same fixed rectangular frame; object-contain (unchanged)
-                  // still shows each photo in full, uncropped, at full
-                  // resolution — a non-4:5 photo just letterboxes against
-                  // bg-[#f6f0e6] instead of being scaled to its own shape.
+                  // aspect-[4/5], not the photo's own measured ratio: every
+                  // desktop thumbnail is the same fixed rectangular frame
+                  // (explicit request — sizing each to its own photo left
+                  // some tiles square-ish, others a tall rectangle, an
+                  // inconsistent mix down the column).
+                  // object-cover, not object-contain: explicit follow-up
+                  // request — object-contain inside that fixed rectangle
+                  // left a bg-[#f6f0e6] letterbox border on any photo whose
+                  // own ratio wasn't exactly 4/5. A fixed frame that's
+                  // always fully filled with no border is only possible by
+                  // cropping to fit; resolution is unaffected (sizes below
+                  // unchanged, only the fit mode changed).
                   className="group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
                 >
                   <Image
@@ -446,7 +449,7 @@ export default function Gallery({
                     alt=""
                     fill
                     sizes="30vw"
-                    className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                 </button>
               ))}

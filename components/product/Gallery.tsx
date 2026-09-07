@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import Lightbox from "./Lightbox";
@@ -24,6 +24,44 @@ import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "@/components
  * first image, unless the customer has clicked a thumbnail — see the effect
  * below for how a manual pick restarts that window instead of racing it.
  */
+/** Duration for the thumbnail rail's own eased scroll, ms — close to the
+ *  hero slide's 300ms so both feel like the same motion language. */
+const THUMB_SLIDE_DURATION = 320;
+
+/**
+ * Animates `el.scrollTop` to `to` with a gentle ease-in-out curve.
+ *
+ * `scrollTop` isn't a CSS property, so neither a CSS transition nor the Web
+ * Animations API (used for the hero slide above) can animate it — this is
+ * the same rAF-tween-with-an-easing-function technique, just applied to a
+ * scroll offset instead of a transform. Cancels any scroll this same
+ * function has in flight first, so clicking the chevron or a thumbnail
+ * again mid-animation retargets smoothly instead of the two fighting over
+ * `scrollTop` each frame. Keyed by the element itself (not a single shared
+ * module-level id) so two Gallery instances on the same page — a quick-view
+ * modal open over the full product page, say — never cancel each other's
+ * animation.
+ */
+const thumbScrollRafs = new WeakMap<HTMLElement, number>();
+function animateScrollTop(el: HTMLElement, to: number, duration: number) {
+  const running = thumbScrollRafs.get(el);
+  if (running) cancelAnimationFrame(running);
+  const start = el.scrollTop;
+  const change = to - start;
+  if (Math.abs(change) < 1) return;
+  const startTime = performance.now();
+  const step = (now: number) => {
+    const t = Math.min((now - startTime) / duration, 1);
+    // easeInOutCubic — gentle acceleration then deceleration, the same
+    // "nhẹ nhàng uyển chuyển" character as the hero's own
+    // cubic-bezier(0.22, 0.61, 0.36, 1), explicit request.
+    const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    el.scrollTop = start + change * eased;
+    if (t < 1) thumbScrollRafs.set(el, requestAnimationFrame(step));
+  };
+  thumbScrollRafs.set(el, requestAnimationFrame(step));
+}
+
 export default function Gallery({
   images,
   name,
@@ -63,15 +101,23 @@ export default function Gallery({
     setActive((i) => (i - 1 + effectiveImages.length) % effectiveImages.length);
   const goNext = () => setActive((i) => (i + 1) % effectiveImages.length);
 
-  // Desktop mosaic's thumbnail column (>= 1000px only): explicit request to
-  // add a "more photos below" chevron matching missoma.com's own desktop
-  // gallery (measured live at ~1200px — a vertical thumbnail rail with a
-  // paging arrow), without their matching "scroll back up" arrow — the
-  // column stays freely draggable/scrollable for going back, this button
-  // only ever pages forward. Hidden once already scrolled to the bottom so
-  // it never dead-ends a click.
+  // Desktop mosaic's thumbnail column (>= 1000px only): a "more photos
+  // below" chevron matching missoma.com's own desktop gallery (measured
+  // live at ~1200px — a vertical thumbnail rail with a paging arrow),
+  // without their matching "scroll back up" arrow — the column stays
+  // freely draggable/scrollable (native overflow-y-auto, preserved below)
+  // for going back, this button only ever pages forward. Explicit request:
+  // loop forever instead of stopping at the last photo, with a gentler
+  // slide than the browser's own default smooth-scroll easing — the rail
+  // is rendered as TWO back-to-back copies of the photo list (thumbList
+  // below), and once a scroll (button-driven or a free drag/wheel) settles
+  // past the first copy, the wrap effect further down silently rewinds
+  // scrollTop by exactly one copy's height. Because the second copy is
+  // pixel-identical to the first, that rewind is invisible — the rail just
+  // keeps going. No more "hide the arrow at the bottom" state needed.
   const thumbViewportRef = useRef<HTMLDivElement>(null);
-  const [canScrollThumbsDown, setCanScrollThumbsDown] = useState(false);
+  const thumbCount = effectiveImages.length;
+  const thumbList = thumbCount > 1 ? [...effectiveImages, ...effectiveImages] : effectiveImages;
 
   // CSS Grid's own auto-row-sizing measures the RAW content height of every
   // item in the row — including the thumbnail column's unclipped stack of
@@ -94,24 +140,33 @@ export default function Gallery({
     return () => observer.disconnect();
   }, []);
 
-  const syncThumbScrollState = useCallback(() => {
-    const el = thumbViewportRef.current;
-    if (!el) return;
-    setCanScrollThumbsDown(el.scrollHeight - el.scrollTop - el.clientHeight > 1);
-  }, []);
-
+  // Wrap-around for the infinite loop: fires ~120ms after the LAST scroll
+  // event, whether that scroll came from our own animateScrollTop (which
+  // dispatches a native scroll event every rAF frame, so the debounce
+  // keeps getting pushed out until the animation actually finishes) or
+  // from the customer freely dragging/wheeling the rail themselves — either
+  // way, once things have settled past the first copy, silently rewind by
+  // one copy's height. `thumbCount > 1` guards this the same as the
+  // rendered column below, so it's a no-op with 0/1 photos.
   useEffect(() => {
     const el = thumbViewportRef.current;
-    if (!el) return;
-    syncThumbScrollState();
-    el.addEventListener("scroll", syncThumbScrollState);
-    const observer = new ResizeObserver(syncThumbScrollState);
-    observer.observe(el);
-    return () => {
-      el.removeEventListener("scroll", syncThumbScrollState);
-      observer.disconnect();
+    if (!el || thumbCount <= 1) return;
+    let settle: ReturnType<typeof setTimeout>;
+    const maybeWrap = () => {
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        const singleCopyHeight = el.scrollHeight / 2;
+        if (el.scrollTop >= singleCopyHeight - 1) {
+          el.scrollTop -= singleCopyHeight;
+        }
+      }, 120);
     };
-  }, [effectiveImages.length, heroHeight, syncThumbScrollState]);
+    el.addEventListener("scroll", maybeWrap);
+    return () => {
+      clearTimeout(settle);
+      el.removeEventListener("scroll", maybeWrap);
+    };
+  }, [thumbCount, heroHeight]);
 
   // Scroll the rail so the clicked thumbnail becomes its TOP visible item —
   // measured frame-by-frame off the reference video (missoma.com, product
@@ -128,8 +183,7 @@ export default function Gallery({
     if (!thumb) return;
     const delta = thumb.getBoundingClientRect().top - el.getBoundingClientRect().top;
     if (Math.abs(delta) < 1) return;
-    el.scrollBy({ top: delta, behavior: "smooth" });
-    setTimeout(syncThumbScrollState, 600);
+    animateScrollTop(el, el.scrollTop + delta, THUMB_SLIDE_DURATION);
   };
 
   const scrollThumbsDown = () => {
@@ -141,13 +195,7 @@ export default function Gallery({
     // exactly one photo at a time, same as their arrow — falls back to a
     // full viewport page if a thumbnail hasn't rendered its real height yet.
     const step = firstThumb ? firstThumb.getBoundingClientRect().height + 10 : el.clientHeight;
-    el.scrollBy({ top: step, behavior: "smooth" });
-    // The scroll listener alone is enough in a normal browser, but a smooth
-    // scroll's own events can be dropped (seen live in an automated one),
-    // which would leave this arrow showing at the very bottom with nothing
-    // left to scroll to. Re-checking once the animation has settled makes
-    // hiding it reliable either way.
-    setTimeout(syncThumbScrollState, 600);
+    animateScrollTop(el, el.scrollTop + step, THUMB_SLIDE_DURATION);
   };
 
   // Reset the active index whenever the variant changes, so a variant with
@@ -335,14 +383,14 @@ export default function Gallery({
               ref={thumbViewportRef}
               className="flex min-h-0 flex-1 flex-col gap-[10px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              {effectiveImages.map((src, i) => (
+              {thumbList.map((src, i) => (
                 <button
-                  key={src}
+                  key={`${i}-${src}`}
                   type="button"
-                  aria-label={`Show image ${i + 1} of ${effectiveImages.length}`}
-                  aria-current={active === i ? "true" : undefined}
+                  aria-label={`Show image ${(i % thumbCount) + 1} of ${thumbCount}`}
+                  aria-current={active === i % thumbCount ? "true" : undefined}
                   onClick={() => {
-                    setActive(i);
+                    setActive(i % thumbCount);
                     scrollThumbToTop(i);
                   }}
                   // No selected-state outline: explicit request to leave the
@@ -360,19 +408,14 @@ export default function Gallery({
                 </button>
               ))}
             </div>
-            {/* Kept mounted (just faded) at the bottom of the list rather
-                than unmounted: removing it handed its ~30px back to the
-                scroll area, which visibly re-flowed the thumbnails on the
-                last click. */}
+            {/* Always visible now (no more "hide at the bottom" clamp) — the
+                rail loops forever, so there's never a dead end to hide it
+                for. Explicit request. */}
             <button
               type="button"
               aria-label="Show more images"
               onClick={scrollThumbsDown}
-              aria-hidden={!canScrollThumbsDown}
-              tabIndex={canScrollThumbsDown ? undefined : -1}
-              className={`flex shrink-0 items-center justify-center py-0.5 text-[#2b261f]/50 transition-[color,opacity] hover:text-[#2b261f] ${
-                canScrollThumbsDown ? "opacity-100" : "pointer-events-none opacity-0"
-              }`}
+              className="flex shrink-0 items-center justify-center py-0.5 text-[#2b261f]/50 transition-colors hover:text-[#2b261f]"
             >
               <ChevronDownIcon size={18} />
             </button>

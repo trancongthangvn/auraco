@@ -99,17 +99,19 @@ function TestimonialCard({ t, ariaHidden }: { t: Testimonial; ariaHidden?: true 
             // smaller source than actually rendered — undersized once the
             // photo fills the whole box edge-to-edge below, which is
             // exactly what the user asked to avoid ("vẫn dư được độ nét").
+            // (17vw on sm+ was already sized to the actual desktop card
+            // width, so it stayed accurate once desktop switched to
+            // object-cover below too — only the crop mode changed there,
+            // not how large a source next/image requests.)
             sizes="(min-width: 640px) 17vw, 300px"
-            // object-cover on mobile: explicit request to remove the
-            // beige top/bottom letterbox bars (the aspect-[12/25] box is
-            // much taller/narrower than most uploaded photos, so
-            // object-contain left visible bg-[#e9e4dc] gaps) and have the
-            // photo fill the whole frame, cropping instead of letterboxing.
-            // Desktop (sm:) keeps object-contain, the earlier explicit
-            // request to show the full uncropped photo there — the two
-            // requests are for different breakpoints, not a reversal of
-            // the desktop one.
-            className="object-cover sm:object-contain"
+            // object-cover on both breakpoints now: explicit follow-up
+            // request extending the earlier mobile-only fix to desktop too
+            // — the desktop object-contain box (bg-[#e9e4dc] letterbox
+            // behind an uncropped photo) was itself reading as a left/right
+            // border around each photo, the same complaint as mobile's
+            // top/bottom bars. Supersedes the prior "desktop keeps
+            // object-contain" decision noted in git history.
+            className="object-cover"
           />
         )}
         <span className="absolute -bottom-[0.825rem] left-1/2 z-10 flex h-[1.65rem] w-[1.65rem] -translate-x-1/2 items-center justify-center rounded-full bg-[#ece9e4] text-[0.65rem] font-bold tracking-[0.02em] text-[#1f1a14] shadow-[0_1px_4px_rgba(31,26,20,0.08)]">

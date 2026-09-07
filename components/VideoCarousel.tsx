@@ -31,15 +31,22 @@ import { formatPrice } from "@/lib/currency";
  */
 
 const SLIDE_WIDTH = 300;
-/** Fraction of the viewport an active slide fills on a narrow (mobile)
- *  screen — explicit request: at the fixed 300px width, a phone-width
- *  viewport left barely any room on the sides for the neighbouring
- *  slides to peek through. 0.8 leaves a consistent ~10% of the viewport
- *  peeking on each side regardless of device width, only kicking in below
- *  SLIDE_WIDTH/0.8 (375px) — wider viewports keep the fixed 300px, since
- *  that already peeks generously there. */
-const MOBILE_SLIDE_FRACTION = 0.8;
 const GAP = 24;
+/** How much of the neighbouring slide should stay visibly peeking on each
+ *  side on a narrow (mobile) screen, in px, once the GAP between slides is
+ *  accounted for. Explicit follow-up request: a plain percentage-of-viewport
+ *  margin (the first version of this fix) silently let GAP eat into the
+ *  margin before any of the neighbour itself was visible — at a 327px
+ *  viewport it worked out to margin=32.7px, of which 24px was just the GAP,
+ *  leaving under 9px of the actual neighbouring photo showing, imperceptible
+ *  on a real screen. Solving for the margin the OTHER way (GAP + this
+ *  constant) guarantees a real, fixed-size sliver of the neighbour shows
+ *  regardless of viewport width, rather than a percentage that happens to
+ *  mostly get consumed by the gap. */
+const MOBILE_PEEK = 56;
+/** Floor so a very narrow viewport can't shrink the active slide below a
+ *  readable width. */
+const MIN_SLIDE_WIDTH = 160;
 const DURATION = 520;
 const AUTO_ADVANCE_FALLBACK_MS = 8000;
 
@@ -190,7 +197,9 @@ export default function VideoCarousel({
 
   // Centre the active slide in the viewport.
   const slideWidth =
-    viewportWidth > 0 ? Math.min(SLIDE_WIDTH, viewportWidth * MOBILE_SLIDE_FRACTION) : SLIDE_WIDTH;
+    viewportWidth > 0
+      ? Math.min(SLIDE_WIDTH, Math.max(MIN_SLIDE_WIDTH, viewportWidth - 2 * (GAP + MOBILE_PEEK)))
+      : SLIDE_WIDTH;
   const step = slideWidth + GAP;
   const offset = index * step - (viewportWidth - slideWidth) / 2;
   const tripled = [...slides, ...slides, ...slides];

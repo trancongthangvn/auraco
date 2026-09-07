@@ -96,6 +96,17 @@ export default function VideoCarousel({
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
+    // Measure synchronously on mount instead of waiting on the observer's
+    // own first callback — found while testing the mobile peek fix below:
+    // ResizeObserver's initial callback did not fire at all in more than
+    // one automated/embedded browser context tried here, which would have
+    // silently left `viewportWidth` at its 0 default (and so `slideWidth`
+    // stuck at the full 300px fallback, exactly the "no peek" symptom
+    // reported). A plain getBoundingClientRect() read has no such
+    // dependency, so the correct width is available from the very first
+    // render that matters; the observer still covers real width changes
+    // afterward (a resize or orientation change).
+    setViewportWidth(el.getBoundingClientRect().width);
     const ro = new ResizeObserver(([entry]) => {
       setViewportWidth(entry.contentRect.width);
     });

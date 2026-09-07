@@ -295,9 +295,15 @@ export default function Gallery({
     // below both, however tall either currently is.
     <div className="min-w-0 lg:sticky lg:top-[calc(var(--announcement-h,0px)+var(--header-h,64px)+16px)] lg:self-start">
       {/* Desktop mosaic — >= 1000px only.
-          Fixed-ratio columns and object-cover on every tile: every box
-          filled edge-to-edge (no empty frame), accepting some edge cropping
-          — explicit request, confirmed against a reference example.
+          object-contain, not object-cover: explicit follow-up request —
+          some product photos (a bracelet shot as a full circle, say) were
+          losing their edges to the fixed aspect-[4/5] box under
+          object-cover, which the customer flagged as photos looking cut
+          off. Every tile keeps its bg-[#f6f0e6] fill behind the now
+          possibly-letterboxed photo, so an image whose own aspect ratio
+          doesn't match 4/5 shows a neutral border instead of a crop.
+          Supersedes the prior "every box filled edge-to-edge, accepting
+          some cropping" decision below.
           Column ratio: explicit request to narrow the right column to 3/4 of
           its previous width (318px → ~239px) while the hero absorbs the
           reclaimed space — `1.4fr 1fr` gave the right column a 1/2.4≈0.417
@@ -352,7 +358,7 @@ export default function Gallery({
                 alt=""
                 fill
                 sizes="(min-width: 1000px) 47vw, 100vw"
-                className="object-cover"
+                className="object-contain"
               />
             </div>
           )}
@@ -365,7 +371,7 @@ export default function Gallery({
                 fill
                 priority
                 sizes="(min-width: 1000px) 47vw, 100vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
               />
             </div>
           )}
@@ -403,7 +409,7 @@ export default function Gallery({
                     alt=""
                     fill
                     sizes="30vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                 </button>
               ))}
@@ -430,9 +436,13 @@ export default function Gallery({
             type="button"
             aria-label="View full-size image"
             onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-            // Same 4/5 frame and radius as the ≥1000px hero above: the old
-            // square + object-contain left beige letterbox bands on portrait
-            // photos, which read as an off-balance frame on phones.
+            // Same 4/5 frame and radius as the ≥1000px hero above. An
+            // earlier version paired a square frame with object-contain and
+            // that combination left visible beige letterbox bands on
+            // portrait photos; object-contain here is a later, explicit
+            // follow-up request (photos were getting cropped at the edges)
+            // paired with the now-4/5 frame, which is a closer match to
+            // most product photos' own aspect ratio and so letterboxes less.
             className="group relative block aspect-[4/5] w-full overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
           >
             {/* No `key` here — keying this on the src forced Next/Image to
@@ -447,7 +457,7 @@ export default function Gallery({
                 fill
                 priority
                 sizes="100vw"
-                className="object-cover transition-opacity duration-500"
+                className="object-contain transition-opacity duration-500"
               />
             )}
           </button>
@@ -489,7 +499,7 @@ export default function Gallery({
                   active === i ? "opacity-100" : "opacity-80"
                 }`}
               >
-                <Image src={src} alt="" fill sizes="64px" className="object-cover" />
+                <Image src={src} alt="" fill sizes="64px" className="object-contain" />
               </button>
             ))}
           </div>

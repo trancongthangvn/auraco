@@ -91,7 +91,9 @@ export default function AddToBag({ product }: { product: FullProduct }) {
           on the same product. */}
       {!showSwatches && product.material && (
         <p className="mb-4 font-ui text-[13px] leading-[18px] text-[#5c554a]">
-          <span className="text-[#302c27]">{dict.metal}:</span>{" "}
+          {/* Label only: explicit request to make "Metal" heavier and a couple
+              of px larger than the material value it introduces. */}
+          <span className="text-[15px] font-semibold text-[#302c27]">{dict.metal}:</span>{" "}
           {product.material}
         </p>
       )}

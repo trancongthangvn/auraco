@@ -879,12 +879,13 @@ export default function CatalogClient({
            bar), it just does so cleanly instead of looking broken. */
         <div
           ref={toolbarRef}
-          // justify-between spread "Hide Filters | N items" and "Sort" (the
-          // latter only rendered at lg+, see sortSelect below) across the
-          // full toolbar width, reading as too wide a gap between them -
-          // explicit request to bring them closer together instead, only at
-          // the breakpoint where both are actually visible side by side.
-          className="sticky top-[calc(var(--announcement-h,0px)+var(--header-h,64px))] z-30 mb-1 flex items-center justify-between gap-4 bg-white py-[10.4px] lg:justify-start"
+          // justify-between: Sort (only rendered at lg+, see sortSelect
+          // below) belongs pinned to the far right of the toolbar, matching
+          // the original layout - explicit request to restore this after an
+          // earlier change pulled it in next to "Hide Filters | N items".
+          // py: tightened from 10.4px to 7.9px (-2.5px each side) - explicit
+          // report that the whitespace above/below this row was too wide.
+          className="sticky top-[calc(var(--announcement-h,0px)+var(--header-h,64px))] z-30 mb-1 flex items-center justify-between gap-4 bg-white py-[7.9px]"
         >
           <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
             {filterToggleAndCount}
@@ -1165,21 +1166,22 @@ export default function CatalogClient({
                   />
                 </div>
                 <p className="mb-1 flex items-center"><StarRating rating={p.rating} size={16} /></p>
-                {/* Two lines are reserved for the name: a one-line name would
-                    otherwise pull its material and price up out of line with
-                    the cards beside it. */}
-                {/* min-h must cover 2 lines at the 23px leading below (46px)
-                    - the previous 30px was short by a line, so a 2-line
-                    title still sank everything under it relative to a
-                    1-line title in the same row. */}
-                <h3 className="font-serif-display mb-1 line-clamp-2 min-h-[46px] text-[20px] font-normal leading-[23px] text-[#28241f]">
+                {/* Explicit request: bring name/material/price close together
+                    (name->material 15px, material->price 5px) instead of the
+                    old 2-line reserved boxes below, which kept price
+                    perfectly aligned across a row but padded every 1-line
+                    card (the common case) with a full blank line of dead
+                    space. Traded off deliberately, with the user's sign-off:
+                    a name/material that genuinely wraps to 2 lines now grows
+                    past its 1-line neighbors and sits very slightly lower
+                    than the price on those - no longer perfectly flush, but
+                    close, and each card's own name/material/price stack
+                    reads as one tight, legible group instead of three
+                    spread-out lines. */}
+                <h3 className="font-serif-display mb-[15px] line-clamp-2 text-[20px] font-normal leading-[23px] text-[#28241f]">
                   {p.name}
                 </h3>
-                {/* Same reserved-height pattern as the title above: a
-                    material string that wraps to 2 lines vs. one that fits
-                    on 1 previously pushed the price down by a different
-                    amount per card, breaking row alignment across the grid. */}
-                <p className="font-ui mb-1 line-clamp-2 min-h-[34px] text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
+                <p className="font-ui mb-[5px] line-clamp-2 text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
                   {p.material}
                 </p>
                 <p className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">

@@ -166,24 +166,20 @@ export default function Gallery({
       if (h > 0) setHeroHeight(h);
     };
     update();
-    // Re-measure one more time shortly after mount: found while diagnosing
-    // the thumbnail column running visibly taller than the hero (bug
-    // report) — the very first synchronous read above can land before the
-    // `min-[1000px]:` breakpoint's layout (or the hero's own aspect-ratio,
-    // which depends on the `aspects` state an image's onLoad sets — see
-    // above) has actually settled, so it can capture a too-small or 0
-    // height that nothing afterward corrects if this browser's
-    // ResizeObserver doesn't fire again on its own. A second read next
-    // frame catches that case cheaply; the ResizeObserver below still
-    // covers any real later resize (window resize, orientation change).
-    const raf = requestAnimationFrame(update);
     const observer = new ResizeObserver(update);
     observer.observe(el);
-    return () => {
-      cancelAnimationFrame(raf);
-      observer.disconnect();
-    };
-  }, []);
+    return () => observer.disconnect();
+    // Re-runs (and so re-measures synchronously) whenever the hero's own
+    // aspect ratio changes — either a new photo becomes active, or its
+    // ratio just resolved from an `onLoad` firing (see `aspects` above).
+    // Found while diagnosing the thumbnail column running visibly taller
+    // than the hero (bug report): relying on ResizeObserver alone to catch
+    // that follow-up size change doesn't work in every browser context —
+    // this ties the re-measurement directly to the state that actually
+    // drives the hero's height instead, which is synchronous and doesn't
+    // depend on the observer firing at all.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveImages[active], aspects[effectiveImages[active] ?? ""]]);
 
   // Wrap-around for the infinite loop: fires ~120ms after the LAST scroll
   // event, whether that scroll came from our own animateScrollTop (which

@@ -143,7 +143,7 @@ export default function ImageField({
           </span>
           {!uploading && (
             <span className="text-xs text-black/40">
-              hoặc bấm để chọn ảnh (tối đa 2MB)
+              hoặc bấm để chọn ảnh (tối đa 10MB)
             </span>
           )}
           <input

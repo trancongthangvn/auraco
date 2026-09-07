@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
     // image-heavy (several source PNGs are >1MB), and this converts them to
     // AVIF/WebP at the size actually rendered.
     formats: ["image/avif", "image/webp"],
+    // Next.js 16 restricts `quality` to this allowlist (default: [75] only)
+    // — a `quality={90}` on an <Image> is silently coerced back down to 75
+    // unless its value is listed here. 90 added for the category rail tiles
+    // (explicit request: sharper, since 75 read visibly soft there).
+    qualities: [75, 90],
     // Admin-uploaded media is served from the Express API through the
     // /uploads rewrite below; it resolves same-origin, so no remotePatterns
     // entry is needed for it.

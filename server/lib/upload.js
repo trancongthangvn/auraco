@@ -15,11 +15,15 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 // after write is not ideal; instead we do a synchronous peek using a small
 // stream in fileFilter by buffering the first bytes multer exposes on the
 // stream object before it hits disk).
+// Explicit request: 2MB was too tight for a genuine 4K photo straight off a
+// phone/camera (routinely 3-8MB as JPEG, more for PNG), forcing admins to
+// over-compress and visibly degrade the image just to fit — raised to 10MB,
+// well under nginx's own client_max_body_size 60m for this container.
 const MIME_WHITELIST = {
-  'image/jpeg': { ext: '.jpg', maxSize: 2 * 1024 * 1024, magic: [[0xff, 0xd8, 0xff]] },
-  'image/png': { ext: '.png', maxSize: 2 * 1024 * 1024, magic: [[0x89, 0x50, 0x4e, 0x47]] },
-  'image/webp': { ext: '.webp', maxSize: 2 * 1024 * 1024, magic: [[0x52, 0x49, 0x46, 0x46]] }, // 'RIFF'
-  'image/gif': { ext: '.gif', maxSize: 2 * 1024 * 1024, magic: [[0x47, 0x49, 0x46, 0x38]] }, // 'GIF8'
+  'image/jpeg': { ext: '.jpg', maxSize: 10 * 1024 * 1024, magic: [[0xff, 0xd8, 0xff]] },
+  'image/png': { ext: '.png', maxSize: 10 * 1024 * 1024, magic: [[0x89, 0x50, 0x4e, 0x47]] },
+  'image/webp': { ext: '.webp', maxSize: 10 * 1024 * 1024, magic: [[0x52, 0x49, 0x46, 0x46]] }, // 'RIFF'
+  'image/gif': { ext: '.gif', maxSize: 10 * 1024 * 1024, magic: [[0x47, 0x49, 0x46, 0x38]] }, // 'GIF8'
   // MP4's 'ftyp' box starts at byte 4 (bytes 0-3 are the box size), hence the
   // explicit magicOffset — checking it at offset 0 would reject every real mp4.
   'video/mp4': {

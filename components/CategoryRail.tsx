@@ -77,7 +77,16 @@ export default function CategoryRail({
                     alt={label}
                     fill
                     sizes="(min-width: 1448px) 320px, (min-width: 640px) 25vw, 50vw"
-                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
+                    // quality={90} (needs next.config.ts's images.qualities
+                    // to include 90, or Next 16 silently coerces it back to
+                    // the default 75): explicit request, the default read
+                    // visibly soft for a large tile like this.
+                    // object-contain, not object-cover: explicit request to
+                    // show the admin's uploaded photo in full, uncropped —
+                    // the square frame + bg-[#e9e4dc] below still letterboxes
+                    // any non-square source consistently for every tile.
+                    quality={90}
+                    className="object-contain transition-transform duration-500 ease-out group-hover:scale-[1.06]"
                   />
                 ) : null}
               </span>

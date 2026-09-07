@@ -35,7 +35,7 @@ const UPLOAD_PATH = "/api/content/admin/posts/upload";
 // or wrong-format file is rejected before it is pushed over the wire.
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const VIDEO_TYPES = ["video/mp4"];
-const IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 
 /**
@@ -50,7 +50,7 @@ function uploadErrorMessage(err: unknown, kind: "image" | "video"): string {
   const raw = err instanceof ApiError || err instanceof Error ? err.message : "";
   if (/too large/i.test(raw)) {
     return kind === "image"
-      ? "Ảnh vượt quá dung lượng cho phép (tối đa 2MB)."
+      ? "Ảnh vượt quá dung lượng cho phép (tối đa 10MB)."
       : "Video vượt quá dung lượng cho phép (tối đa 50MB).";
   }
   if (/unsupported file type/i.test(raw)) {
@@ -191,7 +191,7 @@ export default function RichTextEditor({
     if (file.size > maxBytes) {
       setUploadError(
         kind === "image"
-          ? `Ảnh tối đa 2MB (tệp của bạn ${(file.size / 1024 / 1024).toFixed(1)}MB).`
+          ? `Ảnh tối đa 10MB (tệp của bạn ${(file.size / 1024 / 1024).toFixed(1)}MB).`
           : `Video tối đa 50MB (tệp của bạn ${(file.size / 1024 / 1024).toFixed(1)}MB).`
       );
       return;

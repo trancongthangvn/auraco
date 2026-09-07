@@ -1171,17 +1171,20 @@ export default function CatalogClient({
                     old 2-line reserved boxes below, which kept price
                     perfectly aligned across a row but padded every 1-line
                     card (the common case) with a full blank line of dead
-                    space. Traded off deliberately, with the user's sign-off:
-                    a name/material that genuinely wraps to 2 lines now grows
-                    past its 1-line neighbors and sits very slightly lower
-                    than the price on those - no longer perfectly flush, but
-                    close, and each card's own name/material/price stack
-                    reads as one tight, legible group instead of three
-                    spread-out lines. */}
-                <h3 className="font-serif-display mb-[15px] line-clamp-2 text-[20px] font-normal leading-[23px] text-[#28241f]">
+                    space. Desktop (sm:) still clamps to 2 lines with the
+                    user's earlier sign-off accepting slight misalignment
+                    when one card's name/material genuinely wraps twice.
+                    Mobile follow-up request: that misalignment read as
+                    worse there (2 cards per row, so a 2-line neighbor stood
+                    out more), and price should always line up — clamped to
+                    1 line + ellipsis below sm:, which sidesteps the
+                    trade-off entirely since every mobile card then has the
+                    exact same name/material line count, no reserved height
+                    needed for that guarantee. */}
+                <h3 className="font-serif-display mb-[15px] line-clamp-1 sm:line-clamp-2 text-[20px] font-normal leading-[23px] text-[#28241f]">
                   {p.name}
                 </h3>
-                <p className="font-ui mb-[5px] line-clamp-2 text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
+                <p className="font-ui mb-[5px] line-clamp-1 sm:line-clamp-2 text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
                   {p.material}
                 </p>
                 <p className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">

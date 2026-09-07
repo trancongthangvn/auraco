@@ -180,6 +180,10 @@ export default function VideoCarousel({
       aria-label="Product videos"
       className={`home-block mx-auto ${revealClass}`}
     >
+      {/* Explicit request: this section had no heading at all, unlike every
+          other home-block band (Journal, Feedback, ...) — .section-title is
+          the same shared heading treatment those already use. */}
+      <h2 className="font-serif-display section-title">Inspiration Station</h2>
       <div
         className="relative"
         aria-roledescription="carousel"

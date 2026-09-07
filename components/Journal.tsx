@@ -254,10 +254,9 @@ export default function Journal() {
               {/* The reference draws these as the literal ❮ / ❯ glyphs, not
                   SVG chevrons — matching it exactly here too. */}
               {/* hidden sm:flex: explicit request to remove these on mobile
-                  (replaced by the dots overlaid on the photo below, plus
-                  autoplay and the existing touch-swipe) while keeping them
-                  for desktop's 2-up static grid, which has neither swipe
-                  nor autoplay. */}
+                  (replaced by the dots below, plus autoplay and the
+                  existing touch-swipe) while keeping them for desktop's
+                  2-up static grid, which has neither swipe nor autoplay. */}
               <button
                 aria-label="Previous journal posts"
                 onClick={() => step1(-1)}
@@ -275,34 +274,31 @@ export default function Journal() {
             </>
           )}
 
-          {journalPosts.length > 1 && (
-            // Mobile: explicit request to move the dots off the whole card
-            // (which sat below the date/title/description/Read More text)
-            // and overlay them centered at the bottom of the photo itself,
-            // like a standard carousel indicator. top-[314px] sits 36px up
-            // from the mobile photo's fixed h-[350px] bottom edge (same
-            // "relative" positioning context the arrows above already use,
-            // so it tracks the photo reliably regardless of how many lines
-            // the title/excerpt below it wrap to). drop-shadow keeps the
-            // dots legible over a bright photo. Desktop (sm:) goes back to
-            // the original static position below the 2-up grid — its dots
-            // represent the whole row, not one photo, so overlaying them on
-            // a single card doesn't make sense there.
-            <div className="absolute inset-x-0 top-[314px] z-20 flex items-center justify-center gap-[7.2px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:static sm:mt-[clamp(28px,2.5vw,40px)] sm:drop-shadow-none">
-              {journalPosts.map((post, i) => (
-                <button
-                  key={post.slug}
-                  type="button"
-                  aria-label={`Go to ${post.title}`}
-                  onClick={() => goTo(i)}
-                  className={`h-[8.8px] w-[8.8px] rounded-full bg-[#a67c3d] transition-opacity ${
-                    i === active ? "opacity-100" : "opacity-[0.28]"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
         </div>
+
+        {journalPosts.length > 1 && (
+          // Explicit follow-up request: mobile dots moved back OUT of the
+          // photo overlay (the previous fix) to sit in plain flow below
+          // the whole card instead — the overlay was covering part of the
+          // photo, which read as worse than the original "dots below
+          // everything" placement it replaced. Now a single treatment
+          // (mt-[clamp(28px,2.5vw,40px)], no absolute/drop-shadow) works
+          // for both breakpoints, since it no longer needs to track the
+          // photo's own position.
+          <div className="mt-[clamp(28px,2.5vw,40px)] flex items-center justify-center gap-[7.2px]">
+            {journalPosts.map((post, i) => (
+              <button
+                key={post.slug}
+                type="button"
+                aria-label={`Go to ${post.title}`}
+                onClick={() => goTo(i)}
+                className={`h-[8.8px] w-[8.8px] rounded-full bg-[#a67c3d] transition-opacity ${
+                  i === active ? "opacity-100" : "opacity-[0.28]"
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

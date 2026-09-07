@@ -158,11 +158,31 @@ export default function Gallery({
   useEffect(() => {
     const el = heroRef.current;
     if (!el) return;
-    const update = () => setHeroHeight(el.getBoundingClientRect().height);
+    // Ignores a 0 reading (the box not laid out yet) rather than storing
+    // it — a real hero always has positive height once actually visible,
+    // so a 0 here means "not ready", not "the true height is zero".
+    const update = () => {
+      const h = el.getBoundingClientRect().height;
+      if (h > 0) setHeroHeight(h);
+    };
     update();
+    // Re-measure one more time shortly after mount: found while diagnosing
+    // the thumbnail column running visibly taller than the hero (bug
+    // report) — the very first synchronous read above can land before the
+    // `min-[1000px]:` breakpoint's layout (or the hero's own aspect-ratio,
+    // which depends on the `aspects` state an image's onLoad sets — see
+    // above) has actually settled, so it can capture a too-small or 0
+    // height that nothing afterward corrects if this browser's
+    // ResizeObserver doesn't fire again on its own. A second read next
+    // frame catches that case cheaply; the ResizeObserver below still
+    // covers any real later resize (window resize, orientation change).
+    const raf = requestAnimationFrame(update);
     const observer = new ResizeObserver(update);
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
   }, []);
 
   // Wrap-around for the infinite loop: fires ~120ms after the LAST scroll
@@ -411,7 +431,13 @@ export default function Gallery({
           // alongside the thumbnails.
           <div
             className="flex flex-col gap-2 self-start overflow-hidden"
-            style={heroHeight ? { height: `${heroHeight}px` } : undefined}
+            // `heroHeight !== null`, not a truthy check: a genuinely
+            // measured 0 (element not yet laid out) is a real number, and
+            // `0 ? ... : undefined` would silently treat it the same as
+            // "never measured", leaving the column unconstrained — exactly
+            // the reported bug (the thumbnail column running taller than
+            // the hero it's supposed to match).
+            style={heroHeight !== null ? { height: `${heroHeight}px` } : undefined}
           >
             <div
               ref={thumbViewportRef}

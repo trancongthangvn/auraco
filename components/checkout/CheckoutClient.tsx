@@ -822,7 +822,16 @@ export default function CheckoutClient() {
             (#f5f5f5, 38px/36px/60px padding), with the voucher field inside
             the same card below the totals, matching the reference. */}
         <div>
-          <div className="rounded-[8px] bg-[#f5f5f5] px-9 pb-[38px] pt-[38px] lg:sticky lg:top-6">
+          {/* sticky bottom-0 on mobile: explicit follow-up request — "đi
+              theo cùng khi trượt lên/xuống như ... header của trang". The
+              earlier fix (a real max-height slide instead of the
+              grid-rows/fr trick) covers the OPEN/CLOSE animation; this is
+              a separate thing — the card itself should stay pinned to the
+              bottom of the viewport as the page scrolls, the same way the
+              site's own header stays pinned to the top, rather than
+              scrolling away with the form above it. Desktop is unchanged
+              (lg:sticky lg:top-6, its own pre-existing behavior). */}
+          <div className="sticky bottom-0 z-30 rounded-[8px] bg-[#f5f5f5] px-9 pb-[38px] pt-[38px] lg:top-6 lg:bottom-auto">
             {/* Mobile-only collapsible header — explicit request. The
                 button itself is inert on desktop (lg:pointer-events-none),
                 where the card stays permanently expanded like before; the

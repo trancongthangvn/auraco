@@ -430,8 +430,16 @@ export default function Gallery({
                   // No selected-state outline: explicit request to leave the
                   // thumbnails as plain images. `aria-current` above still
                   // conveys the selection to screen readers.
-                  className="group relative w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
-                  style={{ aspectRatio: aspects[src] ?? 4 / 5 }}
+                  // aspect-[4/5], not the photo's own measured ratio:
+                  // explicit follow-up request — sizing each thumbnail to
+                  // its own photo (like the hero above) left some tiles
+                  // square-ish and others a tall rectangle, an inconsistent
+                  // mix down the column. Every desktop thumbnail is now the
+                  // same fixed rectangular frame; object-contain (unchanged)
+                  // still shows each photo in full, uncropped, at full
+                  // resolution — a non-4:5 photo just letterboxes against
+                  // bg-[#f6f0e6] instead of being scaled to its own shape.
+                  className="group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
                 >
                   <Image
                     src={src}
@@ -439,7 +447,6 @@ export default function Gallery({
                     fill
                     sizes="30vw"
                     className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
-                    onLoad={onImageLoad(src)}
                   />
                 </button>
               ))}

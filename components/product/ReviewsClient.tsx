@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import { StarIcon, StarRating } from "@/components/icons";
 import { apiFetch, ApiError } from "@/lib/api";
 
@@ -19,12 +18,10 @@ type SortKey = "recent" | "highest" | "lowest";
 export default function ReviewsClient({
   slug,
   productName,
-  productImage,
   initialReviews,
 }: {
   slug: string;
   productName: string;
-  productImage?: string;
   initialReviews: ProductReview[];
 }) {
   // A freshly submitted review goes to "Chờ duyệt" (pending) and only
@@ -231,41 +228,28 @@ export default function ReviewsClient({
 
       <div className="grid gap-4">
         {visibleReviews.map((r) => (
-          <div key={r.id} className={`${cardClass} flex gap-[13px]`}>
-            {productImage && (
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-gold-light/35 bg-[#f6f0e6]">
-                <Image
-                  src={productImage}
-                  alt={productName}
-                  fill
-                  sizes="64px"
-                  className="object-cover"
-                />
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-3">
-                <StarRating rating={r.rating} size={16} />
-                <p className="text-[14.08px] leading-[21.824px] text-[#5c554a]">
-                  <strong className="font-bold">{r.customer_name}</strong>
-                  {" · "}
-                  <time dateTime={r.created_at}>
-                    {new Date(r.created_at).toLocaleDateString()}
-                  </time>
-                </p>
-              </div>
-              <p className="mt-[9.6px] font-ui text-xs font-light leading-[18.6px] tracking-[0.06px] text-[#4f4a44]">
-                {r.comment}
+          <div key={r.id} className={cardClass}>
+            <div className="flex items-center justify-between gap-3">
+              <StarRating rating={r.rating} size={16} />
+              <p className="text-[14.08px] leading-[21.824px] text-[#5c554a]">
+                <strong className="font-bold">{r.customer_name}</strong>
+                {" · "}
+                <time dateTime={r.created_at}>
+                  {new Date(r.created_at).toLocaleDateString()}
+                </time>
               </p>
-              {r.photo_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={r.photo_url}
-                  alt={`Photo submitted by ${r.customer_name}`}
-                  className="mt-[9.6px] h-16 w-16 rounded-lg border border-gold-light/35 object-cover"
-                />
-              )}
             </div>
+            <p className="mt-[9.6px] font-ui text-xs font-light leading-[18.6px] tracking-[0.06px] text-[#4f4a44]">
+              {r.comment}
+            </p>
+            {r.photo_url && (
+              // eslint-disable-next-line @next/next/no-img-element -- admin-set/customer-submitted photo, an arbitrary URL next/image would reject without remotePatterns.
+              <img
+                src={r.photo_url}
+                alt={`Photo submitted by ${r.customer_name}`}
+                className="mt-[9.6px] h-16 w-16 rounded-lg border border-gold-light/35 object-cover"
+              />
+            )}
           </div>
         ))}
         {visibleReviews.length === 0 && (

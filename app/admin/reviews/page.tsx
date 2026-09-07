@@ -10,6 +10,7 @@ import { StarRating } from "@/components/icons";
 import Button from "@/components/admin/ui/Button";
 import IconButton from "@/components/admin/ui/IconButton";
 import { Select } from "@/components/admin/ui/Field";
+import ImageField from "@/components/admin/ImageField";
 
 type ReviewStatus = "Chờ duyệt" | "Đã duyệt" | "Từ chối";
 
@@ -25,6 +26,7 @@ type ProductReview = {
   status: ReviewStatus;
   created_at: string;
   updated_at: string;
+  photo_url: string | null;
 };
 
 function formatDate(iso: string) {
@@ -73,6 +75,21 @@ export default function AdminReviewsPage() {
       setReviews((list) => list.map((r) => (r.id === id ? updated : r)));
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "Không thể cập nhật");
+    }
+  };
+
+  // The PUT endpoint requires `status` on every call (it's the one
+  // required field), so a photo-only update still sends the review's own
+  // current status back unchanged, not just photoUrl by itself.
+  const updatePhoto = async (r: ProductReview, photoUrl: string | null) => {
+    try {
+      const updated = await apiFetch<ProductReview>(`/api/admin/reviews/${r.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: r.status, photoUrl }),
+      });
+      setReviews((list) => list.map((x) => (x.id === r.id ? updated : x)));
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Không thể cập nhật ảnh");
     }
   };
 
@@ -131,6 +148,13 @@ export default function AdminReviewsPage() {
                 <StarRating rating={r.rating} size={13} />
               </div>
               <p className="text-sm text-black/70 mb-3">{r.comment}</p>
+              <div className="mb-3 max-w-xs">
+                <ImageField
+                  label="Ảnh khách hàng"
+                  value={r.photo_url}
+                  onChange={(url) => updatePhoto(r, url)}
+                />
+              </div>
               <div className="flex items-center gap-3 flex-wrap">
                 <Select
                   value={r.status}

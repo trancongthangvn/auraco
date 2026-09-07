@@ -20,7 +20,6 @@ export default async function Reviews({ product }: { product: FullProduct }) {
       <ReviewsClient
         slug={product.slug}
         productName={product.name}
-        productImage={product.thumbnailUrl || product.images[0]}
         initialReviews={reviews}
       />
     </section>

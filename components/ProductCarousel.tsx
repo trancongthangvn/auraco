@@ -265,7 +265,10 @@ export default function ProductCarousel({
         <h3 className="font-serif-display mb-1 line-clamp-1 text-[20px] font-normal leading-[23px] text-[#28241f]">
           {p.name}
         </h3>
-        <p className="font-ui mb-1 line-clamp-1 text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
+        {/* mb-[5px], not mb-1 (4px): explicit request — material and price
+            should sit 5pt apart specifically, tighter/more optimized than
+            the name-to-material gap above it. */}
+        <p className="font-ui mb-[5px] line-clamp-1 text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
           {p.material}
         </p>
         <p className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">

@@ -11,6 +11,8 @@ import { useRevealOnScroll } from "@/components/useRevealOnScroll";
 const JOURNAL_GAP = 17;
 /** Slide transition, in ms — must match the `duration-[520ms]` class below. */
 const JOURNAL_DURATION = 520;
+/** Auto-advance interval, in ms — same value as Hero.tsx's own autoplay. */
+const JOURNAL_AUTOPLAY = 5000;
 
 export default function Journal() {
   const [revealRef, revealClass] = useRevealOnScroll<HTMLElement>({ fadeOnly: true });
@@ -95,6 +97,16 @@ export default function Journal() {
   const step1 = (dir: 1 | -1) => setIndex((i) => i + dir);
   const goTo = (i: number) => setIndex(count + i);
   const active = ((index % count) + count) % count;
+
+  // Auto-advance, same setTimeout-keyed-off-index idiom as Hero.tsx: any
+  // manual step (arrow click, dot click, swipe) changes `index`, which
+  // re-runs this effect and reschedules the timer from scratch — no
+  // separate pause-on-interaction flag needed. Explicit request.
+  useEffect(() => {
+    if (count <= 1) return;
+    const id = setTimeout(() => step1(1), JOURNAL_AUTOPLAY);
+    return () => clearTimeout(id);
+  }, [index, count]);
 
   // Touch-swipe support — the reference's own Journal slider
   // (`.home-journal-slider`) IS swipeable (confirmed live: dispatching a
@@ -241,23 +253,22 @@ export default function Journal() {
             <>
               {/* The reference draws these as the literal ❮ / ❯ glyphs, not
                   SVG chevrons — matching it exactly here too. */}
-              {/* Explicit request: consistent with the other mobile
-                  carousels (Feedback, video, Hero) that now show their
-                  arrows on mobile too — this was still `hidden sm:flex`.
-                  left-1/right-1 (not the desktop -left-5/-right-5, which
-                  relies on side margin mobile doesn't have) keeps the
-                  button inside the viewport edge on narrow screens. */}
+              {/* hidden sm:flex: explicit request to remove these on mobile
+                  (replaced by the dots overlaid on the photo below, plus
+                  autoplay and the existing touch-swipe) while keeping them
+                  for desktop's 2-up static grid, which has neither swipe
+                  nor autoplay. */}
               <button
                 aria-label="Previous journal posts"
                 onClick={() => step1(-1)}
-                className="absolute left-1 sm:-left-5 top-[calc(37.5%-18px)] z-20 flex items-center justify-center h-9 w-9 rounded-full bg-white text-[17.6px] leading-none shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+                className="absolute -left-5 top-[calc(37.5%-18px)] z-20 hidden h-9 w-9 items-center justify-center rounded-full bg-white text-[17.6px] leading-none shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold sm:flex"
               >
                 &#10094;
               </button>
               <button
                 aria-label="Next journal posts"
                 onClick={() => step1(1)}
-                className="absolute right-1 sm:-right-5 top-[calc(37.5%-18px)] z-20 flex items-center justify-center h-9 w-9 rounded-full bg-white text-[17.6px] leading-none shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+                className="absolute -right-5 top-[calc(37.5%-18px)] z-20 hidden h-9 w-9 items-center justify-center rounded-full bg-white text-[17.6px] leading-none shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold sm:flex"
               >
                 &#10095;
               </button>
@@ -265,14 +276,19 @@ export default function Journal() {
           )}
 
           {journalPosts.length > 1 && (
-            // Explicit request: separate the dots from the cards clearly at
-            // every screen size, scaling with viewport width rather than a
-            // fixed px value. Verified with getBoundingClientRect that the
-            // clamp() floor is a real, present gap even at 375px — a
-            // smaller floor (20px) still read as "touching" because the
-            // cards' own box-shadow (0 18px 40px) visually bleeds into it;
-            // this floor is wide enough to sit clearly past that falloff.
-            <div className="mt-[clamp(28px,2.5vw,40px)] flex items-center justify-center gap-[7.2px]">
+            // Mobile: explicit request to move the dots off the whole card
+            // (which sat below the date/title/description/Read More text)
+            // and overlay them centered at the bottom of the photo itself,
+            // like a standard carousel indicator. top-[314px] sits 36px up
+            // from the mobile photo's fixed h-[350px] bottom edge (same
+            // "relative" positioning context the arrows above already use,
+            // so it tracks the photo reliably regardless of how many lines
+            // the title/excerpt below it wrap to). drop-shadow keeps the
+            // dots legible over a bright photo. Desktop (sm:) goes back to
+            // the original static position below the 2-up grid — its dots
+            // represent the whole row, not one photo, so overlaying them on
+            // a single card doesn't make sense there.
+            <div className="absolute inset-x-0 top-[314px] z-20 flex items-center justify-center gap-[7.2px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:static sm:mt-[clamp(28px,2.5vw,40px)] sm:drop-shadow-none">
               {journalPosts.map((post, i) => (
                 <button
                   key={post.slug}

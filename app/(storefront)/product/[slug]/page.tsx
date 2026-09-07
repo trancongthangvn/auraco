@@ -183,29 +183,21 @@ export default async function ProductPage({
   const bundleDiscountPercent = bundle.companions.length > 0 ? bundle.discountPercent : 0;
   const { dict } = await getServerDictionary();
 
-  // "See It IRL" auto-advances through videos of similar products (same
-  // collection/category as the one being viewed, via fetchRelatedRaw) once
-  // the current clip ends — every one of the current product's OWN videos
-  // plays first (a product can now have several, see migration 018), then
-  // whichever related products have one, deduped and capped so the loop
-  // doesn't grow unbounded on a big collection.
-  const seeItIrlVideos = [
-    ...(product.videoUrls ?? []).map((videoUrl) => ({
-      slug: product.slug,
-      name: product.name,
-      videoUrl,
-      thumbnail: product.thumbnailUrl || product.images[0],
-    })),
-    ...rawRelated
-      .filter((p) => p.video_url && p.slug !== product.slug)
-      .slice(0, 9)
-      .map((p) => ({
-        slug: p.slug,
-        name: p.name,
-        videoUrl: p.video_url as string,
-        thumbnail: p.thumbnail_url || p.images[0],
-      })),
-  ].filter((v): v is { slug: string; name: string; videoUrl: string; thumbnail: string } => v !== null);
+  // "See It IRL" shows only THIS product's own uploaded video(s) (a product
+  // can have several, see migration 018) — explicit request. It used to
+  // back-fill with related products' videos whenever the current product
+  // had none, which is exactly the bug report: a product with no video
+  // uploaded in admin still showed a video here, borrowed from a related
+  // product. The admin's own "Video sản phẩm" field is scoped per product
+  // ("Để trống nếu sản phẩm không có video"), so this section should be
+  // too — empty stays empty (SeeItIRL already renders nothing for an empty
+  // array).
+  const seeItIrlVideos = (product.videoUrls ?? []).map((videoUrl) => ({
+    slug: product.slug,
+    name: product.name,
+    videoUrl,
+    thumbnail: product.thumbnailUrl || product.images[0],
+  }));
 
   return (
     <>

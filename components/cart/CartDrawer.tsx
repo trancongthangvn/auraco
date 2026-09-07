@@ -116,6 +116,52 @@ export default function CartDrawer() {
         onClick={closeDrawer}
         className="absolute inset-0 bg-black/30"
       />
+      {/* Explicit request: on lg+ screens, "Why Not Add" becomes its own
+          panel to the left of the bag (matching the reference layout: two
+          flush-right panels side by side), instead of only the compact
+          in-drawer list below. Below lg there's no room for two panels
+          side by side, so that compact list (further down) stays the only
+          version there — unchanged. */}
+      {suggestions.length > 0 && (
+        <div className="relative hidden h-full w-[300px] shrink-0 flex-col overflow-y-auto bg-[#f7f4ef] px-6 py-6 lg:flex">
+          <p className="mb-5 font-ui text-[13px] font-semibold uppercase tracking-[0.08em] text-[#2b261f]">
+            Why Not Add
+          </p>
+          <ul className="space-y-5">
+            {suggestions.map((s) => (
+              <li key={s.slug} className="flex gap-3 border-b border-black/10 pb-5 last:border-b-0 last:pb-0">
+                <Link
+                  href={`/product/${s.slug}`}
+                  onClick={closeDrawer}
+                  className="relative block h-[85px] w-[85px] shrink-0 overflow-hidden bg-[#efe9e0]"
+                >
+                  {s.image && (
+                    <Image src={s.image} alt={s.name} fill sizes="85px" className="object-cover" />
+                  )}
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] text-[#2b261f]">{s.name}</p>
+                  <p className="mt-1 text-[13px] text-[#2b261f]">{money(s.price)}</p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      addItem({
+                        slug: s.slug,
+                        name: s.name,
+                        price: s.price,
+                        image: s.image ?? null,
+                      })
+                    }
+                    className="mt-2 border border-[#28241f] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#28241f] hover:bg-black/5"
+                  >
+                    Add to Bag
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="relative flex h-full w-full max-w-[420px] flex-col bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.12)]">
         <div className="flex items-center justify-between border-b border-black/10 px-5 py-4">
           <h2 className="font-ui text-[13px] font-semibold uppercase tracking-[0.08em] text-[#2b261f]">
@@ -230,8 +276,12 @@ export default function CartDrawer() {
             </ul>
           )}
 
+          {/* lg:hidden — at lg+ this is replaced by the standalone side
+              panel to the left of the drawer (see above); this compact
+              in-drawer version stays exactly as before on mobile/tablet,
+              where there's no room for two side-by-side panels. */}
           {suggestions.length > 0 && (
-            <div className="mt-6">
+            <div className="mt-6 lg:hidden">
               <p className="mb-3 font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-[#5c554a]">
                 Why Not Add
               </p>

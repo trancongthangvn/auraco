@@ -593,8 +593,9 @@ export default function AdminProductsPage() {
     }
   };
 
-  const remove = async (slug: string) => {
+  const remove = async (slug: string, name: string) => {
     if (!isAdmin) return;
+    if (!confirm(`Xóa sản phẩm "${name}"? Hành động này không thể hoàn tác.`)) return;
     try {
       await apiFetch(`/api/products/admin/products/${slug}`, { method: "DELETE" });
       setProducts((list) => list.filter((p) => p.slug !== slug));
@@ -925,7 +926,7 @@ export default function AdminProductsPage() {
                     <Button
                       size="sm"
                       variant="danger"
-                      onClick={() => remove(p.slug)}
+                      onClick={() => remove(p.slug, p.name)}
                       disabled={!isAdmin}
                       title={!isAdmin ? "Chỉ Quản trị viên được xóa sản phẩm" : ""}
                     >

@@ -60,7 +60,15 @@ function Stars({ filled = 5 }: { filled?: number }) {
   );
 }
 
-function TestimonialCard({ t, ariaHidden }: { t: Testimonial; ariaHidden?: true }) {
+function TestimonialCard({
+  t,
+  ariaHidden,
+  onZoom,
+}: {
+  t: Testimonial;
+  ariaHidden?: true;
+  onZoom: (src: string) => void;
+}) {
   return (
     <div
       aria-hidden={ariaHidden}
@@ -95,7 +103,18 @@ function TestimonialCard({ t, ariaHidden }: { t: Testimonial; ariaHidden?: true 
           the mobile ratio scaled up — aspect-[8/9] was solved from those
           two measured numbers (photo height = 0.75 × old total − the fixed
           text-block height), independent of the mobile ratio above it. */}
-      <div className="relative aspect-[18/25] w-full bg-[#e9e4dc] sm:aspect-[8/9]">
+      <div
+        // Explicit request: clicking a feedback photo opens it enlarged —
+        // same click-to-zoom UX already added to admin thumbnails, now on
+        // the public site. onClick sits on this wrapper (not the Image),
+        // since a swipe on mobile shouldn't accidentally trigger it — the
+        // touch-move handler above already calls preventDefault once a
+        // drag is detected, which suppresses the synthetic click a real
+        // swipe would otherwise fire on release, so this still only opens
+        // on a genuine tap.
+        onClick={() => t.photo && onZoom(t.photo)}
+        className={`relative aspect-[18/25] w-full bg-[#e9e4dc] sm:aspect-[8/9] ${t.photo ? "cursor-zoom-in" : ""}`}
+      >
         {t.photo && (
           <Image
             src={t.photo}
@@ -267,6 +286,7 @@ export default function Testimonials({
   }, []);
 
   const active = count === 0 ? 0 : ((index % count) + count) % count;
+  const [zoomSrc, setZoomSrc] = useState<string | null>(null);
   const offset = index * STEP;
 
   return (
@@ -314,6 +334,7 @@ export default function Testimonials({
                       key={`${copy}-${t.name}-${t.date}-${i}`}
                       t={t}
                       ariaHidden={copy === 1 ? undefined : true}
+                      onZoom={setZoomSrc}
                     />
                   ))
                 )}
@@ -348,10 +369,39 @@ export default function Testimonials({
             machinery of any kind. */}
         <div className="hidden gap-[7px] overflow-x-auto pb-2 sm:flex [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {testimonials.map((t) => (
-            <TestimonialCard key={t.name + t.date} t={t} />
+            <TestimonialCard key={t.name + t.date} t={t} onZoom={setZoomSrc} />
           ))}
         </div>
       </div>
+
+      {/* Click-to-zoom overlay — same simple pattern as the admin
+          ImageZoomProvider, scoped locally here since only this section
+          needs it on the public site right now. */}
+      {zoomSrc && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Xem ảnh phóng to"
+          onClick={() => setZoomSrc(null)}
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-6"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- admin-uploaded photo, an arbitrary URL next/image would reject without remotePatterns. */}
+          <img
+            src={zoomSrc}
+            alt=""
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-full max-w-full cursor-default rounded object-contain shadow-2xl"
+          />
+          <button
+            type="button"
+            aria-label="Đóng"
+            onClick={() => setZoomSrc(null)}
+            className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-xl leading-none text-black transition-colors hover:bg-white"
+          >
+            &times;
+          </button>
+        </div>
+      )}
     </section>
   );
 }

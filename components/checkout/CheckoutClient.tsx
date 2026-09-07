@@ -9,6 +9,7 @@ import { cartItemKey } from "@/lib/cart";
 import CurrencyPicker from "@/components/currency/CurrencyPicker";
 import {
   ChevronLeftIcon,
+  ChevronDownIcon,
   PlusIcon,
   MinusIcon,
   SearchIcon,
@@ -176,6 +177,10 @@ export default function CheckoutClient() {
 
   const [payment, setPayment] = useState("");
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(true);
+  // Mobile-only collapse for the "Your order" summary card — explicit
+  // request. Desktop ignores this entirely (forced open via lg: below),
+  // matching its own always-expanded sticky sidebar.
+  const [orderSummaryOpen, setOrderSummaryOpen] = useState(true);
 
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherMessage, setVoucherMessage] = useState("");
@@ -795,9 +800,44 @@ export default function CheckoutClient() {
             the same card below the totals, matching the reference. */}
         <div>
           <div className="rounded-[8px] bg-[#f5f5f5] px-9 pb-[38px] pt-[38px] lg:sticky lg:top-6">
-            <h2 className="mb-6 font-ui text-sm font-medium text-[#171717]">
-              Your order
-            </h2>
+            {/* Mobile-only collapsible header — explicit request. The
+                button itself is inert on desktop (lg:pointer-events-none),
+                where the card stays permanently expanded like before; the
+                content panel below is force-opened at lg: regardless of
+                `orderSummaryOpen` via the grid-rows override. Collapsed
+                label/total match the reference's own "Order summary ⌄ ...
+                £X" compact row. */}
+            <button
+              type="button"
+              onClick={() => setOrderSummaryOpen((o) => !o)}
+              aria-expanded={orderSummaryOpen}
+              className="flex w-full items-center justify-between lg:pointer-events-none lg:cursor-default"
+            >
+              <span className="flex items-center gap-1.5 font-ui text-sm font-medium text-[#171717]">
+                {orderSummaryOpen ? "Your order" : "Order summary"}
+                <ChevronDownIcon
+                  size={14}
+                  className={`transition-transform lg:hidden ${orderSummaryOpen ? "rotate-180" : ""}`}
+                />
+              </span>
+              {!orderSummaryOpen && (
+                <strong className="font-ui text-sm text-[#171717] lg:hidden">
+                  ${total.toFixed(2)}
+                </strong>
+              )}
+            </button>
+
+            {/* Same grid-template-rows disclosure animation as
+                CatalogClient.tsx's filter accordion — a plain
+                `{open && ...}` snaps instantly instead of animating.
+                lg:grid-rows-[1fr] forces this open on desktop no matter
+                what `orderSummaryOpen` is. */}
+            <div
+              className={`grid transition-[grid-template-rows] duration-300 ease-out lg:grid-rows-[1fr] ${
+                orderSummaryOpen ? "grid-rows-[1fr] mt-6" : "grid-rows-[0fr]"
+              } lg:mt-6`}
+            >
+              <div className="overflow-hidden">
 
             {itemsLoading ? (
               <p className="mb-6 font-ui text-sm text-black/50">Loading…</p>
@@ -894,6 +934,8 @@ export default function CheckoutClient() {
                 {voucherMessage}
               </p>
             )}
+              </div>
+            </div>
           </div>
         </div>
       </main>

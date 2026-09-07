@@ -141,7 +141,8 @@ router.get('/homepage', async (req, res) => {
          ORDER BY sort_order ASC, id ASC`
       ),
       query(
-        `SELECT id, initials, name, quote, quote_date, sort_order, photo_url
+        `SELECT id, initials, name, quote, quote_date, sort_order, photo_url,
+                product_id, product_name, rating
          FROM testimonials
          WHERE active = TRUE
          ORDER BY sort_order ASC, id ASC`
@@ -176,7 +177,8 @@ router.get('/homepage', async (req, res) => {
 // error-prone than diffing individual rows for this use case).
 //
 // Body: { heroSlides?: [{ label, title, href, image_url, sortOrder?, active? }],
-//         testimonials?: [{ initials, name, quote, quoteDate?, sortOrder?, active? }] }
+//         testimonials?: [{ initials, name, quote, quoteDate?, sortOrder?, active?,
+//                            productId?, productName?, rating? (1-5, default 5) }] }
 // At least one of heroSlides/testimonials must be provided.
 // ============================================================================
 router.put('/admin/homepage', authMiddleware, requireAdmin, async (req, res) => {
@@ -214,6 +216,22 @@ router.put('/admin/homepage', authMiddleware, requireAdmin, async (req, res) => 
           error: `testimonials[${i}] requires non-empty initials, name, quote`,
         });
       }
+      const rating = t.rating;
+      if (
+        rating !== undefined &&
+        rating !== null &&
+        (!isFiniteNumber(rating) || !Number.isInteger(rating) || rating < 1 || rating > 5)
+      ) {
+        return res.status(400).json({
+          error: `testimonials[${i}].rating must be an integer from 1 to 5`,
+        });
+      }
+      const productId = t.productId ?? t.product_id;
+      if (productId !== undefined && productId !== null && !isFiniteNumber(productId)) {
+        return res.status(400).json({
+          error: `testimonials[${i}].productId must be a number or null`,
+        });
+      }
     }
   }
 
@@ -245,9 +263,10 @@ router.put('/admin/homepage', authMiddleware, requireAdmin, async (req, res) => 
       await client.query('DELETE FROM testimonials');
       let i = 0;
       for (const t of testimonials) {
+        const rating = t.rating;
         await client.query(
-          `INSERT INTO testimonials (initials, name, quote, quote_date, sort_order, active, photo_url)
-           VALUES ($1, $2, $3, COALESCE($4, CURRENT_DATE), $5, $6, $7)`,
+          `INSERT INTO testimonials (initials, name, quote, quote_date, sort_order, active, photo_url, product_id, product_name, rating)
+           VALUES ($1, $2, $3, COALESCE($4, CURRENT_DATE), $5, $6, $7, $8, $9, $10)`,
           [
             t.initials,
             t.name,
@@ -256,6 +275,9 @@ router.put('/admin/homepage', authMiddleware, requireAdmin, async (req, res) => 
             isFiniteNumber(t.sortOrder ?? t.sort_order) ? (t.sortOrder ?? t.sort_order) : i,
             isBoolean(t.active) ? t.active : true,
             t.photoUrl ?? t.photo_url ?? null,
+            t.productId ?? t.product_id ?? null,
+            t.productName ?? t.product_name ?? null,
+            isFiniteNumber(rating) ? rating : 5,
           ]
         );
         i += 1;
@@ -266,7 +288,7 @@ router.put('/admin/homepage', authMiddleware, requireAdmin, async (req, res) => 
 
     const [heroResult, testimonialResult] = await Promise.all([
       query('SELECT id, label, title, href, image_url, sort_order, active FROM hero_slides ORDER BY sort_order ASC, id ASC'),
-      query('SELECT id, initials, name, quote, quote_date, sort_order, active, photo_url FROM testimonials ORDER BY sort_order ASC, id ASC'),
+      query('SELECT id, initials, name, quote, quote_date, sort_order, active, photo_url, product_id, product_name, rating FROM testimonials ORDER BY sort_order ASC, id ASC'),
     ]);
 
     res.json({ data: { heroSlides: heroResult.rows, testimonials: testimonialResult.rows } });

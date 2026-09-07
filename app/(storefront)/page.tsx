@@ -47,6 +47,7 @@ type ApiTestimonial = {
   quote_date: string;
   sort_order: number;
   photo_url: string | null;
+  rating: number;
 };
 
 type ApiCollection = {
@@ -170,6 +171,7 @@ export default async function Home() {
     // Real per-reviewer photo when the admin has set one; otherwise borrow
     // an on-model shot by position rather than show a blank card.
     photo: t.photo_url || TESTIMONIAL_PHOTOS[i % TESTIMONIAL_PHOTOS.length],
+    rating: t.rating,
   }));
 
   const collectionTiles: CollectionTile[] = collections.map((c) => ({

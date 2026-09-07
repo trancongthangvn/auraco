@@ -342,14 +342,18 @@ CREATE TABLE hero_slides (
 -- testimonials (homepage customer quotes)
 -- ----------------------------------------------------------------------------
 CREATE TABLE testimonials (
-  id         SERIAL PRIMARY KEY,
-  initials   VARCHAR(6)   NOT NULL,
-  name       VARCHAR(160) NOT NULL,
-  quote      TEXT         NOT NULL,
-  quote_date DATE         NOT NULL DEFAULT CURRENT_DATE,
-  sort_order INTEGER      NOT NULL DEFAULT 0,
-  active     BOOLEAN      NOT NULL DEFAULT TRUE
+  id           SERIAL PRIMARY KEY,
+  initials     VARCHAR(6)   NOT NULL,
+  name         VARCHAR(160) NOT NULL,
+  quote        TEXT         NOT NULL,
+  quote_date   DATE         NOT NULL DEFAULT CURRENT_DATE,
+  sort_order   INTEGER      NOT NULL DEFAULT 0,
+  active       BOOLEAN      NOT NULL DEFAULT TRUE,
+  product_id   INTEGER      REFERENCES products(id) ON DELETE SET NULL,
+  product_name VARCHAR(200), -- snapshot, in case product is later renamed/deleted
+  rating       SMALLINT     NOT NULL DEFAULT 5 CHECK (rating >= 1 AND rating <= 5)
 );
+CREATE INDEX idx_testimonials_product ON testimonials(product_id);
 
 -- ----------------------------------------------------------------------------
 -- site_settings (single-row site config)

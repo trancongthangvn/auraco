@@ -14,6 +14,7 @@ import {
 import Button from "@/components/admin/ui/Button";
 import { Input, Textarea, Label, Select } from "@/components/admin/ui/Field";
 import ImageField from "@/components/admin/ImageField";
+import { StarIcon, StarRating } from "@/components/icons";
 import { TableCard, Th, Td, TR_HOVER } from "@/components/admin/ui/Table";
 import {
   ModalBackdrop,
@@ -42,7 +43,12 @@ type Testimonial = {
   sort_order?: number;
   active?: boolean;
   photo_url?: string | null;
+  product_id?: number | null;
+  product_name?: string | null;
+  rating?: number;
 };
+
+type ProductOption = { id: number; name: string };
 
 type FeaturedProduct = (typeof initialBeachVibe)[number];
 
@@ -56,6 +62,126 @@ type HomepageData = {
 
 const TABS = ["Ảnh bìa lớn", "Sản phẩm nổi bật", "Đánh giá khách hàng"] as const;
 type Tab = (typeof TABS)[number];
+
+// quote_date comes back from the API as an ISO timestamp/date string;
+// <input type="date"> needs exactly "yyyy-mm-dd" or it silently shows blank.
+function toDateInputValue(value?: string | null) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
+/** Optional single-product link for a testimonial: a search box + matching
+ *  list (same pattern as the product page's "Mua cùng nhau" bundle picker),
+ *  but single-select — picking a result replaces the search with a chip. */
+function ProductPickerField({
+  products,
+  productId,
+  productName,
+  onSelect,
+  onClear,
+  disabled,
+}: {
+  products: ProductOption[];
+  productId: number | null;
+  productName: string;
+  onSelect: (id: number, name: string) => void;
+  onClear: () => void;
+  disabled?: boolean;
+}) {
+  const [search, setSearch] = useState("");
+
+  if (productId) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-black/15 bg-black/[0.03] px-3.5 py-2.5 text-sm">
+        <span className="flex-1 truncate">{productName}</span>
+        <button
+          type="button"
+          onClick={onClear}
+          disabled={disabled}
+          className="text-xs text-black/50 hover:text-black underline underline-offset-2 disabled:cursor-not-allowed"
+        >
+          Bỏ chọn
+        </button>
+      </div>
+    );
+  }
+
+  const candidates = products.filter((p) =>
+    p.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
+  return (
+    <div>
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Tìm sản phẩm theo tên..."
+        disabled={disabled}
+        className="mb-2 text-xs"
+      />
+      {search.trim() && (
+        <div className="max-h-40 overflow-y-auto rounded-lg border border-black/10 p-1">
+          {candidates.length === 0 && (
+            <p className="text-xs text-black/30 italic px-2 py-1.5">
+              Không tìm thấy sản phẩm nào khớp &quot;{search}&quot;.
+            </p>
+          )}
+          {candidates.slice(0, 20).map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                onSelect(p.id, p.name);
+                setSearch("");
+              }}
+              className="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-black/[0.03]"
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Clickable 1-5 star input, built on the same StarIcon used by the
+ *  read-only StarRating display elsewhere in the admin. */
+function StarPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: number;
+  onChange: (rating: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      {Array.from({ length: 5 }, (_, i) => {
+        const n = i + 1;
+        return (
+          <button
+            key={n}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(n)}
+            aria-label={`${n} sao`}
+            className="disabled:cursor-not-allowed"
+          >
+            <StarIcon
+              size={20}
+              filled={n <= value}
+              className={n <= value ? "text-[#f0b429]" : "text-black/20"}
+            />
+          </button>
+        );
+      })}
+    </span>
+  );
+}
 
 export default function AdminHomepagePage() {
   const { session } = useAdminAuth();
@@ -81,14 +207,23 @@ export default function AdminHomepagePage() {
   const [newArrivals, setNewArrivals] = useState<FeaturedProduct[]>(initialNewArrivals);
 
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
-  const [testimonialForm, setTestimonialForm] = useState({ name: "", quote: "", photo_url: "" });
-  const [creatingTestimonial, setCreatingTestimonial] = useState(false);
-  const [newTestimonialForm, setNewTestimonialForm] = useState({
-    initials: "",
+  const [testimonialSearch, setTestimonialSearch] = useState("");
+  const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
+  const emptyTestimonialForm = {
     name: "",
     quote: "",
     photo_url: "",
+    quote_date: toDateInputValue(new Date().toISOString()),
+    rating: 5,
+    product_id: null as number | null,
+    product_name: "",
+  };
+  const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
+  const [testimonialForm, setTestimonialForm] = useState(emptyTestimonialForm);
+  const [creatingTestimonial, setCreatingTestimonial] = useState(false);
+  const [newTestimonialForm, setNewTestimonialForm] = useState({
+    initials: "",
+    ...emptyTestimonialForm,
   });
   const [savingTestimonial, setSavingTestimonial] = useState(false);
 
@@ -117,6 +252,14 @@ export default function AdminHomepagePage() {
       .then((data) => setCollectionOptions(data))
       .catch(() => {
         // Non-critical — the modal falls back to a plain href text field.
+      });
+  }, []);
+
+  useEffect(() => {
+    apiFetch<{ id: number; name: string }[]>("/api/products/admin/products")
+      .then((data) => setProductOptions(data.map((p) => ({ id: p.id, name: p.name }))))
+      .catch(() => {
+        // Non-critical — the testimonial form falls back to no product link.
       });
   }, []);
 
@@ -205,7 +348,15 @@ export default function AdminHomepagePage() {
 
   const openEditTestimonial = (t: Testimonial) => {
     setEditingTestimonial(t);
-    setTestimonialForm({ name: t.name, quote: t.quote, photo_url: t.photo_url ?? "" });
+    setTestimonialForm({
+      name: t.name,
+      quote: t.quote,
+      photo_url: t.photo_url ?? "",
+      quote_date: toDateInputValue(t.quote_date) || emptyTestimonialForm.quote_date,
+      rating: t.rating ?? 5,
+      product_id: t.product_id ?? null,
+      product_name: t.product_name ?? "",
+    });
   };
 
   const submitEditTestimonial = async () => {
@@ -219,6 +370,10 @@ export default function AdminHomepagePage() {
               name: testimonialForm.name,
               quote: testimonialForm.quote,
               photo_url: testimonialForm.photo_url || null,
+              quote_date: testimonialForm.quote_date || null,
+              rating: testimonialForm.rating,
+              product_id: testimonialForm.product_id,
+              product_name: testimonialForm.product_id ? testimonialForm.product_name : null,
             }
           : t
       );
@@ -241,11 +396,15 @@ export default function AdminHomepagePage() {
           name: newTestimonialForm.name,
           quote: newTestimonialForm.quote,
           photo_url: newTestimonialForm.photo_url || null,
+          quote_date: newTestimonialForm.quote_date || null,
+          rating: newTestimonialForm.rating,
+          product_id: newTestimonialForm.product_id,
+          product_name: newTestimonialForm.product_id ? newTestimonialForm.product_name : null,
         },
       ];
       await saveTestimonials(next);
       setCreatingTestimonial(false);
-      setNewTestimonialForm({ initials: "", name: "", quote: "", photo_url: "" });
+      setNewTestimonialForm({ initials: "", ...emptyTestimonialForm });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không thể thêm đánh giá");
     } finally {
@@ -412,7 +571,13 @@ export default function AdminHomepagePage() {
 
           {tab === "Đánh giá khách hàng" && (
             <div>
-              <div className="flex justify-end mb-4">
+              <div className="flex justify-between items-center gap-3 mb-4 flex-wrap">
+                <Input
+                  value={testimonialSearch}
+                  onChange={(e) => setTestimonialSearch(e.target.value)}
+                  placeholder="Tìm theo tên sản phẩm..."
+                  className="max-w-xs"
+                />
                 <Button
                   variant="primary"
                   onClick={() => setCreatingTestimonial(true)}
@@ -422,23 +587,37 @@ export default function AdminHomepagePage() {
                 </Button>
               </div>
               <TableCard>
-                <table className="w-full text-sm min-w-[560px]">
+                <table className="w-full text-sm min-w-[680px]">
                   <thead>
                     <tr className="border-b border-black/10">
                       <Th>Khách hàng</Th>
+                      <Th>Sản phẩm</Th>
                       <Th>Ngày</Th>
+                      <Th>Sao</Th>
                       <Th>Nội dung</Th>
                       <Th align="right">Thao tác</Th>
                     </tr>
                   </thead>
                   <tbody>
-                    {testimonials.map((t) => (
+                    {testimonials
+                      .filter((t) =>
+                        (t.product_name ?? "")
+                          .toLowerCase()
+                          .includes(testimonialSearch.trim().toLowerCase())
+                      )
+                      .map((t) => (
                       <tr key={t.id ?? t.name + t.quote_date} className={TR_HOVER}>
                         <Td className="whitespace-nowrap">{t.name}</Td>
+                        <Td className="whitespace-nowrap text-black/60">
+                          {t.product_name || "—"}
+                        </Td>
                         <Td className="whitespace-nowrap">
                           {t.quote_date
                             ? new Date(t.quote_date).toLocaleDateString("vi-VN")
                             : ""}
+                        </Td>
+                        <Td className="whitespace-nowrap">
+                          <StarRating rating={t.rating ?? 5} size={13} />
                         </Td>
                         <Td className="max-w-[280px] truncate text-black/60">
                           {t.quote}
@@ -465,6 +644,19 @@ export default function AdminHomepagePage() {
                         </Td>
                       </tr>
                     ))}
+                    {testimonials.filter((t) =>
+                      (t.product_name ?? "")
+                        .toLowerCase()
+                        .includes(testimonialSearch.trim().toLowerCase())
+                    ).length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="text-center text-sm text-black/40 py-6">
+                          {testimonialSearch.trim()
+                            ? `Không tìm thấy đánh giá nào cho sản phẩm "${testimonialSearch}".`
+                            : "Chưa có đánh giá nào."}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </TableCard>
@@ -552,6 +744,38 @@ export default function AdminHomepagePage() {
                   rows={4}
                 />
               </div>
+              <div>
+                <Label>Ngày đánh giá</Label>
+                <Input
+                  type="date"
+                  value={testimonialForm.quote_date}
+                  onChange={(e) => setTestimonialForm((f) => ({ ...f, quote_date: e.target.value }))}
+                  disabled={savingTestimonial}
+                />
+              </div>
+              <div>
+                <Label>Số sao</Label>
+                <StarPicker
+                  value={testimonialForm.rating}
+                  onChange={(rating) => setTestimonialForm((f) => ({ ...f, rating }))}
+                  disabled={savingTestimonial}
+                />
+              </div>
+              <div>
+                <Label>Sản phẩm liên quan (tùy chọn)</Label>
+                <ProductPickerField
+                  products={productOptions}
+                  productId={testimonialForm.product_id}
+                  productName={testimonialForm.product_name}
+                  onSelect={(id, name) =>
+                    setTestimonialForm((f) => ({ ...f, product_id: id, product_name: name }))
+                  }
+                  onClear={() =>
+                    setTestimonialForm((f) => ({ ...f, product_id: null, product_name: "" }))
+                  }
+                  disabled={savingTestimonial}
+                />
+              </div>
               <ImageField
                 label="Ảnh khách hàng"
                 value={testimonialForm.photo_url || null}
@@ -593,6 +817,40 @@ export default function AdminHomepagePage() {
                     setNewTestimonialForm((f) => ({ ...f, quote: e.target.value }))
                   }
                   rows={4}
+                />
+              </div>
+              <div>
+                <Label>Ngày đánh giá</Label>
+                <Input
+                  type="date"
+                  value={newTestimonialForm.quote_date}
+                  onChange={(e) =>
+                    setNewTestimonialForm((f) => ({ ...f, quote_date: e.target.value }))
+                  }
+                  disabled={savingTestimonial}
+                />
+              </div>
+              <div>
+                <Label>Số sao</Label>
+                <StarPicker
+                  value={newTestimonialForm.rating}
+                  onChange={(rating) => setNewTestimonialForm((f) => ({ ...f, rating }))}
+                  disabled={savingTestimonial}
+                />
+              </div>
+              <div>
+                <Label>Sản phẩm liên quan (tùy chọn)</Label>
+                <ProductPickerField
+                  products={productOptions}
+                  productId={newTestimonialForm.product_id}
+                  productName={newTestimonialForm.product_name}
+                  onSelect={(id, name) =>
+                    setNewTestimonialForm((f) => ({ ...f, product_id: id, product_name: name }))
+                  }
+                  onClear={() =>
+                    setNewTestimonialForm((f) => ({ ...f, product_id: null, product_name: "" }))
+                  }
+                  disabled={savingTestimonial}
                 />
               </div>
               <ImageField

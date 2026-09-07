@@ -79,16 +79,23 @@ function TestimonialCard({ t, ariaHidden }: { t: Testimonial; ariaHidden?: true 
     >
       {/* Square photo, as on the reference. A testimonial saved without one
           falls back to the tinted box.
-          Desktop-only ratio change (mobile keeps aspect-[12/25] via the
-          `sm:` override below): the text block beneath (name/date/quote/
-          stars) has a fixed height from fixed font sizes and paddings, so it
-          doesn't shrink with the card. To bring the WHOLE card down to 75%
-          of its old height (576.6px → ~432.5px, measured live) while the
-          photo itself gets proportionally wider from the width change above,
-          the photo needs a shorter ratio, not the same 12/25 scaled up —
-          aspect-[8/9] was solved from those two measured numbers
-          (photo height = 0.75 × old total − the fixed text-block height). */}
-      <div className="relative aspect-[12/25] w-full bg-[#e9e4dc] sm:aspect-[8/9]">
+          Mobile: aspect-[18/25], not the original 12/25 — explicit request,
+          the mobile Feedback carousel read as too tall/long on the page.
+          12/25 (width/height=0.48) meant the photo alone was ~2.08x the
+          card's own width tall; scaling that ratio by 3/2 (so the new
+          height is exactly 2/3 of the old one, width unchanged) gives
+          12/25 * 3/2 = 18/25 (0.72) — shorter without changing the card's
+          width or anything about the text block below it.
+          Desktop-only ratio change (sm: override below): the text block
+          beneath (name/date/quote/stars) has a fixed height from fixed font
+          sizes and paddings, so it doesn't shrink with the card. To bring
+          the WHOLE card down to 75% of its old height (576.6px → ~432.5px,
+          measured live) while the photo itself gets proportionally wider
+          from the width change above, the photo needs a shorter ratio, not
+          the mobile ratio scaled up — aspect-[8/9] was solved from those
+          two measured numbers (photo height = 0.75 × old total − the fixed
+          text-block height), independent of the mobile ratio above it. */}
+      <div className="relative aspect-[18/25] w-full bg-[#e9e4dc] sm:aspect-[8/9]">
         {t.photo && (
           <Image
             src={t.photo}

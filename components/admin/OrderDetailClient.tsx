@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
+import { useImageZoom } from "@/components/admin/ImageZoomProvider";
 import { apiFetch, ApiError } from "@/lib/api";
 import type { OrderStatus } from "@/data/admin";
 import { ChevronLeftIcon } from "@/components/icons";
@@ -53,6 +54,7 @@ type OrderDetail = {
 };
 
 export default function OrderDetailClient({ id }: { id: string }) {
+  const { open: openZoom } = useImageZoom();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +147,12 @@ export default function OrderDetailClient({ id }: { id: string }) {
             <div className="space-y-4">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-4">
-                  <div className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-[#f5f2ee]">
+                  <div
+                    onClick={() => item.image_url && openZoom(item.image_url, item.name)}
+                    className={`relative h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-[#f5f2ee] ${
+                      item.image_url ? "cursor-zoom-in" : ""
+                    }`}
+                  >
                     {item.image_url && (
                       <Image
                         src={item.image_url}

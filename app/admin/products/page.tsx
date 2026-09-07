@@ -11,6 +11,7 @@ import IconButton from "@/components/admin/ui/IconButton";
 import { Input, Label, Textarea, Select } from "@/components/admin/ui/Field";
 import VideoField from "@/components/admin/VideoField";
 import ImageField from "@/components/admin/ImageField";
+import { useImageZoom } from "@/components/admin/ImageZoomProvider";
 import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
 import {
   ModalBackdrop,
@@ -268,6 +269,7 @@ function VideoUrlsField({
 
 export default function AdminProductsPage() {
   const { session } = useAdminAuth();
+  const { open: openZoom } = useImageZoom();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -888,7 +890,12 @@ export default function AdminProductsPage() {
             {filteredProducts.map((p) => (
               <tr key={p.slug} className={TR_HOVER}>
                 <Td>
-                  <div className="relative h-10 w-10 rounded-lg overflow-hidden bg-[#f5f2ee]">
+                  <div
+                    onClick={() => p.images?.[0] && openZoom(p.images[0], p.name)}
+                    className={`relative h-10 w-10 rounded-lg overflow-hidden bg-[#f5f2ee] ${
+                      p.images?.[0] ? "cursor-zoom-in" : ""
+                    }`}
+                  >
                     {p.images?.[0] && (
                       <Image src={p.images[0]} alt={p.name} fill sizes="40px" className="object-cover" />
                     )}

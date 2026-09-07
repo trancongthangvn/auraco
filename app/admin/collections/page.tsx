@@ -10,6 +10,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import Button from "@/components/admin/ui/Button";
 import { Input, Label, Textarea } from "@/components/admin/ui/Field";
 import ImageField from "@/components/admin/ImageField";
+import { useImageZoom } from "@/components/admin/ImageZoomProvider";
 import { TableCard, Th, Td, TR_HOVER } from "@/components/admin/ui/Table";
 import {
   ModalBackdrop,
@@ -35,6 +36,7 @@ type Collection = {
 export default function AdminCollectionsPage() {
   const { session } = useAdminAuth();
   useRequireAdmin();
+  const { open: openZoom } = useImageZoom();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +160,12 @@ export default function AdminCollectionsPage() {
               {collections.map((c) => (
                 <tr key={c.id} className={TR_HOVER}>
                   <Td>
-                    <div className="relative h-10 w-10 rounded-lg overflow-hidden bg-[#f5f2ee]">
+                    <div
+                      onClick={() => c.image_url && openZoom(c.image_url, c.name)}
+                      className={`relative h-10 w-10 rounded-lg overflow-hidden bg-[#f5f2ee] ${
+                        c.image_url ? "cursor-zoom-in" : ""
+                      }`}
+                    >
                       {c.image_url && (
                         <Image
                           src={c.image_url}

@@ -14,6 +14,7 @@ import {
 import Button from "@/components/admin/ui/Button";
 import { Input, Textarea, Label, Select } from "@/components/admin/ui/Field";
 import ImageField from "@/components/admin/ImageField";
+import { useImageZoom } from "@/components/admin/ImageZoomProvider";
 import { StarIcon, StarRating } from "@/components/icons";
 import { TableCard, Th, Td, TR_HOVER } from "@/components/admin/ui/Table";
 import {
@@ -187,6 +188,7 @@ export default function AdminHomepagePage() {
   const { session } = useAdminAuth();
   useRequireAdmin();
   const isAdmin = session?.role === "admin";
+  const { open: openZoom } = useImageZoom();
   const [tab, setTab] = useState<Tab>("Ảnh bìa lớn");
 
   const [loading, setLoading] = useState(true);
@@ -457,7 +459,10 @@ export default function AdminHomepagePage() {
                   {heroSlides.map((s) => (
                     <tr key={s.id ?? s.label} className={TR_HOVER}>
                       <Td>
-                        <div className="relative h-10 w-16 rounded-lg overflow-hidden bg-[#f5f2ee]">
+                        <div
+                          onClick={() => openZoom(s.image_url, s.label)}
+                          className="relative h-10 w-16 cursor-zoom-in rounded-lg overflow-hidden bg-[#f5f2ee]"
+                        >
                           <Image
                             src={s.image_url}
                             alt={s.label}
@@ -504,7 +509,10 @@ export default function AdminHomepagePage() {
                       key={p.name}
                       className="bg-white rounded-2xl border border-black/10 shadow-sm p-2"
                     >
-                      <div className="relative aspect-square rounded-xl overflow-hidden bg-[#f5f2ee] mb-2">
+                      <div
+                        onClick={() => openZoom(p.img, p.name)}
+                        className="relative aspect-square cursor-zoom-in rounded-xl overflow-hidden bg-[#f5f2ee] mb-2"
+                      >
                         <Image
                           src={p.img}
                           alt={p.name}
@@ -538,7 +546,10 @@ export default function AdminHomepagePage() {
                       key={p.name}
                       className="bg-white rounded-2xl border border-black/10 shadow-sm p-2"
                     >
-                      <div className="relative aspect-square rounded-xl overflow-hidden bg-[#f5f2ee] mb-2">
+                      <div
+                        onClick={() => openZoom(p.img, p.name)}
+                        className="relative aspect-square cursor-zoom-in rounded-xl overflow-hidden bg-[#f5f2ee] mb-2"
+                      >
                         <Image
                           src={p.img}
                           alt={p.name}

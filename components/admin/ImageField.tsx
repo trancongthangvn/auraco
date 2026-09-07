@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
+import { useImageZoom } from "@/components/admin/ImageZoomProvider";
 
 const UPLOAD_ENDPOINT = "/api/content/admin/posts/upload";
 
@@ -46,6 +47,7 @@ export default function ImageField({
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const busy = disabled || uploading;
+  const { open: openZoom } = useImageZoom();
 
   const upload = (file: File) => {
     setError(null);
@@ -190,7 +192,8 @@ export default function ImageField({
           <img
             src={value}
             alt="Xem trước ảnh"
-            className="h-20 w-20 shrink-0 object-cover bg-black/5"
+            onClick={() => openZoom(value, "Xem trước ảnh")}
+            className="h-20 w-20 shrink-0 cursor-zoom-in object-cover bg-black/5"
           />
           <div className="min-w-0 flex-1">
             <p className="break-all text-xs text-black/50">{value}</p>

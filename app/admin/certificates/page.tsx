@@ -9,6 +9,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import Button from "@/components/admin/ui/Button";
 import { Input, Label } from "@/components/admin/ui/Field";
 import ImageField from "@/components/admin/ImageField";
+import { useImageZoom } from "@/components/admin/ImageZoomProvider";
 import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
 import { ModalBackdrop, ModalPanel, ModalHeader, ModalFooter } from "@/components/admin/ui/Modal";
 
@@ -23,6 +24,7 @@ type PressMention = {
 export default function AdminCertificatesPage() {
   const { session } = useAdminAuth();
   useRequireAdmin();
+  const { open: openZoom } = useImageZoom();
   const [mentions, setMentions] = useState<PressMention[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -155,7 +157,12 @@ export default function AdminCertificatesPage() {
                 .map((m) => (
                   <tr key={m.id} className={TR_HOVER}>
                     <Td>
-                      <div className="relative h-10 w-16 overflow-hidden rounded-lg bg-[#f5f2ee]">
+                      <div
+                        onClick={() => m.logo_url && openZoom(m.logo_url, m.name)}
+                        className={`relative h-10 w-16 overflow-hidden rounded-lg bg-[#f5f2ee] ${
+                          m.logo_url ? "cursor-zoom-in" : ""
+                        }`}
+                      >
                         {m.logo_url && (
                           // eslint-disable-next-line @next/next/no-img-element -- tiny admin thumbnail, not worth next/image's config here
                           <img

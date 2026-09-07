@@ -5,6 +5,7 @@ import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
+import { useImageZoom } from "@/components/admin/ImageZoomProvider";
 import { apiFetch, ApiError } from "@/lib/api";
 
 type MediaImage = {
@@ -32,6 +33,7 @@ function formatSize(bytes: number) {
 export default function AdminMediaPage() {
   const { session } = useAdminAuth();
   const isAdmin = session?.role === "admin";
+  const { open: openZoom } = useImageZoom();
   const [images, setImages] = useState<MediaImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +168,10 @@ export default function AdminMediaPage() {
               key={img.filename}
               className="group relative overflow-hidden rounded-lg border border-black/10 bg-[#f5f2ee]"
             >
-              <div className="relative aspect-square">
+              <div
+                onClick={() => openZoom(img.url, img.filename)}
+                className="relative aspect-square cursor-zoom-in"
+              >
                 <Image src={img.url} alt={img.filename} fill sizes="200px" className="object-cover" />
               </div>
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">

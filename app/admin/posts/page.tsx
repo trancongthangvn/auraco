@@ -5,6 +5,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import ImageField from "@/components/admin/ImageField";
+import { useImageZoom } from "@/components/admin/ImageZoomProvider";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { useRequireAdmin } from "@/components/admin/useRequireAdmin";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -153,6 +154,7 @@ export default function AdminPostsPage() {
   const { session } = useAdminAuth();
   useRequireAdmin();
   const isAdmin = session?.role === "admin";
+  const { open: openZoom } = useImageZoom();
 
   const [posts, setPosts] = useState<PostRow[]>([]);
   const [categories, setCategories] = useState<PostCategory[]>([]);
@@ -424,7 +426,12 @@ export default function AdminPostsPage() {
               {filtered.map((p) => (
                 <tr key={p.id} className={TR_HOVER}>
                   <Td>
-                    <div className="h-10 w-10 rounded-lg bg-[#f5f2ee] overflow-hidden">
+                    <div
+                      onClick={() => p.image_url && openZoom(p.image_url, p.title)}
+                      className={`h-10 w-10 rounded-lg bg-[#f5f2ee] overflow-hidden ${
+                        p.image_url ? "cursor-zoom-in" : ""
+                      }`}
+                    >
                       {p.image_url && (
                         /* eslint-disable-next-line @next/next/no-img-element -- image_url may be an
                            arbitrary pasted external URL that next/image would reject. */

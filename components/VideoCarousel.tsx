@@ -31,8 +31,15 @@ import { formatPrice } from "@/lib/currency";
  */
 
 const SLIDE_WIDTH = 300;
+/** Fraction of the viewport an active slide fills on a narrow (mobile)
+ *  screen — explicit request: at the fixed 300px width, a phone-width
+ *  viewport left barely any room on the sides for the neighbouring
+ *  slides to peek through. 0.8 leaves a consistent ~10% of the viewport
+ *  peeking on each side regardless of device width, only kicking in below
+ *  SLIDE_WIDTH/0.8 (375px) — wider viewports keep the fixed 300px, since
+ *  that already peeks generously there. */
+const MOBILE_SLIDE_FRACTION = 0.8;
 const GAP = 24;
-const STEP = SLIDE_WIDTH + GAP;
 const DURATION = 520;
 const AUTO_ADVANCE_FALLBACK_MS = 8000;
 
@@ -171,7 +178,10 @@ export default function VideoCarousel({
   if (count === 0) return null;
 
   // Centre the active slide in the viewport.
-  const offset = index * STEP - (viewportWidth - SLIDE_WIDTH) / 2;
+  const slideWidth =
+    viewportWidth > 0 ? Math.min(SLIDE_WIDTH, viewportWidth * MOBILE_SLIDE_FRACTION) : SLIDE_WIDTH;
+  const step = slideWidth + GAP;
+  const offset = index * step - (viewportWidth - slideWidth) / 2;
   const tripled = [...slides, ...slides, ...slides];
   const active = ((index % count) + count) % count;
   const goTo = (i: number) => setIndex(count + i);
@@ -208,7 +218,7 @@ export default function VideoCarousel({
                 <article
                   key={`${i}-${slide.key}`}
                   aria-hidden={i === index ? undefined : true}
-                  style={{ width: SLIDE_WIDTH }}
+                  style={{ width: slideWidth }}
                   className={`shrink-0 overflow-hidden rounded-[10px] bg-white shadow-[0_10px_30px_rgba(31,26,20,0.10)] transition-[transform,opacity] duration-500 ease-out ${
                     isActive
                       ? "z-10 scale-100 opacity-100"
@@ -258,9 +268,9 @@ export default function VideoCarousel({
         </div>
 
         {/* hidden sm:flex: explicit follow-up request to remove these on
-            mobile again (replaced below by dots overlaid on the video,
-            same pattern as Journal.tsx's own mobile carousel) — reverses
-            the earlier "show on mobile too" change. Desktop keeps them. */}
+            mobile again (replaced by the dot pagination below the card)
+            — reverses the earlier "show on mobile too" change. Desktop
+            keeps them. */}
         <button
           aria-label="Previous video"
           onClick={() => setIndex((i) => i - 1)}
@@ -276,31 +286,31 @@ export default function VideoCarousel({
           <ChevronRightIcon size={16} />
         </button>
 
-        {/* Mobile-only dot pagination, overlaid on the active video near its
-            bottom edge — explicit request. top-[434px] = the viewport's
-            70px top padding (py-[70px] above) + the fixed 400px video
-            height (SLIDE_WIDTH=300 * the 3/4 aspect ratio) minus 36px, the
-            same "sit just above the bottom edge" inset Journal.tsx's own
-            overlay uses. Reliable here because, unlike Journal's photos,
-            every video tile is the same fixed 300px width at every
-            breakpoint — no responsive height to track. drop-shadow keeps
-            the dots legible over a bright clip. */}
-        {count > 1 && (
-          <div className="pointer-events-none absolute inset-x-0 top-[434px] z-20 flex items-center justify-center gap-[7.2px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:hidden">
-            {slides.map((slide, i) => (
-              <button
-                key={slide.key}
-                type="button"
-                aria-label={`Go to ${slide.name}`}
-                onClick={() => goTo(i)}
-                className={`pointer-events-auto h-[8.8px] w-[8.8px] rounded-full bg-white transition-opacity ${
-                  i === active ? "opacity-100" : "opacity-[0.5]"
-                }`}
-              />
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Mobile-only dot pagination — explicit follow-up request to move
+          this below the whole card instead of overlaid on the video
+          itself (the first version, matching Journal.tsx's own overlay
+          style, covered part of the clip — this carousel's own reference
+          wanted it clear of the video entirely). Plain flow, not absolute,
+          so it just sits under the track like Journal's dots did before
+          THEIR overlay request — the two carousels ended up wanting
+          opposite treatments, which is why they now differ. */}
+      {count > 1 && (
+        <div className="mt-3 flex items-center justify-center gap-[7.2px] sm:hidden">
+          {slides.map((slide, i) => (
+            <button
+              key={slide.key}
+              type="button"
+              aria-label={`Go to ${slide.name}`}
+              onClick={() => goTo(i)}
+              className={`h-[8.8px] w-[8.8px] rounded-full bg-[#a67c3d] transition-opacity ${
+                i === active ? "opacity-100" : "opacity-[0.28]"
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

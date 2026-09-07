@@ -68,6 +68,12 @@ export default function VideoCarousel({
   const { currency, rates } = useCurrency();
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  // Touch-swipe support — explicit request, mobile had no way to move
+  // between videos besides waiting for auto-advance (arrows are desktop
+  // only, see hidden sm:flex below). Same detection logic/thresholds as
+  // Journal.tsx/Hero.tsx/ProductCarousel.tsx.
+  const touchStart = useRef({ x: 0, y: 0 });
+  const dragLockedRef = useRef(false);
   const [viewportWidth, setViewportWidth] = useState(0);
 
   const slides = useMemo<Slide[]>(
@@ -192,6 +198,54 @@ export default function VideoCarousel({
     });
   }, [index, count, inView]);
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const t = e.changedTouches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+    dragLockedRef.current = false;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    const t = e.changedTouches[0];
+    const deltaX = t.clientX - touchStart.current.x;
+    const deltaY = t.clientY - touchStart.current.y;
+    const SWIPE_THRESHOLD = 45;
+
+    if (
+      Math.abs(deltaX) > SWIPE_THRESHOLD &&
+      Math.abs(deltaX) > Math.abs(deltaY)
+    ) {
+      if (deltaX < 0) {
+        setIndex((i) => i + 1);
+      } else {
+        setIndex((i) => i - 1);
+      }
+    }
+    dragLockedRef.current = false;
+  };
+
+  // React attaches its synthetic `touchmove` as a passive listener, so
+  // `preventDefault()` from a JSX `onTouchMove` handler is silently
+  // ignored — attaching the listener manually with `{ passive: false }` is
+  // what actually lets the horizontal swipe lock out the browser's own
+  // edge-navigation gesture instead of dragging the page frame with it
+  // (same fix applied to Hero.tsx/Journal.tsx/ProductCarousel.tsx/Testimonials.tsx).
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      const deltaX = t.clientX - touchStart.current.x;
+      const deltaY = t.clientY - touchStart.current.y;
+      if (dragLockedRef.current || (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY))) {
+        dragLockedRef.current = true;
+        e.preventDefault();
+      }
+    };
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  }, []);
+
   // Nothing to show on a fresh install where no product has a video yet.
   if (count === 0) return null;
 
@@ -221,7 +275,12 @@ export default function VideoCarousel({
         aria-roledescription="carousel"
         aria-label="Product videos"
       >
-        <div ref={viewportRef} className="overflow-hidden py-[70px]">
+        <div
+          ref={viewportRef}
+          className="touch-pan-y overflow-hidden py-[70px]"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           <div
             className="flex items-center will-change-transform"
             style={{

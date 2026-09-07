@@ -913,7 +913,9 @@ export default function Header({
               <Link
                 href="/login"
                 onClick={() => setMobileOpen(false)}
-                className="text-base font-semibold tracking-normal text-gold hover:underline"
+                // Explicit request: smaller (16px -> 14px) and black instead
+                // of gold, overriding the reference-matched styling above.
+                className="text-sm font-semibold tracking-normal text-black hover:underline"
               >
                 Sign in
               </Link>
@@ -921,7 +923,9 @@ export default function Header({
               <Link
                 href="/register"
                 onClick={() => setMobileOpen(false)}
-                className="text-base font-semibold tracking-normal text-gold hover:underline"
+                // Explicit request: smaller (16px -> 14px) and black instead
+                // of gold, overriding the reference-matched styling above.
+                className="text-sm font-semibold tracking-normal text-black hover:underline"
               >
                 Register
               </Link>

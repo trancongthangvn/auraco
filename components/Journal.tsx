@@ -241,17 +241,23 @@ export default function Journal() {
             <>
               {/* The reference draws these as the literal ❮ / ❯ glyphs, not
                   SVG chevrons — matching it exactly here too. */}
+              {/* Explicit request: consistent with the other mobile
+                  carousels (Feedback, video, Hero) that now show their
+                  arrows on mobile too — this was still `hidden sm:flex`.
+                  left-1/right-1 (not the desktop -left-5/-right-5, which
+                  relies on side margin mobile doesn't have) keeps the
+                  button inside the viewport edge on narrow screens. */}
               <button
                 aria-label="Previous journal posts"
                 onClick={() => step1(-1)}
-                className="hidden sm:flex absolute -left-5 top-[calc(37.5%-18px)] z-20 items-center justify-center h-9 w-9 rounded-full bg-white text-[17.6px] leading-none shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+                className="absolute left-1 sm:-left-5 top-[calc(37.5%-18px)] z-20 flex items-center justify-center h-9 w-9 rounded-full bg-white text-[17.6px] leading-none shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
               >
                 &#10094;
               </button>
               <button
                 aria-label="Next journal posts"
                 onClick={() => step1(1)}
-                className="hidden sm:flex absolute -right-5 top-[calc(37.5%-18px)] z-20 items-center justify-center h-9 w-9 rounded-full bg-white text-[17.6px] leading-none shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+                className="absolute right-1 sm:-right-5 top-[calc(37.5%-18px)] z-20 flex items-center justify-center h-9 w-9 rounded-full bg-white text-[17.6px] leading-none shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
               >
                 &#10095;
               </button>

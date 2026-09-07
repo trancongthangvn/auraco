@@ -251,17 +251,20 @@ export default function VideoCarousel({
           </div>
         </div>
 
+        {/* Explicit request: show the same arrows on mobile as desktop, so
+            it's visible there's more video to scroll to — previously
+            `hidden sm:flex` kept these desktop/tablet-only. */}
         <button
           aria-label="Previous video"
           onClick={() => setIndex((i) => i - 1)}
-          className="absolute left-1 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold sm:flex"
+          className="absolute left-1 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold"
         >
           <ChevronLeftIcon size={16} />
         </button>
         <button
           aria-label="Next video"
           onClick={() => setIndex((i) => i + 1)}
-          className="absolute right-1 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold sm:flex"
+          className="absolute right-1 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold"
         >
           <ChevronRightIcon size={16} />
         </button>

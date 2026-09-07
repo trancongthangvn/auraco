@@ -208,17 +208,20 @@ export default function Hero({ slides }: { slides: HeroSlide[] }) {
         </Link>
       </div>
 
+      {/* Explicit request: consistent with the other mobile carousels
+          (Feedback, video) that now show their arrows on mobile too — this
+          was still `hidden sm:flex` (desktop/tablet only). */}
       <button
         aria-label="Previous slide"
         onClick={prev}
-        className="absolute left-3 top-1/2 z-20 hidden sm:flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-opacity hover:opacity-80"
+        className="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-opacity hover:opacity-80"
       >
         <ChevronLeftIcon size={20} />
       </button>
       <button
         aria-label="Next slide"
         onClick={next}
-        className="absolute right-3 top-1/2 z-20 hidden sm:flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-opacity hover:opacity-80"
+        className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-opacity hover:opacity-80"
       >
         <ChevronRightIcon size={20} />
       </button>

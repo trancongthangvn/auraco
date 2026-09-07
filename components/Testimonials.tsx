@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRevealOnScroll } from "@/components/useRevealOnScroll";
-import { VerifiedBadgeIcon } from "@/components/icons";
+import { VerifiedBadgeIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 export type Testimonial = {
   initials: string;
@@ -11,13 +11,18 @@ export type Testimonial = {
   date: string;
   quote: string;
   photo?: string;
+  rating?: number;
 };
 
-/** Mobile card width + gap, in px — must match the `w-[220px]` card and the
+/** Mobile card width + gap, in px — must match the `w-[300px]` card and the
  *  strip's `gap-[7px]`, since the swipe step is measured in real pixels
  *  (not viewport percentages) to preserve the "peek of the next card" look
- *  the static row already has below `sm:`. */
-const CARD_WIDTH = 220;
+ *  the static row already has below `sm:`.
+ *  300px (up from 220px): explicit request to show one large card per
+ *  screen instead of two side by side — .home-block's 24px side padding
+ *  leaves a 375px phone with ~327px of visible strip, so 300px still peeks
+ *  ~27px of the next card without it reading as a second full card. */
+const CARD_WIDTH = 300;
 const CARD_GAP = 7;
 const STEP = CARD_WIDTH + CARD_GAP;
 /** Slide transition, in ms — must match the `duration-[420ms]` class below. */
@@ -70,7 +75,7 @@ function TestimonialCard({ t, ariaHidden }: { t: Testimonial; ariaHidden?: true 
       // card from 197px to ~238px wide, a ~20% increase, matching the
       // explicit width request precisely (the two asks were confirmed as the
       // same change, described two ways).
-      className="flex w-[220px] shrink-0 flex-col overflow-hidden rounded-lg bg-white text-center shadow-[0_4px_16px_rgba(31,26,20,0.06)] sm:w-auto sm:shrink-0 sm:grow-0 sm:basis-[calc((100%-28px)/5)]"
+      className="flex w-[300px] shrink-0 flex-col overflow-hidden rounded-lg bg-white text-center shadow-[0_4px_16px_rgba(31,26,20,0.06)] sm:w-auto sm:shrink-0 sm:grow-0 sm:basis-[calc((100%-28px)/5)]"
     >
       {/* Square photo, as on the reference. A testimonial saved without one
           falls back to the tinted box.
@@ -90,7 +95,12 @@ function TestimonialCard({ t, ariaHidden }: { t: Testimonial; ariaHidden?: true 
             alt={t.name}
             fill
             sizes="(min-width: 640px) 17vw, 220px"
-            className="object-cover"
+            // object-contain, not object-cover: explicit request to show
+            // the customer's full uploaded photo uncropped. The fixed-ratio
+            // container (and its bg color as letterbox fill) is unchanged,
+            // so every card in the row/strip still lines up the same as
+            // before — only how the photo fills that box changed.
+            className="object-contain"
           />
         )}
         <span className="absolute -bottom-[0.825rem] left-1/2 z-10 flex h-[1.65rem] w-[1.65rem] -translate-x-1/2 items-center justify-center rounded-full bg-[#ece9e4] text-[0.65rem] font-bold tracking-[0.02em] text-[#1f1a14] shadow-[0_1px_4px_rgba(31,26,20,0.08)]">
@@ -113,7 +123,7 @@ function TestimonialCard({ t, ariaHidden }: { t: Testimonial; ariaHidden?: true 
           {t.quote}
         </p>
         <span className="mt-auto flex h-[27px] items-center justify-center">
-          <Stars />
+          <Stars filled={t.rating ?? 5} />
         </span>
       </div>
     </div>
@@ -252,7 +262,7 @@ export default function Testimonials({
         {/* Mobile only (below sm:) — swipeable, infinite-loop strip with
             dot pagination. Desktop has no carousel UI per the standing
             desktop requirement. */}
-        <div className="sm:hidden">
+        <div className="relative sm:hidden">
           <div
             ref={mobileViewportRef}
             className="touch-pan-y overflow-hidden"
@@ -282,6 +292,33 @@ export default function Testimonials({
                 )}
             </div>
           </div>
+
+          {/* Explicit request: same left/right arrows as the video carousel,
+              so it's clear there's more feedback to see beyond swiping.
+              Centered on the photo portion of the card (top-[calc(37.5%-
+              18px)]), not the full card height (photo + text block below
+              it) — same ratio Journal.tsx already uses for its own
+              photo-on-top-of-caption card, not a plain top-1/2. */}
+          {count > 1 && (
+            <>
+              <button
+                type="button"
+                aria-label="Previous feedback"
+                onClick={prev}
+                className="absolute left-1 top-[calc(37.5%-18px)] z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+              >
+                <ChevronLeftIcon size={16} />
+              </button>
+              <button
+                type="button"
+                aria-label="Next feedback"
+                onClick={next}
+                className="absolute right-1 top-[calc(37.5%-18px)] z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+              >
+                <ChevronRightIcon size={16} />
+              </button>
+            </>
+          )}
 
           {count > 1 && (
             <div className="mt-[18px] flex items-center justify-center gap-[7.2px]">

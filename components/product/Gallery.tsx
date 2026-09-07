@@ -95,6 +95,31 @@ export default function Gallery({
     ];
   })();
 
+  // Explicit follow-up request: object-contain (above) stopped photos being
+  // cropped, but any photo whose own aspect ratio isn't exactly 4:5 now
+  // showed the bg-[#f6f0e6] fill on its sides/top-bottom, which read as a
+  // border. The only way to get neither cropping nor a visible fill is for
+  // every tile's own box to match that photo's real proportions instead of
+  // a fixed ratio — accepted trade-off: the hero (and so the thumbnail
+  // column height matched to it) now resizes slightly per photo instead of
+  // staying fixed. Ratios are measured once per src (via each `onLoad`
+  // below, from the loaded `<img>`'s own naturalWidth/naturalHeight — nothing
+  // in this app's data stores a photo's dimensions ahead of time) and
+  // cached here so every tile showing the same photo (hero, both thumbnail
+  // rails) reuses one measurement instead of re-measuring. 4/5 is only ever
+  // a placeholder for a photo not yet loaded, so nothing collapses to 0
+  // height before its first paint.
+  const [aspects, setAspects] = useState<Record<string, number>>({});
+  const registerAspect = (src: string, ratio: number) => {
+    setAspects((prev) => (prev[src] ? prev : { ...prev, [src]: ratio }));
+  };
+  const onImageLoad = (src: string) => (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      registerAspect(src, img.naturalWidth / img.naturalHeight);
+    }
+  };
+
   const [active, setActive] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const goPrev = () =>
@@ -344,7 +369,8 @@ export default function Gallery({
           type="button"
           aria-label="View full-size image"
           onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-          className="group relative aspect-[4/5] self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
+          className="group relative self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
+          style={{ aspectRatio: aspects[currentSrc ?? ""] ?? 4 / 5 }}
         >
           {/* Outgoing photo — mounted only while a slide is running, and
               only ever the one being replaced, so a jump across several
@@ -359,6 +385,7 @@ export default function Gallery({
                 fill
                 sizes="(min-width: 1000px) 47vw, 100vw"
                 className="object-contain"
+                onLoad={onImageLoad(slide.src)}
               />
             </div>
           )}
@@ -372,6 +399,7 @@ export default function Gallery({
                 priority
                 sizes="(min-width: 1000px) 47vw, 100vw"
                 className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+                onLoad={onImageLoad(effectiveImages[active])}
               />
             </div>
           )}
@@ -402,7 +430,8 @@ export default function Gallery({
                   // No selected-state outline: explicit request to leave the
                   // thumbnails as plain images. `aria-current` above still
                   // conveys the selection to screen readers.
-                  className="group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
+                  className="group relative w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
+                  style={{ aspectRatio: aspects[src] ?? 4 / 5 }}
                 >
                   <Image
                     src={src}
@@ -410,6 +439,7 @@ export default function Gallery({
                     fill
                     sizes="30vw"
                     className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+                    onLoad={onImageLoad(src)}
                   />
                 </button>
               ))}
@@ -436,14 +466,14 @@ export default function Gallery({
             type="button"
             aria-label="View full-size image"
             onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-            // Same 4/5 frame and radius as the ≥1000px hero above. An
-            // earlier version paired a square frame with object-contain and
-            // that combination left visible beige letterbox bands on
-            // portrait photos; object-contain here is a later, explicit
-            // follow-up request (photos were getting cropped at the edges)
-            // paired with the now-4/5 frame, which is a closer match to
-            // most product photos' own aspect ratio and so letterboxes less.
-            className="group relative block aspect-[4/5] w-full overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
+            // Same rounded frame as the ≥1000px hero above, sized to this
+            // photo's own aspect ratio (see `aspects` above) rather than a
+            // fixed ratio — explicit follow-up request: object-contain
+            // inside a fixed box stopped the crop, but left a visible
+            // bg-[#f6f0e6] fill on mismatched photos, which read as a
+            // border. A dynamic box shows neither.
+            className="group relative block w-full overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
+            style={{ aspectRatio: aspects[currentSrc ?? ""] ?? 4 / 5 }}
           >
             {/* No `key` here — keying this on the src forced Next/Image to
                 unmount and remount on every change (including the 5s
@@ -458,6 +488,7 @@ export default function Gallery({
                 priority
                 sizes="100vw"
                 className="object-contain transition-opacity duration-500"
+                onLoad={onImageLoad(effectiveImages[active])}
               />
             )}
           </button>
@@ -485,7 +516,7 @@ export default function Gallery({
         </div>
 
         {effectiveImages.length > 1 && (
-          <div className="mt-2 flex flex-row gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="mt-2 flex flex-row items-start gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {effectiveImages.map((src, i) => (
               <button
                 key={src}
@@ -493,13 +524,26 @@ export default function Gallery({
                 aria-label={`Show image ${i + 1} of ${effectiveImages.length}`}
                 aria-current={active === i ? "true" : undefined}
                 onClick={() => setActive(i)}
-                // 4/5 frame + 10px radius to match the ≥1000px thumbnail
-                // column; w-16 keeps the strip's height at the previous 80px.
-                className={`relative aspect-[4/5] w-16 shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6] transition-opacity hover:opacity-100 ${
+                // 10px radius to match the ≥1000px thumbnail column; w-16
+                // keeps every tile's width at the previous 80px. Height is
+                // this photo's own aspect ratio (see `aspects` above), not
+                // a fixed 4/5 — items-start on the row (above) keeps each
+                // tile at its own natural height instead of flex's default
+                // stretch-to-tallest, so a photo isn't padded out just
+                // because its neighbor in the strip is taller.
+                className={`relative w-16 shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6] transition-opacity hover:opacity-100 ${
                   active === i ? "opacity-100" : "opacity-80"
                 }`}
+                style={{ aspectRatio: aspects[src] ?? 4 / 5 }}
               >
-                <Image src={src} alt="" fill sizes="64px" className="object-contain" />
+                <Image
+                  src={src}
+                  alt=""
+                  fill
+                  sizes="64px"
+                  className="object-contain"
+                  onLoad={onImageLoad(src)}
+                />
               </button>
             ))}
           </div>

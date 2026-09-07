@@ -360,23 +360,23 @@ export default function ProductCarousel({
 
           {showNav && (
             <>
-              {/* Explicit request: consistent with the other mobile
-                  carousels (Feedback, video, Hero, Journal) that now show
-                  their arrows on mobile too — this was still `hidden
-                  sm:flex`. left-1/right-1 (not the desktop -left-4/-right-4,
-                  which relies on side margin mobile doesn't have) keeps the
-                  button inside the viewport edge on narrow screens. */}
+              {/* hidden sm:flex: explicit follow-up request to remove these
+                  on mobile again (site-wide sweep — Hero, Feedback, video,
+                  Journal, ProductCarousel all had the same "show arrows on
+                  mobile too" change reversed) — dots below plus swipe
+                  already cover mobile navigation. Desktop keeps them at
+                  their own -left-4/-right-4 position. */}
               <button
                 aria-label="Previous"
                 onClick={() => scrollBy(-1)}
-                className="absolute left-1 sm:-left-4 top-1/3 z-20 flex -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+                className="absolute left-1 sm:-left-4 top-1/3 z-20 hidden -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold sm:flex"
               >
                 <ChevronLeftIcon size={16} />
               </button>
               <button
                 aria-label="Next"
                 onClick={() => scrollBy(1)}
-                className="absolute right-1 sm:-right-4 top-1/3 z-20 flex -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+                className="absolute right-1 sm:-right-4 top-1/3 z-20 hidden -translate-y-1/2 items-center justify-center h-9 w-9 rounded-full bg-white shadow transition-colors hover:bg-[#f5f2ee] hover:text-gold sm:flex"
               >
                 <ChevronRightIcon size={16} />
               </button>

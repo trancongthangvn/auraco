@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRevealOnScroll } from "@/components/useRevealOnScroll";
-import { VerifiedBadgeIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { VerifiedBadgeIcon } from "@/components/icons";
 
 export type Testimonial = {
   initials: string;
@@ -313,32 +313,12 @@ export default function Testimonials({
             </div>
           </div>
 
-          {/* Explicit request: same left/right arrows as the video carousel,
-              so it's clear there's more feedback to see beyond swiping.
-              Centered on the photo portion of the card (top-[calc(37.5%-
-              18px)]), not the full card height (photo + text block below
-              it) — same ratio Journal.tsx already uses for its own
-              photo-on-top-of-caption card, not a plain top-1/2. */}
-          {count > 1 && (
-            <>
-              <button
-                type="button"
-                aria-label="Previous feedback"
-                onClick={prev}
-                className="absolute left-1 top-[calc(37.5%-18px)] z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold"
-              >
-                <ChevronLeftIcon size={16} />
-              </button>
-              <button
-                type="button"
-                aria-label="Next feedback"
-                onClick={next}
-                className="absolute right-1 top-[calc(37.5%-18px)] z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold"
-              >
-                <ChevronRightIcon size={16} />
-              </button>
-            </>
-          )}
+          {/* Removed (site-wide sweep — explicit follow-up request to drop
+              the left/right arrows from every mobile homepage carousel):
+              this whole block is already `sm:hidden`-scoped to mobile, so
+              there's no desktop counterpart to preserve here, unlike
+              Hero/Journal/VideoCarousel/ProductCarousel's `hidden sm:flex`.
+              Touch-swipe plus the dots below still cover navigation. */}
 
           {count > 1 && (
             <div className="mt-[18px] flex items-center justify-center gap-[7.2px]">

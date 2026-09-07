@@ -173,6 +173,8 @@ export default function VideoCarousel({
   // Centre the active slide in the viewport.
   const offset = index * STEP - (viewportWidth - SLIDE_WIDTH) / 2;
   const tripled = [...slides, ...slides, ...slides];
+  const active = ((index % count) + count) % count;
+  const goTo = (i: number) => setIndex(count + i);
 
   return (
     <section
@@ -255,23 +257,49 @@ export default function VideoCarousel({
           </div>
         </div>
 
-        {/* Explicit request: show the same arrows on mobile as desktop, so
-            it's visible there's more video to scroll to — previously
-            `hidden sm:flex` kept these desktop/tablet-only. */}
+        {/* hidden sm:flex: explicit follow-up request to remove these on
+            mobile again (replaced below by dots overlaid on the video,
+            same pattern as Journal.tsx's own mobile carousel) — reverses
+            the earlier "show on mobile too" change. Desktop keeps them. */}
         <button
           aria-label="Previous video"
           onClick={() => setIndex((i) => i - 1)}
-          className="absolute left-1 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+          className="absolute left-1 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold sm:flex"
         >
           <ChevronLeftIcon size={16} />
         </button>
         <button
           aria-label="Next video"
           onClick={() => setIndex((i) => i + 1)}
-          className="absolute right-1 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold"
+          className="absolute right-1 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(31,26,20,0.18)] transition-colors hover:bg-[#f5f2ee] hover:text-gold sm:flex"
         >
           <ChevronRightIcon size={16} />
         </button>
+
+        {/* Mobile-only dot pagination, overlaid on the active video near its
+            bottom edge — explicit request. top-[434px] = the viewport's
+            70px top padding (py-[70px] above) + the fixed 400px video
+            height (SLIDE_WIDTH=300 * the 3/4 aspect ratio) minus 36px, the
+            same "sit just above the bottom edge" inset Journal.tsx's own
+            overlay uses. Reliable here because, unlike Journal's photos,
+            every video tile is the same fixed 300px width at every
+            breakpoint — no responsive height to track. drop-shadow keeps
+            the dots legible over a bright clip. */}
+        {count > 1 && (
+          <div className="pointer-events-none absolute inset-x-0 top-[434px] z-20 flex items-center justify-center gap-[7.2px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:hidden">
+            {slides.map((slide, i) => (
+              <button
+                key={slide.key}
+                type="button"
+                aria-label={`Go to ${slide.name}`}
+                onClick={() => goTo(i)}
+                className={`pointer-events-auto h-[8.8px] w-[8.8px] rounded-full bg-white transition-opacity ${
+                  i === active ? "opacity-100" : "opacity-[0.5]"
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

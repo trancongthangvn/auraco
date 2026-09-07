@@ -345,9 +345,10 @@ export default function Gallery({
                     setActive(i);
                     scrollThumbToTop(i);
                   }}
-                  className={`group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6] ${
-                    active === i ? "ring-2 ring-[#2b261f]" : ""
-                  }`}
+                  // No selected-state outline: explicit request to leave the
+                  // thumbnails as plain images. `aria-current` above still
+                  // conveys the selection to screen readers.
+                  className="group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
                 >
                   <Image
                     src={src}
@@ -386,7 +387,10 @@ export default function Gallery({
             type="button"
             aria-label="View full-size image"
             onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-            className="group relative block aspect-square w-full overflow-hidden rounded-lg bg-[#f6f0e6] cursor-zoom-in"
+            // Same 4/5 frame and radius as the ≥1000px hero above: the old
+            // square + object-contain left beige letterbox bands on portrait
+            // photos, which read as an off-balance frame on phones.
+            className="group relative block aspect-[4/5] w-full overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
           >
             {/* No `key` here — keying this on the src forced Next/Image to
                 unmount and remount on every change (including the 5s
@@ -400,7 +404,7 @@ export default function Gallery({
                 fill
                 priority
                 sizes="100vw"
-                className="object-contain transition-opacity duration-500"
+                className="object-cover transition-opacity duration-500"
               />
             )}
           </button>
@@ -436,11 +440,13 @@ export default function Gallery({
                 aria-label={`Show image ${i + 1} of ${effectiveImages.length}`}
                 aria-current={active === i ? "true" : undefined}
                 onClick={() => setActive(i)}
-                className={`relative aspect-square h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-[#f6f0e6] transition-opacity hover:opacity-100 ${
-                  active === i ? "opacity-100 ring-2 ring-[#2b261f]" : "opacity-80"
+                // 4/5 frame + 10px radius to match the ≥1000px thumbnail
+                // column; w-16 keeps the strip's height at the previous 80px.
+                className={`relative aspect-[4/5] w-16 shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6] transition-opacity hover:opacity-100 ${
+                  active === i ? "opacity-100" : "opacity-80"
                 }`}
               >
-                <Image src={src} alt="" fill sizes="80px" className="object-cover object-top" />
+                <Image src={src} alt="" fill sizes="64px" className="object-cover" />
               </button>
             ))}
           </div>

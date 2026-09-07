@@ -236,6 +236,35 @@ export default function Gallery({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveImages[active], aspects[effectiveImages[active] ?? ""]]);
 
+  // Sizes each thumbnail to exactly half the scrollable rail's own real
+  // height (minus the gap between them) instead of a fixed aspect ratio —
+  // explicit request: with the hero's height now varying per photo's own
+  // aspect ratio (above), a fixed aspect-[4/5] thumbnail no longer reliably
+  // filled the rail with exactly 2 whole tiles the way it used to when the
+  // hero was also a fixed ratio — depending on the active photo, 2 tiles
+  // could fall short (leaving empty space above the chevron) or run long
+  // (showing a cut-off sliver of a 3rd). Measuring the rail directly
+  // (rather than deriving from heroHeight, which also has to leave room
+  // for the chevron button and gap below it) sidesteps having to hand-
+  // compute that reserved space.
+  const [thumbRailHeight, setThumbRailHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const el = thumbViewportRef.current;
+    if (!el) return;
+    const update = () => {
+      const h = el.getBoundingClientRect().height;
+      if (h > 0) setThumbRailHeight(h);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [heroHeight]);
+
+  const THUMB_GAP = 10;
+  const thumbItemHeight =
+    thumbRailHeight !== null ? (thumbRailHeight - THUMB_GAP) / 2 : null;
+
   // Wrap-around for the infinite loop: fires ~120ms after the LAST scroll
   // event, whether that scroll came from our own animateScrollTop (which
   // dispatches a native scroll event every rAF frame, so the debounce
@@ -507,19 +536,16 @@ export default function Gallery({
                   // No selected-state outline: explicit request to leave the
                   // thumbnails as plain images. `aria-current` above still
                   // conveys the selection to screen readers.
-                  // aspect-[4/5], not the photo's own measured ratio: every
-                  // desktop thumbnail is the same fixed rectangular frame
-                  // (explicit request — sizing each to its own photo left
-                  // some tiles square-ish, others a tall rectangle, an
-                  // inconsistent mix down the column).
-                  // object-cover, not object-contain: explicit follow-up
-                  // request — object-contain inside that fixed rectangle
-                  // left a bg-[#f6f0e6] letterbox border on any photo whose
-                  // own ratio wasn't exactly 4/5. A fixed frame that's
-                  // always fully filled with no border is only possible by
-                  // cropping to fit; resolution is unaffected (sizes below
-                  // unchanged, only the fit mode changed).
-                  className="group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
+                  // Height is thumbItemHeight (measured, see above), not a
+                  // fixed aspect-[4/5] — explicit request: exactly 2 tiles
+                  // should always fill the rail completely, which a static
+                  // ratio can no longer guarantee now that the hero's own
+                  // height varies per photo. object-cover (unchanged): a
+                  // frame that's always fully filled with no border is only
+                  // possible by cropping to fit; resolution is unaffected
+                  // (sizes below unchanged, only the box height changed).
+                  className="group relative w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
+                  style={thumbItemHeight !== null ? { height: `${thumbItemHeight}px` } : { aspectRatio: 4 / 5 }}
                 >
                   <Image
                     src={src}

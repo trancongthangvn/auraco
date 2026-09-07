@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import Lightbox from "./Lightbox";
 import { useVariant } from "./VariantProvider";
-import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "@/components/icons";
+import { ChevronDownIcon } from "@/components/icons";
 
 /**
  * Product gallery, two distinct layouts split at 1000px (per the site
@@ -125,6 +125,61 @@ export default function Gallery({
   const goPrev = () =>
     setActive((i) => (i - 1 + effectiveImages.length) % effectiveImages.length);
   const goNext = () => setActive((i) => (i + 1) % effectiveImages.length);
+
+  // Mobile hero touch-swipe — explicit request to remove the left/right
+  // arrow buttons there; without swipe, tapping a thumbnail below would be
+  // the only way left to change photos. Same pattern used by
+  // Journal.tsx/Hero.tsx/ProductCarousel.tsx/Testimonials.tsx/VideoCarousel.tsx.
+  const mobileHeroRef = useRef<HTMLDivElement>(null);
+  const touchStart = useRef({ x: 0, y: 0 });
+  const dragLockedRef = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const t = e.changedTouches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+    dragLockedRef.current = false;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    const t = e.changedTouches[0];
+    const deltaX = t.clientX - touchStart.current.x;
+    const deltaY = t.clientY - touchStart.current.y;
+    const SWIPE_THRESHOLD = 45;
+
+    if (
+      Math.abs(deltaX) > SWIPE_THRESHOLD &&
+      Math.abs(deltaX) > Math.abs(deltaY)
+    ) {
+      if (deltaX < 0) {
+        goNext();
+      } else {
+        goPrev();
+      }
+    }
+    dragLockedRef.current = false;
+  };
+
+  // React attaches its synthetic `touchmove` as a passive listener, so
+  // `preventDefault()` from a JSX `onTouchMove` handler is silently
+  // ignored — attaching the listener manually with `{ passive: false }` is
+  // what actually lets the horizontal swipe lock out the browser's own
+  // edge-navigation gesture instead of dragging the page frame with it.
+  useEffect(() => {
+    const el = mobileHeroRef.current;
+    if (!el) return;
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      const deltaX = t.clientX - touchStart.current.x;
+      const deltaY = t.clientY - touchStart.current.y;
+      if (dragLockedRef.current || (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY))) {
+        dragLockedRef.current = true;
+        e.preventDefault();
+      }
+    };
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  }, []);
 
   // Desktop mosaic's thumbnail column (>= 1000px only): a "more photos
   // below" chevron matching missoma.com's own desktop gallery (measured
@@ -493,7 +548,12 @@ export default function Gallery({
 
       {/* Hero + thumbnail strip — everything under 1000px, phones included. */}
       <div className="min-[1000px]:hidden">
-        <div className="relative">
+        <div
+          ref={mobileHeroRef}
+          className="relative touch-pan-y"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           <button
             type="button"
             aria-label="View full-size image"
@@ -524,27 +584,8 @@ export default function Gallery({
               />
             )}
           </button>
-
-          {effectiveImages.length > 1 && (
-            <>
-              <button
-                type="button"
-                aria-label="Previous image"
-                onClick={goPrev}
-                className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#28241f] shadow transition-colors hover:bg-white"
-              >
-                <ChevronLeftIcon size={16} />
-              </button>
-              <button
-                type="button"
-                aria-label="Next image"
-                onClick={goNext}
-                className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#28241f] shadow transition-colors hover:bg-white"
-              >
-                <ChevronRightIcon size={16} />
-              </button>
-            </>
-          )}
+          {/* Prev/next arrow buttons removed — explicit request. Touch-swipe
+              (above) plus tapping a thumbnail below now cover navigation. */}
         </div>
 
         {effectiveImages.length > 1 && (

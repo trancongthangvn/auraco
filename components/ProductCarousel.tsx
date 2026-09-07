@@ -256,19 +256,16 @@ export default function ProductCarousel({
       </div>
       <div>
         <p className="mb-1 flex items-center"><StarRating rating={p.rating} size={16} /></p>
-        {/* Two reserved lines keep material and price aligned across the row.
-            min-h must cover 2 lines at the 23px leading below (46px) - the
-            previous 30px was short by a line, so a 2-line title still sank
-            everything under it relative to a 1-line title in the same row. */}
-        <h3 className="font-serif-display mb-1 line-clamp-2 min-h-[46px] text-[20px] font-normal leading-[23px] text-[#28241f]">
+        {/* line-clamp-1, not the old 2-line reserved boxes: explicit
+            request — every card's name/material now clamps to exactly 1
+            line with an ellipsis when too long, which keeps every card in
+            the row the same height (and so price perfectly aligned)
+            without needing any reserved min-height, matching the same fix
+            applied to the catalog grid's own cards. */}
+        <h3 className="font-serif-display mb-1 line-clamp-1 text-[20px] font-normal leading-[23px] text-[#28241f]">
           {p.name}
         </h3>
-        {/* Same reserved-height pattern as the title above: a material
-            string that wraps to 2 lines (e.g. "18K Gold Vermeil / 925
-            Sterling Silver") vs. one that fits on 1 previously pushed the
-            price down by a different amount per card, breaking row
-            alignment across the grid. */}
-        <p className="font-ui mb-1 line-clamp-2 min-h-[34px] text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
+        <p className="font-ui mb-1 line-clamp-1 text-[12px] font-normal leading-[16.8px] tracking-[0.12px] text-[#5f5a54]">
           {p.material}
         </p>
         <p className="font-ui text-[12px] font-light tracking-[0.12px] text-[#5f5a54]">

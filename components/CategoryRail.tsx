@@ -81,12 +81,17 @@ export default function CategoryRail({
                     // to include 90, or Next 16 silently coerces it back to
                     // the default 75): explicit request, the default read
                     // visibly soft for a large tile like this.
-                    // object-contain, not object-cover: explicit request to
-                    // show the admin's uploaded photo in full, uncropped —
-                    // the square frame + bg-[#e9e4dc] below still letterboxes
-                    // any non-square source consistently for every tile.
+                    // object-cover, not object-contain: explicit follow-up
+                    // request — the bg-[#e9e4dc] letterbox on any non-square
+                    // source was reading as a visible border around the
+                    // photo. Unlike Gallery.tsx's single large hero (where
+                    // the fix was to size the box to the photo's own ratio
+                    // instead), these 4 tiles sit in one row and are
+                    // expected to stay a uniform grid, so cropping to fill
+                    // is the right tradeoff here rather than letting each
+                    // tile's height vary with its own photo's aspect ratio.
                     quality={90}
-                    className="object-contain transition-transform duration-500 ease-out group-hover:scale-[1.06]"
+                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
                   />
                 ) : null}
               </span>

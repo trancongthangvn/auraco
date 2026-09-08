@@ -45,18 +45,7 @@ export default function Lightbox({
       role="dialog"
       aria-modal="true"
       aria-label={name}
-      // will-change-transform: bug report with screenshots — opening the
-      // lightbox while the Announcement bar / Header (both position:sticky)
-      // were actively "stuck" from scrolling left stray text from the page
-      // underneath visibly bleeding through the backdrop, confirmed live to
-      // depend on the sticky elements' stuck state at open time (reproduces
-      // scrolled down, doesn't reproduce from the top of the page) — a
-      // browser compositing bug, not a z-index problem (this already has
-      // the highest z-index on the page; measured live that nothing else
-      // has a higher one). Forcing this onto its own fresh GPU layer via
-      // will-change avoids inheriting a stale paint order from the sticky
-      // elements' own layers.
-      className="fixed inset-0 z-[300] flex flex-col bg-[rgba(18,16,13,0.94)] will-change-transform"
+      className="fixed inset-0 z-[300] flex flex-col bg-[rgba(18,16,13,0.94)]"
     >
       <div className="flex h-[66px] shrink-0 items-center justify-end px-6">
         <button

@@ -24,7 +24,8 @@ export default function PaymentIcons() {
     // `.footer-payments` strip (which this was matched to) is a single
     // bordered card holding every logo, not a row of separately-bordered
     // badges. Divider lines between logos (instead of each one's own
-    // border) keep them visually distinct within that one frame.
+    // border) keep them visually distinct within that one frame — desktop
+    // (sm: and up) only, see below for why mobile doesn't get them.
     //
     // grid grid-cols-4 below `sm:`, not flex-wrap — explicit follow-up bug
     // report: flex-wrap breaks each row wherever the next icon's own
@@ -33,15 +34,26 @@ export default function PaymentIcons() {
     // 4-column grid always gives exactly 4 per row regardless of each
     // icon's own width. `sm:flex sm:w-fit` reverts to the original
     // single-row layout at desktop widths, unchanged.
+    //
+    // sm:divide-x, not a bare divide-x — bug report with a screenshot: the
+    // divider utility adds a border to every child after the first one in
+    // DOM ORDER, with no concept of grid rows, so on the 4-column mobile
+    // grid the 5th logo (first item of row 2) also got a divider — visually
+    // a stray extra bar at that row's own left edge — and since each icon
+    // is a different width, the bars from row 1 and row 2 never lined up
+    // with each other either. Scoped to `sm:` (the single-row flex layout,
+    // where "every child after the first" and "every child not at a row
+    // start" are the same thing) sidesteps both problems entirely; mobile
+    // just uses gap-x for spacing instead, with no divider lines.
     <div
-      className="grid grid-cols-4 place-items-center gap-y-1.5 divide-x divide-gold-light/35 rounded-[6px] border border-gold-light/35 bg-white/92 px-[5.6px] py-[3.2px] sm:flex sm:w-fit sm:flex-wrap"
+      className="grid grid-cols-4 place-items-center gap-x-3 gap-y-1.5 rounded-[6px] border border-gold-light/35 bg-white/92 px-[5.6px] py-[3.2px] sm:flex sm:w-fit sm:flex-wrap sm:gap-x-0 sm:divide-x sm:divide-gold-light/35"
       aria-label="Accepted payment methods"
     >
       {PAYMENT_LOGOS.map((logo, i) => (
         <span
           key={logo.alt}
           title={logo.alt}
-          className={`flex h-8 w-fit shrink-0 items-center justify-center pr-3 ${i > 0 ? "pl-3" : ""}`}
+          className={`flex h-8 w-fit shrink-0 items-center justify-center sm:pr-3 ${i > 0 ? "sm:pl-3" : ""}`}
         >
           <Image
             src={logo.src}

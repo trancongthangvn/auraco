@@ -458,38 +458,37 @@ export default function Gallery({
           type="button"
           aria-label="View full-size image"
           onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-          // aspect-[4/5] fixed, not the photo's own measured ratio:
-          // explicit bug report — sizing the hero to each photo's own
-          // aspect ratio meant it visibly changed shape (square-ish for
-          // one photo, a tall rectangle for the next) every time the
-          // active photo changed. Every hero photo is now the same fixed
-          // rectangular frame; object-contain (below, unchanged) still
-          // shows each photo in full, uncropped, at full resolution — a
-          // non-4:5 photo just letterboxes against bg-[#f6f0e6] instead of
-          // reshaping the frame. heroHeight (measured from this box,
-          // driving the thumbnail column's own height) and the
-          // thumbnail rail's own exact-2-tile sizing both still work
-          // exactly the same way regardless of whether this ratio is
-          // fixed or dynamic — neither depends on which one it is.
-          className="group relative aspect-[4/5] self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
+          // Sized to this photo's own measured aspect ratio (`aspects`,
+          // same mechanism the thumbnail column below already uses) rather
+          // than a fixed aspect-[4/5] — explicit follow-up bug report: the
+          // fixed frame cropped some photos (object-cover, below) to fit
+          // it, cutting off part of the shot. A dynamic box sized to the
+          // photo's real proportions is the only way to show it fully
+          // uncropped without a letterbox border either — supersedes the
+          // prior "fixed frame, object-cover" decision below, which itself
+          // had superseded an earlier "fixed frame, object-contain"
+          // decision made for a DIFFERENT reason (shape consistency
+          // between photos) that this reintroduces as an accepted
+          // trade-off, per the explicit priority this time being "never
+          // crop" over "every hero photo the same shape". heroHeight
+          // (measured from this box, driving the thumbnail column's own
+          // height) already re-measures whenever this aspect changes — see
+          // its own effect above — so it stays in sync automatically.
+          className="group relative self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
+          style={{ aspectRatio: aspects[effectiveImages[active] ?? ""] ?? 4 / 5 }}
         >
           {/* Outgoing photo — mounted only while a slide is running, and
               only ever the one being replaced, so a jump across several
               indexes slides straight from old to new rather than running
               through every photo in between (matches the reference, where
               clicking the second thumbnail slid directly to it).
-              object-cover, not object-contain: explicit follow-up request —
-              object-contain avoided cropping but left a visible
-              bg-[#f6f0e6] letterbox border on any photo whose own aspect
-              ratio isn't exactly the fixed 4/5 frame, which the customer
-              flagged as a border around the image. object-cover matches the
-              thumbnail column (also object-cover, see below) and the
-              desktop hero's own fixed aspect-[4/5] box crops any excess
-              instead of letterboxing it — supersedes the prior
-              "object-contain, accept letterboxing" decision above. Source
-              images are served at full resolution (Next/Image `sizes`
-              below unchanged), so cropping the display box doesn't reduce
-              sharpness. */}
+              object-contain, not object-cover: the box above is now sized
+              to each photo's own aspect ratio, so object-contain here
+              never crops and (since the box already matches the photo's
+              real proportions) never letterboxes either — the two changes
+              go together. Source images are served at full resolution
+              (Next/Image `sizes` below unchanged), so this doesn't affect
+              sharpness either way. */}
           {slide && (
             <div key={slide.src} ref={outgoingRef} className="absolute inset-0">
               <Image
@@ -497,7 +496,7 @@ export default function Gallery({
                 alt=""
                 fill
                 sizes="(min-width: 1000px) 47vw, 100vw"
-                className="object-cover"
+                className="object-contain"
               />
             </div>
           )}
@@ -510,7 +509,7 @@ export default function Gallery({
                 fill
                 priority
                 sizes="(min-width: 1000px) 47vw, 100vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
               />
             </div>
           )}

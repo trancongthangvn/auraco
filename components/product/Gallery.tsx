@@ -242,17 +242,15 @@ export default function Gallery({
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
-    // Re-runs (and so re-measures synchronously) whenever the hero's own
-    // aspect ratio changes — either a new photo becomes active, or its
-    // ratio just resolved from an `onLoad` firing (see `aspects` above).
-    // Found while diagnosing the thumbnail column running visibly taller
+    // Re-runs on every active-photo change too, not just ResizeObserver —
+    // found while diagnosing the thumbnail column running visibly taller
     // than the hero (bug report): relying on ResizeObserver alone to catch
-    // that follow-up size change doesn't work in every browser context —
-    // this ties the re-measurement directly to the state that actually
-    // drives the hero's height instead, which is synchronous and doesn't
-    // depend on the observer firing at all.
+    // a follow-up size change doesn't work in every browser context. The
+    // hero's own box is a fixed aspect-[4/5] now (see below), so its
+    // height only actually varies with the column's width, but this stays
+    // as a cheap safety net for that same class of bug.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveImages[active], aspects[effectiveImages[active] ?? ""]]);
+  }, [effectiveImages[active]]);
 
   // Wrap-around for the infinite loop: fires ~120ms after the LAST scroll
   // event, whether that scroll came from our own animateScrollTop (which
@@ -458,39 +456,44 @@ export default function Gallery({
           type="button"
           aria-label="View full-size image"
           onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-          // Sized to this photo's own measured aspect ratio (`aspects`,
-          // same mechanism the thumbnail column below already uses) rather
-          // than a fixed aspect-[4/5] — explicit follow-up bug report: the
-          // fixed frame cropped some photos (object-cover, below) to fit
-          // it, cutting off part of the shot. A dynamic box sized to the
-          // photo's real proportions is the only way to show it fully
-          // uncropped without a letterbox border either — supersedes the
-          // prior "fixed frame, object-cover" decision below, which itself
-          // had superseded an earlier "fixed frame, object-contain"
-          // decision made for a DIFFERENT reason (shape consistency
-          // between photos) that this reintroduces as an accepted
-          // trade-off, per the explicit priority this time being "never
-          // crop" over "every hero photo the same shape". heroHeight
-          // (measured from this box, driving the thumbnail column's own
-          // height) already re-measures whenever this aspect changes — see
-          // its own effect above — so it stays in sync automatically.
-          className="group relative self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
-          style={{ aspectRatio: aspects[effectiveImages[active] ?? ""] ?? 4 / 5 }}
+          // Back to a fixed aspect-[4/5] frame — explicit follow-up bug
+          // report: sizing the box to each photo's own ratio (the previous
+          // fix, for a real "photos were getting cropped" complaint) made
+          // the frame visibly change shape between products and between
+          // photos of the same product, reported as "khung dài khung
+          // ngắn không đồng bộ". Neither cropping (object-cover) nor a
+          // flat-color letterbox (object-contain alone) is acceptable
+          // together with a fixed frame, so the gap around a non-4:5 photo
+          // is now filled with a blurred, scaled-up copy of that SAME
+          // photo (see the two-layer Image stack below) instead of empty
+          // background — every product gets an identical frame size, and
+          // there's no crop and no visible "border" reading as a border.
+          className="group relative aspect-[4/5] self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
         >
           {/* Outgoing photo — mounted only while a slide is running, and
               only ever the one being replaced, so a jump across several
               indexes slides straight from old to new rather than running
               through every photo in between (matches the reference, where
               clicking the second thumbnail slid directly to it).
-              object-contain, not object-cover: the box above is now sized
-              to each photo's own aspect ratio, so object-contain here
-              never crops and (since the box already matches the photo's
-              real proportions) never letterboxes either — the two changes
-              go together. Source images are served at full resolution
-              (Next/Image `sizes` below unchanged), so this doesn't affect
-              sharpness either way. */}
+              Each slide layer stacks two copies of the same photo: a
+              blurred, scaled-up object-cover backdrop (fills the whole
+              frame, including corners a 4:5 box would otherwise show as
+              plain bg-[#f6f0e6]) behind a sharp object-contain copy on top
+              (shown whole, never cropped). scale-110 keeps the blur's own
+              soft edge from revealing a hard cutoff at the box's border.
+              Source images are served at full resolution (Next/Image
+              `sizes` unchanged on the sharp layer), so this doesn't affect
+              its sharpness — only the backdrop is intentionally blurred. */}
           {slide && (
             <div key={slide.src} ref={outgoingRef} className="absolute inset-0">
+              <Image
+                src={slide.src}
+                alt=""
+                fill
+                aria-hidden
+                sizes="(min-width: 1000px) 47vw, 100vw"
+                className="scale-110 object-cover opacity-60 blur-2xl"
+              />
               <Image
                 src={slide.src}
                 alt=""
@@ -503,6 +506,14 @@ export default function Gallery({
           {/* No `key` here either — see the mobile hero below for why. */}
           {effectiveImages[active] && (
             <div ref={incomingRef} className="absolute inset-0">
+              <Image
+                src={effectiveImages[active]}
+                alt=""
+                fill
+                aria-hidden
+                sizes="(min-width: 1000px) 47vw, 100vw"
+                className="scale-110 object-cover opacity-60 blur-2xl"
+              />
               <Image
                 src={effectiveImages[active]}
                 alt={name}

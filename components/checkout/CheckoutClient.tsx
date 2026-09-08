@@ -443,20 +443,17 @@ export default function CheckoutClient() {
         </div>
       </header>
 
-      {/* max-w-[1280px] mx-auto, not w-full: explicit follow-up request —
-          the header (a plain flex row) spans edge-to-edge, while this
-          grid, as a child of <body>'s own flex-direction:column layout
-          (app/layout.tsx), was sizing itself to its content's own width
-          instead of stretching (measured live: main stopped at 1118px
-          inside a 1600px viewport, inset ~241px each side, header flush at
-          the true 24px padding edge) — an earlier fix closed that gap by
-          making main w-full (matching the header's full-bleed width), but
-          the actual reference wanted both narrower and centered with
-          visible side margins instead, not stretched edge-to-edge. Same
-          max-width as the header above, so the two still share identical
-          left/right edges, just inset from the viewport now rather than
-          flush against it. */}
-      <main className="mx-auto grid max-w-[1280px] grid-cols-1 gap-12 px-6 py-10 lg:grid-cols-[1fr_420px]">
+      {/* w-full is required alongside max-w-[1280px] mx-auto: as a grid
+          item inside <body>'s flex-direction:column layout (app/layout.tsx),
+          an auto margin (mx-auto) makes a flex child absorb free space
+          instead of stretching to fill the cross axis, so without w-full
+          this grid shrinks to its own content width (measured live: 1118px
+          in a 1600px viewport, not the intended 1280px) and no longer lines
+          up with the header's inner div above, which doesn't have this
+          problem because it's a block child of <header>, not a direct flex
+          child of <body>. w-full forces 100% width first, then max-w caps
+          it at 1280px and mx-auto centers it — matching the header exactly. */}
+      <main className="mx-auto grid w-full max-w-[1280px] grid-cols-1 gap-12 px-6 py-10 lg:grid-cols-[1fr_420px]">
         {/* Left column: checkout form */}
         <div>
           {/* Express checkout */}

@@ -102,23 +102,41 @@ export default function Gallery({
   // every tile's own box to match that photo's real proportions instead of
   // a fixed ratio — accepted trade-off: the hero (and so the thumbnail
   // column height matched to it) now resizes slightly per photo instead of
-  // staying fixed. Ratios are measured once per src (via each `onLoad`
-  // below, from the loaded `<img>`'s own naturalWidth/naturalHeight — nothing
-  // in this app's data stores a photo's dimensions ahead of time) and
-  // cached here so every tile showing the same photo (hero, both thumbnail
-  // rails) reuses one measurement instead of re-measuring. 4/5 is only ever
-  // a placeholder for a photo not yet loaded, so nothing collapses to 0
-  // height before its first paint.
+  // staying fixed. 4/5 is only ever a placeholder for a photo not yet
+  // measured, so nothing collapses to 0 height before its first paint.
   const [aspects, setAspects] = useState<Record<string, number>>({});
   const registerAspect = (src: string, ratio: number) => {
     setAspects((prev) => (prev[src] ? prev : { ...prev, [src]: ratio }));
   };
-  const onImageLoad = (src: string) => (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    if (img.naturalWidth && img.naturalHeight) {
-      registerAspect(src, img.naturalWidth / img.naturalHeight);
-    }
-  };
+  // Measured via a plain, off-DOM `Image()` per src rather than each
+  // rendered `<img>`'s own `onLoad` — this same photo is mounted in up to
+  // four places at once (desktop hero, desktop thumbnail rail, mobile hero,
+  // mobile thumbnail strip), each requesting its own differently-sized
+  // rendition from Next's image optimizer (`sizes` differs per spot) and
+  // firing `onLoad` independently; live measurement caught those onLoad
+  // callbacks registering one photo's box with a DIFFERENT photo's ratio
+  // (bug report: a perfectly square photo ended up sized like its
+  // neighbour). A single dedicated probe per unique src, decoupled from
+  // whichever rendered `<img>` happens to load first, removes that
+  // ambiguity entirely. Keyed off a joined string, not the array itself —
+  // `effectiveImages` is a new array every render, which would otherwise
+  // re-run this on every render (harmless but wasteful: each `Image()` is a
+  // browser-cache hit after the first time, `registerAspect`'s own guard
+  // still no-ops once a src is known).
+  const effectiveImagesKey = effectiveImages.join("|");
+  useEffect(() => {
+    effectiveImages.forEach((src) => {
+      if (!src) return;
+      const probe = new window.Image();
+      probe.onload = () => {
+        if (probe.naturalWidth && probe.naturalHeight) {
+          registerAspect(src, probe.naturalWidth / probe.naturalHeight);
+        }
+      };
+      probe.src = src;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveImagesKey]);
 
   const [active, setActive] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -480,7 +498,6 @@ export default function Gallery({
                 fill
                 sizes="(min-width: 1000px) 47vw, 100vw"
                 className="object-cover"
-                onLoad={onImageLoad(slide.src)}
               />
             </div>
           )}
@@ -494,7 +511,6 @@ export default function Gallery({
                 priority
                 sizes="(min-width: 1000px) 47vw, 100vw"
                 className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                onLoad={onImageLoad(effectiveImages[active])}
               />
             </div>
           )}
@@ -554,7 +570,6 @@ export default function Gallery({
                     fill
                     sizes="30vw"
                     className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
-                    onLoad={onImageLoad(src)}
                   />
                 </button>
               ))}
@@ -608,7 +623,6 @@ export default function Gallery({
                 priority
                 sizes="100vw"
                 className="object-contain transition-opacity duration-500"
-                onLoad={onImageLoad(effectiveImages[active])}
               />
             )}
           </button>
@@ -643,7 +657,6 @@ export default function Gallery({
                   fill
                   sizes="64px"
                   className="object-contain"
-                  onLoad={onImageLoad(src)}
                 />
               </button>
             ))}

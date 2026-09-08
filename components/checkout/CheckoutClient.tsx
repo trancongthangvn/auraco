@@ -409,9 +409,19 @@ export default function CheckoutClient() {
           split could), and the currency picker + "Back to cart" are
           grouped together as one right-aligned unit with a 5pt gap between
           them, instead of the currency picker sitting alone in its own
-          centered middle column. */}
+          centered middle column.
+          max-w-[1280px] mx-auto: explicit follow-up request — the previous
+          fix (making <main> below w-full) satisfied "the header should
+          line up with the form/order-summary edges" by stretching the
+          CONTENT out to match the header's own edge-to-edge span, but the
+          actual reference wanted the opposite: both should share ONE
+          narrower, centered column with visible margin on both sides, not
+          run flush to the true viewport edge. Same max-width applied to
+          <main> below, so the two stay aligned with each other exactly as
+          before, just at this narrower shared width instead of full
+          width. */}
       <header className="border-b border-black/5">
-        <div className="grid grid-cols-[auto_1fr] items-center gap-4 px-6 py-4">
+        <div className="mx-auto grid max-w-[1280px] grid-cols-[auto_1fr] items-center gap-4 px-6 py-4">
           <Link
             href="/"
             aria-label="AURA & CO"
@@ -433,18 +443,20 @@ export default function CheckoutClient() {
         </div>
       </header>
 
-      {/* w-full: explicit bug report — the header (a plain flex row) spans
-          edge-to-edge, but this grid, as a child of <body>'s own
-          flex-direction:column layout (app/layout.tsx), was sizing itself
-          to its content's own width instead of stretching to fill the
-          available width the way a plain block/flex child would, leaving
-          the form/order-summary content visibly narrower and off-center
-          from the header above it (measured live: main stopped at 1118px
-          inside a 1600px viewport, inset ~241px each side, while the
-          header's own content sat flush at the true 24px padding edge).
-          w-full forces it to actually fill its flex parent's width, so the
-          header and this grid share the same left/right edges. */}
-      <main className="mx-auto grid w-full grid-cols-1 gap-12 px-6 py-10 lg:grid-cols-[1fr_420px]">
+      {/* max-w-[1280px] mx-auto, not w-full: explicit follow-up request —
+          the header (a plain flex row) spans edge-to-edge, while this
+          grid, as a child of <body>'s own flex-direction:column layout
+          (app/layout.tsx), was sizing itself to its content's own width
+          instead of stretching (measured live: main stopped at 1118px
+          inside a 1600px viewport, inset ~241px each side, header flush at
+          the true 24px padding edge) — an earlier fix closed that gap by
+          making main w-full (matching the header's full-bleed width), but
+          the actual reference wanted both narrower and centered with
+          visible side margins instead, not stretched edge-to-edge. Same
+          max-width as the header above, so the two still share identical
+          left/right edges, just inset from the viewport now rather than
+          flush against it. */}
+      <main className="mx-auto grid max-w-[1280px] grid-cols-1 gap-12 px-6 py-10 lg:grid-cols-[1fr_420px]">
         {/* Left column: checkout form */}
         <div>
           {/* Express checkout */}

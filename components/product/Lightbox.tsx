@@ -68,15 +68,32 @@ export default function Lightbox({
           onClick={onClose}
           className="absolute inset-0 h-full w-full cursor-zoom-out"
         />
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
           {images[index] && (
-            <Image
-              src={images[index]}
-              alt={name}
-              fill
-              sizes="100vw"
-              className="object-contain"
-            />
+            // Fixed aspect-[4/5] frame, not object-contain filling however
+            // much space each photo's own ratio happens to need — explicit
+            // follow-up request: a tall lifestyle/portrait photo filled
+            // nearly the whole screen while a near-square product shot
+            // showed much smaller with big margins, reading as
+            // inconsistent between photos. Same fixed 4:5 frame + crop
+            // trade-off already applied to the gallery's own hero image;
+            // h-full plus max-w-full/max-h-full sizes this box as large as
+            // possible within the available stage while keeping the ratio
+            // exact (modern browsers resolve aspect-ratio against both
+            // constraints together), so every photo now occupies the same
+            // shape and size. object-cover crops a mismatched photo's own
+            // margin to fill it — source images are still served at full
+            // resolution (`sizes` unchanged), so this doesn't affect
+            // sharpness.
+            <div className="relative h-full max-h-full w-auto max-w-full aspect-[4/5]">
+              <Image
+                src={images[index]}
+                alt={name}
+                fill
+                sizes="100vw"
+                className="object-cover"
+              />
+            </div>
           )}
         </div>
 

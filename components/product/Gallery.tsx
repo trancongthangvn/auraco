@@ -469,8 +469,20 @@ export default function Gallery({
           type="button"
           aria-label="View full-size image"
           onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-          className="group relative self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
-          style={{ aspectRatio: aspects[currentSrc ?? ""] ?? 4 / 5 }}
+          // aspect-[4/5] fixed, not the photo's own measured ratio:
+          // explicit bug report — sizing the hero to each photo's own
+          // aspect ratio meant it visibly changed shape (square-ish for
+          // one photo, a tall rectangle for the next) every time the
+          // active photo changed. Every hero photo is now the same fixed
+          // rectangular frame; object-contain (below, unchanged) still
+          // shows each photo in full, uncropped, at full resolution — a
+          // non-4:5 photo just letterboxes against bg-[#f6f0e6] instead of
+          // reshaping the frame. heroHeight (measured from this box,
+          // driving the thumbnail column's own height) and the
+          // thumbnail rail's own exact-2-tile sizing both still work
+          // exactly the same way regardless of whether this ratio is
+          // fixed or dynamic — neither depends on which one it is.
+          className="group relative aspect-[4/5] self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
         >
           {/* Outgoing photo — mounted only while a slide is running, and
               only ever the one being replaced, so a jump across several

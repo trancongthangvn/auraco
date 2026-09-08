@@ -433,7 +433,18 @@ export default function CheckoutClient() {
         </div>
       </header>
 
-      <main className="mx-auto grid grid-cols-1 gap-12 px-6 py-10 lg:grid-cols-[1fr_420px]">
+      {/* w-full: explicit bug report — the header (a plain flex row) spans
+          edge-to-edge, but this grid, as a child of <body>'s own
+          flex-direction:column layout (app/layout.tsx), was sizing itself
+          to its content's own width instead of stretching to fill the
+          available width the way a plain block/flex child would, leaving
+          the form/order-summary content visibly narrower and off-center
+          from the header above it (measured live: main stopped at 1118px
+          inside a 1600px viewport, inset ~241px each side, while the
+          header's own content sat flush at the true 24px padding edge).
+          w-full forces it to actually fill its flex parent's width, so the
+          header and this grid share the same left/right edges. */}
+      <main className="mx-auto grid w-full grid-cols-1 gap-12 px-6 py-10 lg:grid-cols-[1fr_420px]">
         {/* Left column: checkout form */}
         <div>
           {/* Express checkout */}

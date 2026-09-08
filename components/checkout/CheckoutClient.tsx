@@ -856,8 +856,17 @@ export default function CheckoutClient() {
               bottom of the viewport as the page scrolls, the same way the
               site's own header stays pinned to the top, rather than
               scrolling away with the form above it. Desktop is unchanged
-              (lg:sticky lg:top-6, its own pre-existing behavior). */}
-          <div className="sticky bottom-0 z-30 rounded-[8px] bg-[#f5f5f5] px-9 pb-[38px] pt-[38px] lg:top-6 lg:bottom-auto">
+              (lg:sticky lg:top-6, its own pre-existing behavior).
+              pb-[calc(38px+env(safe-area-inset-bottom))]: bug report — with
+              the card's bottom edge now flush against the true viewport
+              bottom (bottom-0), the voucher field at the bottom of the card
+              sat right under an iPhone's home-indicator gesture bar, which
+              visually overlaps that unsafe area. env(safe-area-inset-bottom)
+              is 0 on devices without one, so this only adds padding where
+              actually needed. lg: keeps the original fixed 38px — the
+              desktop card isn't pinned to the bottom edge at all
+              (lg:bottom-auto), so it never had this problem. */}
+          <div className="sticky bottom-0 z-30 rounded-[8px] bg-[#f5f5f5] px-9 pb-[calc(38px+env(safe-area-inset-bottom))] pt-[38px] lg:bottom-auto lg:top-6 lg:pb-[38px]">
             {/* Mobile-only collapsible header — explicit request. The
                 button itself is inert on desktop (lg:pointer-events-none),
                 where the card stays permanently expanded like before; the

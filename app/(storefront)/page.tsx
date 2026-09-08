@@ -163,7 +163,21 @@ export default async function Home() {
     img: s.image_url,
   }));
 
-  const testimonials: Testimonial[] = homepage.testimonials.map((t, i) => ({
+  // Explicit request: the homepage Feedback section shows only the 5 most
+  // recent testimonials, not every active one an admin has ever added — the
+  // admin's own sort_order (used to hand-arrange display order) is kept for
+  // ordering AMONG those 5 once picked, but which 5 make the cut is decided
+  // by quote_date instead. `/api/content/homepage` itself stays unchanged
+  // (still returns every active testimonial, sort_order-ordered) since the
+  // admin/homepage management page reads the exact same endpoint to list
+  // and edit ALL of them — slicing there would make testimonials beyond the
+  // top 5 unreachable to manage.
+  const latestFiveTestimonials = [...homepage.testimonials]
+    .sort((a, b) => new Date(b.quote_date).getTime() - new Date(a.quote_date).getTime())
+    .slice(0, 5)
+    .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
+
+  const testimonials: Testimonial[] = latestFiveTestimonials.map((t, i) => ({
     initials: t.initials,
     name: t.name,
     date: formatQuoteDate(t.quote_date),

@@ -236,35 +236,6 @@ export default function Gallery({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveImages[active], aspects[effectiveImages[active] ?? ""]]);
 
-  // Sizes each thumbnail to exactly half the scrollable rail's own real
-  // height (minus the gap between them) instead of a fixed aspect ratio —
-  // explicit request: with the hero's height now varying per photo's own
-  // aspect ratio (above), a fixed aspect-[4/5] thumbnail no longer reliably
-  // filled the rail with exactly 2 whole tiles the way it used to when the
-  // hero was also a fixed ratio — depending on the active photo, 2 tiles
-  // could fall short (leaving empty space above the chevron) or run long
-  // (showing a cut-off sliver of a 3rd). Measuring the rail directly
-  // (rather than deriving from heroHeight, which also has to leave room
-  // for the chevron button and gap below it) sidesteps having to hand-
-  // compute that reserved space.
-  const [thumbRailHeight, setThumbRailHeight] = useState<number | null>(null);
-  useEffect(() => {
-    const el = thumbViewportRef.current;
-    if (!el) return;
-    const update = () => {
-      const h = el.getBoundingClientRect().height;
-      if (h > 0) setThumbRailHeight(h);
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [heroHeight]);
-
-  const THUMB_GAP = 10;
-  const thumbItemHeight =
-    thumbRailHeight !== null ? (thumbRailHeight - THUMB_GAP) / 2 : null;
-
   // Wrap-around for the infinite loop: fires ~120ms after the LAST scroll
   // event, whether that scroll came from our own animateScrollTop (which
   // dispatches a native scroll event every rAF frame, so the debounce
@@ -560,28 +531,30 @@ export default function Gallery({
                   // No selected-state outline: explicit request to leave the
                   // thumbnails as plain images. `aria-current` above still
                   // conveys the selection to screen readers.
-                  // Height is thumbItemHeight (measured, see above), not a
-                  // fixed aspect-[4/5] — explicit request: exactly 2 tiles
-                  // should always fill the rail completely, which a static
-                  // ratio can no longer guarantee now that the hero's own
-                  // height varies per photo.
+                  // Height comes from this photo's own measured aspect ratio
+                  // (`aspects`, populated on load below), not a fixed or
+                  // rail-derived height — explicit follow-up request: fitting
+                  // a mismatched photo (a bracelet shot as a wide circle,
+                  // say) into a box with a different ratio always left
+                  // either a crop (object-cover) or a visible bg-[#f6f0e6]
+                  // letterbox border (object-contain) on one axis. Sizing
+                  // the box itself to the photo's real proportions is the
+                  // only way to get neither. Supersedes the prior "exactly
+                  // 2 tiles fill the rail" sizing — the rail can now show a
+                  // partial 3rd tile or leave a gap above the chevron
+                  // depending on the active photo's own ratio, an accepted
+                  // trade-off for showing every photo uncropped and
+                  // borderless.
                   className="group relative w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
-                  style={thumbItemHeight !== null ? { height: `${thumbItemHeight}px` } : { aspectRatio: 4 / 5 }}
+                  style={{ aspectRatio: aspects[src] ?? 4 / 5 }}
                 >
                   <Image
                     src={src}
                     alt=""
                     fill
                     sizes="30vw"
-                    // object-contain, not object-cover: explicit bug report —
-                    // a photo wider/narrower than the tile's own ratio (a
-                    // bracelet shot as a full circle, say) was having its
-                    // edges cropped off. Matches the mobile thumbnail strip
-                    // below, which already used object-contain for the same
-                    // reason. Trade-off: a mismatched photo now letterboxes
-                    // against bg-[#f6f0e6] instead of being cropped — source
-                    // resolution is unaffected either way (sizes unchanged).
                     className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+                    onLoad={onImageLoad(src)}
                   />
                 </button>
               ))}

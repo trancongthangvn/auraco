@@ -13,6 +13,29 @@ type UploadResult = {
   kind?: "image" | "video";
 };
 
+class HeicConversionError extends Error {}
+
+/** Dynamically imported — heic2any bundles a ~2MB wasm decoder that only a
+ *  HEIC/HEIF drop ever needs, so every other upload (the overwhelming
+ *  majority) shouldn't pay to download it. */
+async function convertHeicToJpeg(file: File): Promise<File> {
+  let heic2any: (typeof import("heic2any"))["default"];
+  try {
+    heic2any = (await import("heic2any")).default;
+  } catch {
+    throw new HeicConversionError("heic2any failed to load");
+  }
+  let converted: Blob | Blob[];
+  try {
+    converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
+  } catch (err) {
+    throw new HeicConversionError(err instanceof Error ? err.message : "conversion failed");
+  }
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  const jpegName = file.name.replace(/\.(heic|heif)$/i, "") + ".jpg";
+  return new File([blob], jpegName, { type: "image/jpeg" });
+}
+
 export type ImageFieldProps = {
   /** Current image path or URL ("" / null when empty). */
   value: string | null;
@@ -49,26 +72,43 @@ export default function ImageField({
   const busy = disabled || uploading;
   const { open: openZoom } = useImageZoom();
 
-  const upload = (file: File) => {
+  const upload = async (file: File) => {
     setError(null);
     setUploading(true);
     onUploadingChange?.(true);
-    const body = new FormData();
-    body.append("file", file);
-    apiFetch<UploadResult>(UPLOAD_ENDPOINT, { method: "POST", body })
-      .then((res) => {
-        if (res?.url) onChange(res.url);
-        else setError("Máy chủ không trả về đường dẫn ảnh");
-      })
-      .catch((err: unknown) => {
+    try {
+      // HEIC/HEIF (the default format on iPhone) can't be decoded by the
+      // server's image library (checked live: sharp's libvips build here
+      // has AV1/AVIF support but not HEVC) and no non-Apple browser can
+      // display it either, so the server rejects it outright — bug report:
+      // "admin thêm mọi loại ảnh" (let admin add every kind of image).
+      // Converting it to a JPEG right here in the browser before it's ever
+      // sent, rather than widening the server's whitelist to a format nothing
+      // downstream can actually render, means a HEIC drop now just works
+      // instead of needing the admin to re-export the photo themselves first.
+      const isHeic =
+        file.type === "image/heic" ||
+        file.type === "image/heif" ||
+        /\.(heic|heif)$/i.test(file.name);
+      const uploadFile = isHeic ? await convertHeicToJpeg(file) : file;
+
+      const body = new FormData();
+      body.append("file", uploadFile);
+      const res = await apiFetch<UploadResult>(UPLOAD_ENDPOINT, { method: "POST", body });
+      if (res?.url) onChange(res.url);
+      else setError("Máy chủ không trả về đường dẫn ảnh");
+    } catch (err) {
+      if (err instanceof HeicConversionError) {
         setError(
-          err instanceof ApiError ? err.message : "Không thể tải ảnh lên"
+          "Không thể chuyển đổi ảnh HEIC này. Vui lòng thử mở ảnh trong Photos trên iPhone, chọn Share > Save as JPEG rồi tải lên lại."
         );
-      })
-      .finally(() => {
-        setUploading(false);
-        onUploadingChange?.(false);
-      });
+      } else {
+        setError(err instanceof ApiError ? err.message : "Không thể tải ảnh lên");
+      }
+    } finally {
+      setUploading(false);
+      onUploadingChange?.(false);
+    }
   };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {

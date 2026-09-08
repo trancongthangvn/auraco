@@ -564,10 +564,7 @@ export default function Gallery({
                   // fixed aspect-[4/5] — explicit request: exactly 2 tiles
                   // should always fill the rail completely, which a static
                   // ratio can no longer guarantee now that the hero's own
-                  // height varies per photo. object-cover (unchanged): a
-                  // frame that's always fully filled with no border is only
-                  // possible by cropping to fit; resolution is unaffected
-                  // (sizes below unchanged, only the box height changed).
+                  // height varies per photo.
                   className="group relative w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
                   style={thumbItemHeight !== null ? { height: `${thumbItemHeight}px` } : { aspectRatio: 4 / 5 }}
                 >
@@ -576,7 +573,15 @@ export default function Gallery({
                     alt=""
                     fill
                     sizes="30vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    // object-contain, not object-cover: explicit bug report —
+                    // a photo wider/narrower than the tile's own ratio (a
+                    // bracelet shot as a full circle, say) was having its
+                    // edges cropped off. Matches the mobile thumbnail strip
+                    // below, which already used object-contain for the same
+                    // reason. Trade-off: a mismatched photo now letterboxes
+                    // against bg-[#f6f0e6] instead of being cropped — source
+                    // resolution is unaffected either way (sizes unchanged).
+                    className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                 </button>
               ))}

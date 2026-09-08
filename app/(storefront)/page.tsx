@@ -54,7 +54,9 @@ type ApiCollection = {
   id: number;
   slug: string;
   name: string;
+  description: string | null;
   image_url: string | null;
+  banner_url: string | null;
   href: string | null;
   sort_order: number;
   active: boolean;
@@ -130,6 +132,7 @@ export default async function Home() {
     pressMentions,
     beachVibeApi,
     allProductsApi,
+    newArrivalsCollection,
   ] = await Promise.all([
     serverApiFetch<{
       heroSlides: ApiHeroSlide[];
@@ -145,6 +148,18 @@ export default async function Home() {
       () => [] as ApiProduct[]
     ),
     serverApiFetch<ApiProduct[]>("/api/products").catch(() => [] as ApiProduct[]),
+    // The "NEW ARRIVALS" feature block below (image/description/link) used
+    // to be hardcoded here — bug report: an admin found and successfully
+    // edited the "New Arrivals" row in /admin/collections, but nothing on
+    // the homepage ever changed, since this block never read from it. This
+    // collection row is deliberately inactive (kept out of the public
+    // /api/collections list and the Collections rail/catalog nav, which is
+    // for generically browsable tiles), so it's fetched directly by slug via
+    // the single-collection endpoint instead. `.catch(() => null)` plus the
+    // `??` fallbacks below mean a missing row or an admin who hasn't set a
+    // field yet still renders the original hardcoded content, not a blank
+    // section.
+    serverApiFetch<ApiCollection>("/api/collections/NEW-ARRIVALS").catch(() => null),
   ]);
 
   // Six tiles, as on the reference — the collection holds more than fit.
@@ -208,11 +223,14 @@ export default async function Home() {
           products={newArrivalProducts}
           layout="grid"
           feature={{
-            href: "/catalog/BEACH-VIBE",
-            title: "BEACH VIBE",
+            href: newArrivalsCollection?.href || "/catalog/BEACH-VIBE",
+            title: (newArrivalsCollection?.name || "BEACH VIBE").toUpperCase(),
             description:
+              newArrivalsCollection?.description ||
               "Sun-drenched styles for endless summer days. Discover lightweight pieces designed to catch the coastal light.",
             image:
+              newArrivalsCollection?.banner_url ||
+              newArrivalsCollection?.image_url ||
               "/images/settings/home-product-sections/a4975173-b51a-4180-89db-b79a72e73c03.webp",
           }}
         />

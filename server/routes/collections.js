@@ -184,4 +184,36 @@ router.delete('/admin/:id', authMiddleware, requireAdmin, async (req, res) => {
   }
 });
 
+// ----------------------------------------------------------------------------
+// GET /collections/:slug — public, single collection by slug, regardless of
+// `active`. Distinct from the list endpoint above (active-only, meant for
+// nav/browsable tiles): this is for a page that needs ONE specific
+// collection's own fields (banner/description/href) as a content source —
+// e.g. the homepage's "New Arrivals" feature block — where "active" isn't
+// really "should this be browsable in /catalog nav", just "not ready yet".
+// Case-insensitive on slug to match how [collection] routes already compare
+// (`collection.toUpperCase()`), so callers don't need to know the exact
+// casing stored in the DB.
+//
+// MUST stay registered after every /admin* route above: Express matches
+// routes in registration order, and this wildcard would otherwise swallow
+// "admin" itself as a slug value, breaking the admin list/create/update/
+// delete endpoints.
+// ----------------------------------------------------------------------------
+router.get('/:slug', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT ${COLLECTION_COLUMNS} FROM collections WHERE UPPER(slug) = UPPER($1) LIMIT 1`,
+      [req.params.slug]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Collection not found' });
+    }
+    res.status(200).json({ data: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch collection' });
+  }
+});
+
 module.exports = router;

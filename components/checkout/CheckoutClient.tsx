@@ -180,7 +180,16 @@ export default function CheckoutClient() {
   // Mobile-only collapse for the "Your order" summary card — explicit
   // request. Desktop ignores this entirely (forced open via lg: below),
   // matching its own always-expanded sticky sidebar.
-  const [orderSummaryOpen, setOrderSummaryOpen] = useState(true);
+  // Defaults to CLOSED on mobile — bug found while fixing the card's
+  // positioning (sticky → fixed, see its own comment): once the card is
+  // truly pinned to the viewport at all times instead of only appearing
+  // once scrolled to the page's end, starting it pre-expanded meant a
+  // multi-item cart's full card could be taller than the screen itself,
+  // completely covering the checkout form underneath from the moment the
+  // page loads. Starting collapsed (the compact "Order summary  $X" row)
+  // avoids that; desktop is unaffected either way since lg: forces it
+  // open regardless of this value.
+  const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
 
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherMessage, setVoucherMessage] = useState("");

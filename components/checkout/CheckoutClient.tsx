@@ -376,7 +376,15 @@ export default function CheckoutClient() {
   const sectionTitle = "font-ui text-[17px] font-medium text-[#151515] mb-4";
 
   return (
-    <>
+    // pt-[env(safe-area-inset-top)]: the checkout route now opts into
+    // viewport-fit=cover (see checkout/page.tsx's own viewport export) so
+    // the voucher-field safe-area padding below actually has a real inset
+    // value to read — but that same opt-in also stops the browser from
+    // automatically keeping page content clear of the status bar/notch at
+    // the TOP of the screen, which it did for free before. Without this,
+    // the header above would render partly under the notch on an iPhone.
+    // env() is 0 on any device without one, so this is a no-op elsewhere.
+    <div className="pt-[env(safe-area-inset-top)]">
       {/* Free-shipping progress bar — reference's own checkout-free-shipping
           strip, shown once the cart is known (skipped pre-hydration/empty). */}
       {!itemsLoading && items.length > 0 && (
@@ -1012,6 +1020,6 @@ export default function CheckoutClient() {
           </div>
         </div>
       </main>
-    </>
+    </div>
   );
 }

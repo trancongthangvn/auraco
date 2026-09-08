@@ -53,7 +53,16 @@ export default function PaymentIcons() {
         <span
           key={logo.alt}
           title={logo.alt}
-          className={`flex h-8 w-fit shrink-0 items-center justify-center sm:pr-3 ${i > 0 ? "sm:pl-3" : ""}`}
+          // sm:w-16, not sm:w-fit — bug report: each cell used to size
+          // itself to its own logo's own width, so a wide wordmark (Apple
+          // Pay, Google Pay) sat in a visibly bigger cell than a narrow
+          // circular one (Maestro, Mastercard, Zelle), making the row look
+          // uneven. A fixed width with the logo centered inside (justify-
+          // center, already present) gives every cell the same footprint
+          // regardless of its own logo's aspect ratio. Mobile grid cells
+          // are already equal width via the grid's own equal-fr columns,
+          // so this is desktop-only.
+          className={`flex h-8 w-fit shrink-0 items-center justify-center sm:w-16 sm:pr-3 ${i > 0 ? "sm:pl-3" : ""}`}
         >
           <Image
             src={logo.src}

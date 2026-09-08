@@ -402,12 +402,16 @@ export default function CheckoutClient() {
         </div>
       )}
 
-      {/* Minimal checkout top bar. Grid (auto/1fr/auto) rather than
-          flex+justify-between: with only 3 children of very different
-          widths, justify-between doesn't truly center the middle one — the
-          same fix as the main site Header (components/Header.tsx). */}
+      {/* Minimal checkout top bar. Explicit request: the logo sits flush at
+          the frame's own top-left corner (grid-cols-[auto_1fr] — a single
+          flexible column absorbs all the remaining width, so the logo
+          never gets pushed toward center the way a 3-column auto/1fr/auto
+          split could), and the currency picker + "Back to cart" are
+          grouped together as one right-aligned unit with a 5pt gap between
+          them, instead of the currency picker sitting alone in its own
+          centered middle column. */}
       <header className="border-b border-black/5">
-        <div className="mx-auto grid grid-cols-[auto_1fr_auto] items-center gap-4 px-6 py-4">
+        <div className="grid grid-cols-[auto_1fr] items-center gap-4 px-6 py-4">
           <Link
             href="/"
             aria-label="AURA & CO"
@@ -415,15 +419,17 @@ export default function CheckoutClient() {
           >
             AURA & CO
           </Link>
-          <span className="mx-auto hidden md:inline-flex">
-            <CurrencyPicker />
-          </span>
-          <Link
-            href="/cart"
-            className="inline-flex items-center gap-1.5 whitespace-nowrap font-ui text-sm tracking-wide hover:text-gold transition-colors"
-          >
-            <ChevronLeftIcon size={14} /> Back to cart
-          </Link>
+          <div className="flex items-center justify-end gap-[5px]">
+            <span className="hidden md:inline-flex">
+              <CurrencyPicker />
+            </span>
+            <Link
+              href="/cart"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap font-ui text-sm tracking-wide hover:text-gold transition-colors"
+            >
+              <ChevronLeftIcon size={14} /> Back to cart
+            </Link>
+          </div>
         </div>
       </header>
 

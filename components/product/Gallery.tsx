@@ -488,7 +488,19 @@ export default function Gallery({
               only ever the one being replaced, so a jump across several
               indexes slides straight from old to new rather than running
               through every photo in between (matches the reference, where
-              clicking the second thumbnail slid directly to it). */}
+              clicking the second thumbnail slid directly to it).
+              object-cover, not object-contain: explicit follow-up request —
+              object-contain avoided cropping but left a visible
+              bg-[#f6f0e6] letterbox border on any photo whose own aspect
+              ratio isn't exactly the fixed 4/5 frame, which the customer
+              flagged as a border around the image. object-cover matches the
+              thumbnail column (also object-cover, see below) and the
+              desktop hero's own fixed aspect-[4/5] box crops any excess
+              instead of letterboxing it — supersedes the prior
+              "object-contain, accept letterboxing" decision above. Source
+              images are served at full resolution (Next/Image `sizes`
+              below unchanged), so cropping the display box doesn't reduce
+              sharpness. */}
           {slide && (
             <div key={slide.src} ref={outgoingRef} className="absolute inset-0">
               <Image
@@ -496,7 +508,7 @@ export default function Gallery({
                 alt=""
                 fill
                 sizes="(min-width: 1000px) 47vw, 100vw"
-                className="object-contain"
+                className="object-cover"
                 onLoad={onImageLoad(slide.src)}
               />
             </div>
@@ -510,7 +522,7 @@ export default function Gallery({
                 fill
                 priority
                 sizes="(min-width: 1000px) 47vw, 100vw"
-                className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                 onLoad={onImageLoad(effectiveImages[active])}
               />
             </div>

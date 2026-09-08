@@ -24,6 +24,20 @@ const MIME_WHITELIST = {
   'image/png': { ext: '.png', maxSize: 10 * 1024 * 1024, magic: [[0x89, 0x50, 0x4e, 0x47]] },
   'image/webp': { ext: '.webp', maxSize: 10 * 1024 * 1024, magic: [[0x52, 0x49, 0x46, 0x46]] }, // 'RIFF'
   'image/gif': { ext: '.gif', maxSize: 10 * 1024 * 1024, magic: [[0x47, 0x49, 0x46, 0x38]] }, // 'GIF8'
+  // AVIF: same ISO-BMFF container as MP4 below, so its 'ftyp' box also
+  // starts at byte 4 — added per admin bug report ("kéo thả ảnh vào không
+  // được"): every browser released in the last few years can both display
+  // AVIF natively (unlike HEIC, which no non-Apple browser can render, so
+  // accepting it would just produce a broken image on the public site —
+  // deliberately NOT whitelisted here) and this container's own sharp/
+  // libvips build (checked live: sharp.versions.heif present, but built
+  // against aom/AV1 only, no HEVC decoder) can re-encode it if ever needed.
+  'image/avif': {
+    ext: '.avif',
+    maxSize: 10 * 1024 * 1024,
+    magic: [[0x66, 0x74, 0x79, 0x70]],
+    magicOffset: 4,
+  },
   // MP4's 'ftyp' box starts at byte 4 (bytes 0-3 are the box size), hence the
   // explicit magicOffset — checking it at offset 0 would reject every real mp4.
   'video/mp4': {
@@ -56,7 +70,18 @@ function fileFilter(req, file, cb) {
     // Without `.status`, index.js's error handler falls back to 500 —
     // a client picking the wrong file type read back as "server error"
     // instead of "bad request" (found during admin-panel QA).
-    const err = new Error(`Unsupported file type: ${file.mimetype}`);
+    // Message spells out accepted formats (and calls out HEIC by name,
+    // the single most likely real-world rejection — the default photo
+    // format on iPhone) since ImageField.tsx just surfaces this string
+    // verbatim; a bare "Unsupported file type: image/heic" left an admin
+    // with no idea what to do next, which read as "drag-drop is broken"
+    // rather than "this specific file needs converting first".
+    const err = new Error(
+      `Unsupported file type: ${file.mimetype}. Accepted: JPG, PNG, WEBP, GIF, AVIF` +
+        (file.mimetype === 'image/heic' || file.mimetype === 'image/heif'
+          ? '. iPhone photos in HEIC format aren\'t supported by web browsers — open the photo in an editor (or Photos > Share > choose JPEG) and re-export as JPEG first.'
+          : '.')
+    );
     err.status = 400;
     return cb(err);
   }

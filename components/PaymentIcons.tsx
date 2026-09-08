@@ -19,12 +19,21 @@ const PAYMENT_LOGOS = [
 
 export default function PaymentIcons() {
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Accepted payment methods">
-      {PAYMENT_LOGOS.map((logo) => (
+    // One shared frame around the whole row, not one border per logo —
+    // explicit follow-up request/bug report: the reference's own
+    // `.footer-payments` strip (which this was matched to) is a single
+    // bordered card holding every logo, not a row of separately-bordered
+    // badges. Divider lines between logos (instead of each one's own
+    // border) keep them visually distinct within that one frame.
+    <div
+      className="flex w-fit flex-wrap items-center gap-y-1.5 divide-x divide-gold-light/35 rounded-[6px] border border-gold-light/35 bg-white/92 px-[5.6px] py-[3.2px]"
+      aria-label="Accepted payment methods"
+    >
+      {PAYMENT_LOGOS.map((logo, i) => (
         <span
           key={logo.alt}
           title={logo.alt}
-          className="flex h-8 w-fit shrink-0 items-center justify-center rounded-[6px] border border-gold-light/35 bg-white/92 px-[5.6px] py-[3.2px]"
+          className={`flex h-8 w-fit shrink-0 items-center justify-center pr-3 ${i > 0 ? "pl-3" : ""}`}
         >
           <Image
             src={logo.src}

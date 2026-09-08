@@ -592,20 +592,25 @@ export default function Gallery({
             type="button"
             aria-label="View full-size image"
             onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-            // Same rounded frame as the ≥1000px hero above, sized to this
-            // photo's own aspect ratio (see `aspects` above) rather than a
-            // fixed ratio — explicit follow-up request: object-contain
-            // inside a fixed box stopped the crop, but left a visible
-            // bg-[#f6f0e6] fill on mismatched photos, which read as a
-            // border. A dynamic box shows neither.
-            className="group relative block w-full overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
-            style={{ aspectRatio: aspects[currentSrc ?? ""] ?? 4 / 5 }}
+            // Same fixed aspect-[4/5] frame as the ≥1000px hero above —
+            // explicit follow-up request to bring mobile in line with the
+            // desktop fix ("chưa đồng bộ khung như trên desktop"): sizing
+            // the box to each photo's own ratio kept every photo uncropped
+            // but made the frame a different size per photo/product, and a
+            // flat bg-[#f6f0e6] fill on a mismatched photo read as a
+            // border either way. object-cover (below) fills this fixed
+            // frame by cropping a non-4:5 photo's own margin/background
+            // first — every catalog photo is shot with the piece centered
+            // and margin around it — matching the desktop hero exactly.
+            className="group relative block w-full aspect-[4/5] overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
           >
             {/* No `key` here — keying this on the src forced Next/Image to
                 unmount and remount on every change (including the 5s
                 auto-advance tick), which blanked the frame for a beat while
                 the new image loaded. Letting the same Image instance just
-                take a new `src` avoids that flash entirely. */}
+                take a new `src` avoids that flash entirely. Source images
+                are served at full resolution (`sizes` unchanged), so
+                cropping the display box doesn't reduce sharpness. */}
             {effectiveImages[active] && (
               <Image
                 src={effectiveImages[active]}
@@ -613,7 +618,7 @@ export default function Gallery({
                 fill
                 priority
                 sizes="100vw"
-                className="object-contain transition-opacity duration-500"
+                className="object-cover transition-opacity duration-500"
               />
             )}
           </button>

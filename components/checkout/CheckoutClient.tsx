@@ -452,7 +452,16 @@ export default function CheckoutClient() {
           problem because it's a block child of <header>, not a direct flex
           child of <body>. w-full forces 100% width first, then max-w caps
           it at 1280px and mx-auto centers it — matching the header exactly. */}
-      <main className="mx-auto grid w-full max-w-[1280px] grid-cols-1 gap-12 px-6 py-10 lg:grid-cols-[1fr_420px]">
+      {/* pb-[130px], not the shared py-10, on mobile: the order-summary
+          card below switched from position:sticky to position:fixed (see
+          its own comment) — a fixed element is removed from normal flow
+          entirely, so without this the page's own content (the Pay Now
+          button in particular) would end up hidden underneath the now-
+          floating card once scrolled to the end. 130px roughly matches the
+          card's own collapsed height (pt-38 + pb-38 + one text row +
+          safe-area) with some breathing room; lg: restores the original
+          value since desktop's card isn't fixed. */}
+      <main className="mx-auto grid w-full max-w-[1280px] grid-cols-1 gap-12 px-6 pt-10 pb-[130px] lg:grid-cols-[1fr_420px] lg:pb-10">
         {/* Left column: checkout form */}
         <div>
           {/* Express checkout */}
@@ -847,15 +856,24 @@ export default function CheckoutClient() {
             (#f5f5f5, 38px/36px/60px padding), with the voucher field inside
             the same card below the totals, matching the reference. */}
         <div>
-          {/* sticky bottom-0 on mobile: explicit follow-up request — "đi
-              theo cùng khi trượt lên/xuống như ... header của trang". The
-              earlier fix (a real max-height slide instead of the
-              grid-rows/fr trick) covers the OPEN/CLOSE animation; this is
-              a separate thing — the card itself should stay pinned to the
-              bottom of the viewport as the page scrolls, the same way the
-              site's own header stays pinned to the top, rather than
-              scrolling away with the form above it. Desktop is unchanged
-              (lg:sticky lg:top-6, its own pre-existing behavior).
+          {/* fixed bottom-0 on mobile, not sticky — bug report: with
+              position:sticky, this card only ever appears once the page
+              has scrolled all the way down to where it naturally sits in
+              flow (it's the last block on the page, with nothing below it
+              to give a sticky element room to "hover" over while
+              scrolling past) — it was never actually floating over the
+              long form above it the way the header floats over content
+              below it. position:fixed pins it to the real viewport bottom
+              at all times regardless of scroll position, which is what
+              "đi theo cùng khi trượt lên/xuống" actually needs. inset-x-0
+              replaces the width a fixed element would otherwise lose by
+              leaving normal flow. <main>'s own pb-[130px] (see its
+              comment) reserves clearance so this floating card doesn't
+              cover the last of the form's content. Desktop is unchanged
+              (lg:sticky lg:top-6, its own pre-existing, working
+              behavior — the card there sits in a two-column layout with
+              real content beside it, where sticky's own "room to hover"
+              requirement is actually met).
               pb-[calc(38px+env(safe-area-inset-bottom))]: bug report — with
               the card's bottom edge now flush against the true viewport
               bottom (bottom-0), the voucher field at the bottom of the card
@@ -865,7 +883,7 @@ export default function CheckoutClient() {
               actually needed. lg: keeps the original fixed 38px — the
               desktop card isn't pinned to the bottom edge at all
               (lg:bottom-auto), so it never had this problem. */}
-          <div className="sticky bottom-0 z-30 rounded-[8px] bg-[#f5f5f5] px-9 pb-[calc(38px+env(safe-area-inset-bottom))] pt-[38px] lg:bottom-auto lg:top-6 lg:pb-[38px]">
+          <div className="fixed inset-x-0 bottom-0 z-30 rounded-[8px] bg-[#f5f5f5] px-9 pb-[calc(38px+env(safe-area-inset-bottom))] pt-[38px] lg:sticky lg:inset-x-auto lg:bottom-auto lg:top-6 lg:pb-[38px]">
             {/* Mobile-only collapsible header — explicit request. The
                 button itself is inert on desktop (lg:pointer-events-none),
                 where the card stays permanently expanded like before; the

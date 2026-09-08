@@ -25,8 +25,16 @@ export default function PaymentIcons() {
     // bordered card holding every logo, not a row of separately-bordered
     // badges. Divider lines between logos (instead of each one's own
     // border) keep them visually distinct within that one frame.
+    //
+    // grid grid-cols-4 below `sm:`, not flex-wrap — explicit follow-up bug
+    // report: flex-wrap breaks each row wherever the next icon's own
+    // (varying) width no longer fits, so 8 logos wrapped unevenly (5 on
+    // the first row, 3 on the second) instead of splitting evenly. A fixed
+    // 4-column grid always gives exactly 4 per row regardless of each
+    // icon's own width. `sm:flex sm:w-fit` reverts to the original
+    // single-row layout at desktop widths, unchanged.
     <div
-      className="flex w-fit flex-wrap items-center gap-y-1.5 divide-x divide-gold-light/35 rounded-[6px] border border-gold-light/35 bg-white/92 px-[5.6px] py-[3.2px]"
+      className="grid grid-cols-4 place-items-center gap-y-1.5 divide-x divide-gold-light/35 rounded-[6px] border border-gold-light/35 bg-white/92 px-[5.6px] py-[3.2px] sm:flex sm:w-fit sm:flex-wrap"
       aria-label="Accepted payment methods"
     >
       {PAYMENT_LOGOS.map((logo, i) => (

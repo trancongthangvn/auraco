@@ -456,50 +456,39 @@ export default function Gallery({
           type="button"
           aria-label="View full-size image"
           onClick={() => effectiveImages[active] && setLightboxOpen(true)}
-          // Back to a fixed aspect-[4/5] frame — explicit follow-up bug
-          // report: sizing the box to each photo's own ratio (the previous
-          // fix, for a real "photos were getting cropped" complaint) made
-          // the frame visibly change shape between products and between
-          // photos of the same product, reported as "khung dài khung
-          // ngắn không đồng bộ". Neither cropping (object-cover) nor a
-          // flat-color letterbox (object-contain alone) is acceptable
-          // together with a fixed frame, so the gap around a non-4:5 photo
-          // is now filled with a blurred, scaled-up copy of that SAME
-          // photo (see the two-layer Image stack below) instead of empty
-          // background — every product gets an identical frame size, and
-          // there's no crop and no visible "border" reading as a border.
+          // Fixed aspect-[4/5] frame, every product the same size — see
+          // "khung dài khung ngắn không đồng bộ" fix below for why this
+          // stays fixed rather than sizing to each photo's own ratio.
+          // object-cover (below): explicit follow-up request — the
+          // blurred-backdrop fill used before this technically satisfied
+          // "no crop, no border", but on a photo whose composition already
+          // sat close to a plain/matching background the soft blurred
+          // margin still read as a fuzzy leftover edge rather than a clean
+          // full-bleed photo (reference: image showing the desired look,
+          // a photo that already fills its frame edge-to-edge). Explicit
+          // permission given to crop instead, provided the crop only ever
+          // eats into a photo's own margin/background and never the
+          // product itself — every photo in this catalog is shot with the
+          // piece centered and comfortable margin around it, so cropping
+          // to fill a 4:5 frame crops that margin first.
           className="group relative aspect-[4/5] self-start overflow-hidden rounded-[10px] bg-[#f6f0e6] cursor-zoom-in"
         >
           {/* Outgoing photo — mounted only while a slide is running, and
               only ever the one being replaced, so a jump across several
               indexes slides straight from old to new rather than running
               through every photo in between (matches the reference, where
-              clicking the second thumbnail slid directly to it).
-              Each slide layer stacks two copies of the same photo: a
-              blurred, scaled-up object-cover backdrop (fills the whole
-              frame, including corners a 4:5 box would otherwise show as
-              plain bg-[#f6f0e6]) behind a sharp object-contain copy on top
-              (shown whole, never cropped). scale-110 keeps the blur's own
-              soft edge from revealing a hard cutoff at the box's border.
-              Source images are served at full resolution (Next/Image
-              `sizes` unchanged on the sharp layer), so this doesn't affect
-              its sharpness — only the backdrop is intentionally blurred. */}
+              clicking the second thumbnail slid directly to it). Source
+              images are served at full resolution (Next/Image `sizes`
+              below unchanged), so cropping the display box doesn't reduce
+              sharpness. */}
           {slide && (
             <div key={slide.src} ref={outgoingRef} className="absolute inset-0">
               <Image
                 src={slide.src}
                 alt=""
                 fill
-                aria-hidden
                 sizes="(min-width: 1000px) 47vw, 100vw"
-                className="scale-110 object-cover opacity-60 blur-2xl"
-              />
-              <Image
-                src={slide.src}
-                alt=""
-                fill
-                sizes="(min-width: 1000px) 47vw, 100vw"
-                className="object-contain"
+                className="object-cover"
               />
             </div>
           )}
@@ -508,19 +497,11 @@ export default function Gallery({
             <div ref={incomingRef} className="absolute inset-0">
               <Image
                 src={effectiveImages[active]}
-                alt=""
-                fill
-                aria-hidden
-                sizes="(min-width: 1000px) 47vw, 100vw"
-                className="scale-110 object-cover opacity-60 blur-2xl"
-              />
-              <Image
-                src={effectiveImages[active]}
                 alt={name}
                 fill
                 priority
                 sizes="(min-width: 1000px) 47vw, 100vw"
-                className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
               />
             </div>
           )}

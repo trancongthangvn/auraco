@@ -636,23 +636,27 @@ export default function Gallery({
                 aria-current={active === i ? "true" : undefined}
                 onClick={() => setActive(i)}
                 // 10px radius to match the ≥1000px thumbnail column; w-16
-                // keeps every tile's width at the previous 80px. Height is
-                // this photo's own aspect ratio (see `aspects` above), not
-                // a fixed 4/5 — items-start on the row (above) keeps each
-                // tile at its own natural height instead of flex's default
-                // stretch-to-tallest, so a photo isn't padded out just
-                // because its neighbor in the strip is taller.
-                className={`relative w-16 shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6] transition-opacity hover:opacity-100 ${
+                // keeps every tile's width at the previous 80px. Fixed
+                // aspect-[4/5] height, not each photo's own ratio — bug
+                // report with a screenshot: sizing every tile to its own
+                // photo left the row with visibly different tile heights
+                // ("cái cao cái thấp"), not lined up with each other.
+                // object-cover (below) fills this fixed frame by cropping
+                // a non-4:5 photo's own margin/background first, matching
+                // the same fixed-frame treatment already applied to the
+                // hero elsewhere on this page. items-start on the row
+                // (above) is now a no-op (every tile is the same height)
+                // but harmless to leave as-is.
+                className={`relative aspect-[4/5] w-16 shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6] transition-opacity hover:opacity-100 ${
                   active === i ? "opacity-100" : "opacity-80"
                 }`}
-                style={{ aspectRatio: aspects[src] ?? 4 / 5 }}
               >
                 <Image
                   src={src}
                   alt=""
                   fill
                   sizes="64px"
-                  className="object-contain"
+                  className="object-cover"
                 />
               </button>
             ))}

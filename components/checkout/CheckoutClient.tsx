@@ -361,31 +361,44 @@ export default function CheckoutClient() {
     // the TOP of the screen, which it did for free before. Without this,
     // the header above would render partly under the notch on an iPhone.
     // env() is 0 on any device without one, so this is a no-op elsewhere.
-    <div className="pt-[env(safe-area-inset-top)]">
-      {/* Free-shipping progress bar — reference's own checkout-free-shipping
-          strip, shown once the cart is known (skipped pre-hydration/empty). */}
-      {!itemsLoading && items.length > 0 && (
-        <div className="border-b border-black/5 bg-white px-6 py-2.5">
-          <div className="mx-auto h-[3px] max-w-5xl overflow-hidden rounded-full bg-black/10">
-            <div
-              className="h-full rounded-full bg-ink transition-[width]"
-              style={{ width: `${freeShippingProgress}%` }}
-            />
+    <div>
+      {/* Free-shipping bar + top bar, pinned together — explicit request:
+          both used to scroll away with the page like any other content;
+          now they stay fixed at the top while the form/order-summary below
+          scrolls underneath them, the same way the order-summary card
+          (further down) is already pinned to the bottom. One shared
+          sticky wrapper, not two independently-sticky elements, so they
+          stack in a fixed order instead of both racing for the same
+          top: 0 spot. bg-white so scrolled content doesn't show through
+          underneath; z-40 keeps it above the page but still below the
+          order-summary's own z-30 only where they'd never actually
+          overlap (top vs. bottom of the same scroll), and below the
+          lightbox/portal's z-[300] would-be values elsewhere in the app. */}
+      <div className="sticky top-0 z-40 bg-white pt-[env(safe-area-inset-top)]">
+        {/* Free-shipping progress bar — reference's own checkout-free-shipping
+            strip, shown once the cart is known (skipped pre-hydration/empty). */}
+        {!itemsLoading && items.length > 0 && (
+          <div className="border-b border-black/5 bg-white px-6 py-2.5">
+            <div className="mx-auto h-[3px] max-w-5xl overflow-hidden rounded-full bg-black/10">
+              <div
+                className="h-full rounded-full bg-ink transition-[width]"
+                style={{ width: `${freeShippingProgress}%` }}
+              />
+            </div>
+            <p className="mx-auto mt-1.5 max-w-5xl font-ui text-xs text-black/60">
+              {freeShippingQualified ? (
+                <>
+                  Hooray! Your order qualifies for <strong>FREE</strong> delivery.
+                </>
+              ) : (
+                <>
+                  Add ${freeShippingRemaining.toFixed(2)} more for{" "}
+                  <strong>FREE</strong> delivery.
+                </>
+              )}
+            </p>
           </div>
-          <p className="mx-auto mt-1.5 max-w-5xl font-ui text-xs text-black/60">
-            {freeShippingQualified ? (
-              <>
-                Hooray! Your order qualifies for <strong>FREE</strong> delivery.
-              </>
-            ) : (
-              <>
-                Add ${freeShippingRemaining.toFixed(2)} more for{" "}
-                <strong>FREE</strong> delivery.
-              </>
-            )}
-          </p>
-        </div>
-      )}
+        )}
 
       {/* Minimal checkout top bar. Explicit request: the logo sits flush at
           the frame's own top-left corner (grid-cols-[auto_1fr] — a single
@@ -427,6 +440,7 @@ export default function CheckoutClient() {
           </div>
         </div>
       </header>
+      </div>
 
       {/* w-full is required alongside max-w-[1280px] mx-auto: as a grid
           item inside <body>'s flex-direction:column layout (app/layout.tsx),

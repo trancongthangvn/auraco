@@ -209,14 +209,67 @@ router.get('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => {
   }
 });
 
+// POST /admin/reviews — admin manually adds a review (e.g. one collected
+// off-site, or seeding a new product's page) rather than only ever
+// receiving them through the public submit form. Defaults to 'Đã duyệt'
+// (skips the moderation queue) since an admin is entering it directly —
+// the queue exists to screen customer-submitted content, not admin's own.
+router.post('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => {
+  const VALID_STATUSES = ['Chờ duyệt', 'Đã duyệt', 'Từ chối'];
+  const { productId, customerName, rating, comment, photoUrl, status } = req.body || {};
+
+  const productIdNum = Number(productId);
+  if (!Number.isInteger(productIdNum) || productIdNum <= 0) {
+    return res.status(400).json({ error: 'productId is required' });
+  }
+  if (!customerName || typeof customerName !== 'string' || !customerName.trim()) {
+    return res.status(400).json({ error: 'customerName is required' });
+  }
+  const ratingNum = Number(rating);
+  if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+    return res.status(400).json({ error: 'rating must be an integer between 1 and 5' });
+  }
+  if (!comment || typeof comment !== 'string' || !comment.trim()) {
+    return res.status(400).json({ error: 'comment is required' });
+  }
+  if (photoUrl !== undefined && photoUrl !== null && typeof photoUrl !== 'string') {
+    return res.status(400).json({ error: 'photoUrl must be a string' });
+  }
+  const finalStatus = status ?? 'Đã duyệt';
+  if (!VALID_STATUSES.includes(finalStatus)) {
+    return res.status(400).json({ error: `status must be one of ${VALID_STATUSES.join(', ')}` });
+  }
+
+  try {
+    const productResult = await query('SELECT id, name FROM products WHERE id = $1', [productIdNum]);
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    const product = productResult.rows[0];
+
+    const result = await query(
+      `INSERT INTO product_reviews (product_id, product_name, customer_name, rating, comment, status, photo_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [product.id, product.name, customerName.trim(), ratingNum, comment.trim(), finalStatus, photoUrl || null]
+    );
+    return res.status(201).json({ data: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to create review' });
+  }
+});
+
 // PUT /admin/reviews/:id — update status (approve/reject/etc.), and
 // optionally photoUrl — e.g. an admin attaching a customer's product photo
 // to a review, the same way testimonial photos are set from the admin
-// homepage editor (see content.js).
+// homepage editor (see content.js). Also optionally edits the review's own
+// content (customerName/rating/comment) — explicit request to let an admin
+// correct/adjust a review, not just moderate it.
 router.put('/admin/reviews/:id', authMiddleware, requireAdmin, async (req, res) => {
   const VALID_STATUSES = ['Chờ duyệt', 'Đã duyệt', 'Từ chối'];
   const { id } = req.params;
-  const { status, photoUrl } = req.body || {};
+  const { status, photoUrl, customerName, rating, comment } = req.body || {};
 
   if (!/^\d+$/.test(id)) {
     return res.status(400).json({ error: 'Invalid review id' });
@@ -227,18 +280,49 @@ router.put('/admin/reviews/:id', authMiddleware, requireAdmin, async (req, res) 
   if (photoUrl !== undefined && photoUrl !== null && typeof photoUrl !== 'string') {
     return res.status(400).json({ error: 'photoUrl must be a string' });
   }
+  if (customerName !== undefined && (typeof customerName !== 'string' || !customerName.trim())) {
+    return res.status(400).json({ error: 'customerName must be a non-empty string' });
+  }
+  let ratingNum;
+  if (rating !== undefined) {
+    ratingNum = Number(rating);
+    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ error: 'rating must be an integer between 1 and 5' });
+    }
+  }
+  if (comment !== undefined && (typeof comment !== 'string' || !comment.trim())) {
+    return res.status(400).json({ error: 'comment must be a non-empty string' });
+  }
+
+  // Built dynamically (rather than one fixed statement per field
+  // combination, as before) now that there are 5 independently-optional
+  // fields — a fixed-statement approach would need 2^5 branches to cover
+  // every combination a partial edit might send.
+  const sets = ['status = $1', 'updated_at = now()'];
+  const params = [status];
+  if (photoUrl !== undefined) {
+    params.push(photoUrl || null);
+    sets.push(`photo_url = $${params.length}`);
+  }
+  if (customerName !== undefined) {
+    params.push(customerName.trim());
+    sets.push(`customer_name = $${params.length}`);
+  }
+  if (ratingNum !== undefined) {
+    params.push(ratingNum);
+    sets.push(`rating = $${params.length}`);
+  }
+  if (comment !== undefined) {
+    params.push(comment.trim());
+    sets.push(`comment = $${params.length}`);
+  }
+  params.push(id);
 
   try {
-    const result =
-      photoUrl !== undefined
-        ? await query(
-            `UPDATE product_reviews SET status = $1, photo_url = $2, updated_at = now() WHERE id = $3 RETURNING *`,
-            [status, photoUrl || null, id]
-          )
-        : await query(
-            `UPDATE product_reviews SET status = $1, updated_at = now() WHERE id = $2 RETURNING *`,
-            [status, id]
-          );
+    const result = await query(
+      `UPDATE product_reviews SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`,
+      params
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Review not found' });
     }

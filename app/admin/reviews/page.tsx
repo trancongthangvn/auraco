@@ -6,10 +6,11 @@ import PageHeader from "@/components/admin/PageHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthContext";
 import { useRequireAdmin } from "@/components/admin/useRequireAdmin";
 import { apiFetch, ApiError } from "@/lib/api";
-import { StarRating } from "@/components/icons";
+import { StarIcon, StarRating } from "@/components/icons";
 import Button from "@/components/admin/ui/Button";
 import IconButton from "@/components/admin/ui/IconButton";
-import { Select } from "@/components/admin/ui/Field";
+import { Input, Label, Select, Textarea } from "@/components/admin/ui/Field";
+import { ModalBackdrop, ModalFooter, ModalHeader, ModalPanel } from "@/components/admin/ui/Modal";
 import ImageField from "@/components/admin/ImageField";
 
 type ReviewStatus = "Chờ duyệt" | "Đã duyệt" | "Từ chối";
@@ -29,11 +30,135 @@ type ProductReview = {
   photo_url: string | null;
 };
 
+type ProductOption = { id: number; name: string };
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("vi-VN");
 }
+
+/** Clickable 1-5 star input — same visual language as StarRating (read-only)
+ *  elsewhere in this admin, just interactive. */
+function StarPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: number;
+  onChange: (rating: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      {Array.from({ length: 5 }, (_, i) => {
+        const n = i + 1;
+        return (
+          <button
+            key={n}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(n)}
+            aria-label={`${n} sao`}
+            className="disabled:cursor-not-allowed"
+          >
+            <StarIcon
+              size={20}
+              filled={n <= value}
+              className={n <= value ? "text-[#f0b429]" : "text-black/20"}
+            />
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+/** Product search + single-select for the create form — a review must
+ *  belong to exactly one product, and this list can be long, so a search
+ *  box beats a giant native <select>. Not shown on edit: reassigning an
+ *  existing review to a different product isn't a case this was asked
+ *  for, and product_name is denormalized onto the row (see server route),
+ *  so silently changing product_id without also updating product_name
+ *  would leave them inconsistent. */
+function ProductPickerField({
+  products,
+  productId,
+  productName,
+  onSelect,
+  disabled,
+}: {
+  products: ProductOption[];
+  productId: number | null;
+  productName: string;
+  onSelect: (id: number, name: string) => void;
+  disabled?: boolean;
+}) {
+  const [search, setSearch] = useState("");
+
+  if (productId) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-black/15 bg-black/[0.03] px-3.5 py-2.5 text-sm">
+        <span className="flex-1 truncate">{productName}</span>
+        <button
+          type="button"
+          onClick={() => onSelect(0, "")}
+          disabled={disabled}
+          className="text-xs text-black/50 hover:text-black underline underline-offset-2 disabled:cursor-not-allowed"
+        >
+          Đổi
+        </button>
+      </div>
+    );
+  }
+
+  const candidates = products.filter((p) =>
+    p.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
+  return (
+    <div>
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Tìm sản phẩm theo tên..."
+        disabled={disabled}
+        className="mb-2 text-xs"
+      />
+      {search.trim() && (
+        <div className="max-h-40 overflow-y-auto rounded-lg border border-black/10 p-1">
+          {candidates.length === 0 && (
+            <p className="text-xs text-black/30 italic px-2 py-1.5">
+              Không tìm thấy sản phẩm nào khớp &quot;{search}&quot;.
+            </p>
+          )}
+          {candidates.slice(0, 20).map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                onSelect(p.id, p.name);
+                setSearch("");
+              }}
+              className="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-black/[0.03]"
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const EMPTY_CREATE_FORM = {
+  product_id: null as number | null,
+  product_name: "",
+  customer_name: "",
+  rating: 5,
+  comment: "",
+  status: "Đã duyệt" as ReviewStatus,
+};
 
 export default function AdminReviewsPage() {
   const { session } = useAdminAuth();
@@ -42,6 +167,7 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<ReviewStatus | "Tất cả">("Tất cả");
+  const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
 
   const isAdmin = session?.role === "admin";
 
@@ -66,6 +192,14 @@ export default function AdminReviewsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    apiFetch<{ id: number; name: string }[]>("/api/products/admin/products")
+      .then((data) => setProductOptions(data.map((p) => ({ id: p.id, name: p.name }))))
+      .catch(() => {
+        // Non-critical — the create form falls back to an empty product list.
+      });
+  }, []);
+
   const updateStatus = async (id: number, status: ReviewStatus) => {
     try {
       const updated = await apiFetch<ProductReview>(`/api/admin/reviews/${id}`, {
@@ -78,9 +212,6 @@ export default function AdminReviewsPage() {
     }
   };
 
-  // The PUT endpoint requires `status` on every call (it's the one
-  // required field), so a photo-only update still sends the review's own
-  // current status back unchanged, not just photoUrl by itself.
   const updatePhoto = async (r: ProductReview, photoUrl: string | null) => {
     try {
       const updated = await apiFetch<ProductReview>(`/api/admin/reviews/${r.id}`, {
@@ -95,11 +226,87 @@ export default function AdminReviewsPage() {
 
   const remove = async (id: number) => {
     if (!isAdmin) return;
+    if (!confirm("Xóa đánh giá này? Không thể hoàn tác.")) return;
     try {
       await apiFetch(`/api/admin/reviews/${id}`, { method: "DELETE" });
       setReviews((list) => list.filter((r) => r.id !== id));
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "Không thể xóa");
+    }
+  };
+
+  // Create modal ---------------------------------------------------------
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
+  const [createSaving, setCreateSaving] = useState(false);
+  const [createError, setCreateError] = useState("");
+
+  const openCreate = () => {
+    setCreateForm(EMPTY_CREATE_FORM);
+    setCreateError("");
+    setCreating(true);
+  };
+
+  const submitCreate = async () => {
+    setCreateError("");
+    if (!createForm.product_id) return setCreateError("Chọn một sản phẩm.");
+    if (!createForm.customer_name.trim()) return setCreateError("Nhập tên khách hàng.");
+    if (!createForm.comment.trim()) return setCreateError("Nhập nội dung đánh giá.");
+    setCreateSaving(true);
+    try {
+      const created = await apiFetch<ProductReview>("/api/admin/reviews", {
+        method: "POST",
+        body: JSON.stringify({
+          productId: createForm.product_id,
+          customerName: createForm.customer_name.trim(),
+          rating: createForm.rating,
+          comment: createForm.comment.trim(),
+          status: createForm.status,
+        }),
+      });
+      setReviews((list) => [created, ...list]);
+      setCreating(false);
+    } catch (err) {
+      setCreateError(err instanceof ApiError ? err.message : "Không thể tạo đánh giá");
+    } finally {
+      setCreateSaving(false);
+    }
+  };
+
+  // Edit modal -------------------------------------------------------------
+  const [editing, setEditing] = useState<ProductReview | null>(null);
+  const [editForm, setEditForm] = useState({ customer_name: "", rating: 5, comment: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  const openEdit = (r: ProductReview) => {
+    setEditForm({ customer_name: r.customer_name, rating: r.rating, comment: r.comment });
+    setEditError("");
+    setEditing(r);
+  };
+
+  const submitEdit = async () => {
+    if (!editing) return;
+    setEditError("");
+    if (!editForm.customer_name.trim()) return setEditError("Nhập tên khách hàng.");
+    if (!editForm.comment.trim()) return setEditError("Nhập nội dung đánh giá.");
+    setEditSaving(true);
+    try {
+      const updated = await apiFetch<ProductReview>(`/api/admin/reviews/${editing.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          status: editing.status,
+          customerName: editForm.customer_name.trim(),
+          rating: editForm.rating,
+          comment: editForm.comment.trim(),
+        }),
+      });
+      setReviews((list) => list.map((r) => (r.id === editing.id ? updated : r)));
+      setEditing(null);
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : "Không thể cập nhật");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -109,10 +316,15 @@ export default function AdminReviewsPage() {
   return (
     <AdminShell>
       <PageHeader>
-        <span className="text-xs text-black/50">
-          {reviews.filter((r) => r.status === "Chờ duyệt").length} chờ duyệt /{" "}
-          {reviews.length} tổng
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-black/50">
+            {reviews.filter((r) => r.status === "Chờ duyệt").length} chờ duyệt /{" "}
+            {reviews.length} tổng
+          </span>
+          <Button size="sm" onClick={openCreate}>
+            + Thêm đánh giá
+          </Button>
+        </div>
       </PageHeader>
 
       <div className="flex gap-2 mb-4 flex-wrap">
@@ -167,6 +379,9 @@ export default function AdminReviewsPage() {
                     </option>
                   ))}
                 </Select>
+                <Button size="sm" variant="secondary" onClick={() => openEdit(r)}>
+                  Sửa
+                </Button>
                 <IconButton
                   tone="danger"
                   onClick={() => remove(r.id)}
@@ -188,6 +403,124 @@ export default function AdminReviewsPage() {
             </p>
           )}
         </div>
+      )}
+
+      {creating && (
+        <ModalBackdrop onClose={() => !createSaving && setCreating(false)}>
+          <ModalPanel maxWidth="max-w-lg">
+            <ModalHeader title="Thêm đánh giá" onClose={() => setCreating(false)} />
+            <div className="space-y-4 px-6 py-5">
+              <div>
+                <Label>Sản phẩm</Label>
+                <ProductPickerField
+                  products={productOptions}
+                  productId={createForm.product_id}
+                  productName={createForm.product_name}
+                  onSelect={(id, name) =>
+                    setCreateForm((f) => ({ ...f, product_id: id || null, product_name: name }))
+                  }
+                  disabled={createSaving}
+                />
+              </div>
+              <div>
+                <Label>Tên khách hàng</Label>
+                <Input
+                  value={createForm.customer_name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, customer_name: e.target.value }))}
+                  disabled={createSaving}
+                  placeholder="Nguyễn Văn A"
+                />
+              </div>
+              <div>
+                <Label>Số sao</Label>
+                <StarPicker
+                  value={createForm.rating}
+                  onChange={(rating) => setCreateForm((f) => ({ ...f, rating }))}
+                  disabled={createSaving}
+                />
+              </div>
+              <div>
+                <Label>Nội dung</Label>
+                <Textarea
+                  rows={4}
+                  value={createForm.comment}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, comment: e.target.value }))}
+                  disabled={createSaving}
+                  placeholder="Nội dung đánh giá của khách hàng..."
+                />
+              </div>
+              <div>
+                <Label>Trạng thái</Label>
+                <Select
+                  value={createForm.status}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, status: e.target.value as ReviewStatus }))
+                  }
+                  disabled={createSaving}
+                >
+                  {STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              {createError && <p className="text-xs text-red-700">{createError}</p>}
+            </div>
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => setCreating(false)} disabled={createSaving}>
+                Hủy
+              </Button>
+              <Button onClick={submitCreate} disabled={createSaving}>
+                {createSaving ? "Đang lưu..." : "Thêm đánh giá"}
+              </Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalBackdrop>
+      )}
+
+      {editing && (
+        <ModalBackdrop onClose={() => !editSaving && setEditing(null)}>
+          <ModalPanel maxWidth="max-w-lg">
+            <ModalHeader title={`Sửa đánh giá — ${editing.product_name}`} onClose={() => setEditing(null)} />
+            <div className="space-y-4 px-6 py-5">
+              <div>
+                <Label>Tên khách hàng</Label>
+                <Input
+                  value={editForm.customer_name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, customer_name: e.target.value }))}
+                  disabled={editSaving}
+                />
+              </div>
+              <div>
+                <Label>Số sao</Label>
+                <StarPicker
+                  value={editForm.rating}
+                  onChange={(rating) => setEditForm((f) => ({ ...f, rating }))}
+                  disabled={editSaving}
+                />
+              </div>
+              <div>
+                <Label>Nội dung</Label>
+                <Textarea
+                  rows={4}
+                  value={editForm.comment}
+                  onChange={(e) => setEditForm((f) => ({ ...f, comment: e.target.value }))}
+                  disabled={editSaving}
+                />
+              </div>
+              {editError && <p className="text-xs text-red-700">{editError}</p>}
+            </div>
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => setEditing(null)} disabled={editSaving}>
+                Hủy
+              </Button>
+              <Button onClick={submitEdit} disabled={editSaving}>
+                {editSaving ? "Đang lưu..." : "Lưu thay đổi"}
+              </Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalBackdrop>
       )}
     </AdminShell>
   );

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-const STORAGE_KEY = "aura-welcome-popup-dismissed";
 const ARTWORK = "/images/settings/welcome-popup/98418fc0-5417-4aa4-a7b5-322bc1a2a793.webp";
 
 /**
@@ -13,10 +12,10 @@ const ARTWORK = "/images/settings/welcome-popup/98418fc0-5417-4aa4-a7b5-322bc1a2
  * it stacks — a 210px artwork band above the form — which is where the
  * reference's own breakpoint sits, not at a Tailwind default.
  *
- * Shown once per visitor — the dismissal is remembered in localStorage, which
- * is read inside an effect (never during render) so the server and the first
- * client paint agree. Access is wrapped because private windows and blocked
- * site data make the accessor itself throw.
+ * Shows on every page load/reload — explicit request. A prior version
+ * remembered a dismissal in localStorage so it only ever showed once per
+ * visitor; that persistence is gone now, so closing it only lasts for the
+ * current page view, not future ones.
  */
 export default function WelcomePopup() {
   const [open, setOpen] = useState(false);
@@ -24,13 +23,6 @@ export default function WelcomePopup() {
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    let dismissed = false;
-    try {
-      dismissed = window.localStorage.getItem(STORAGE_KEY) === "1";
-    } catch {
-      // Storage unavailable — treat as a first visit rather than failing.
-    }
-    if (dismissed) return;
     const id = setTimeout(() => setOpen(true), 2500);
     return () => clearTimeout(id);
   }, []);
@@ -46,11 +38,6 @@ export default function WelcomePopup() {
 
   const dismiss = () => {
     setOpen(false);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      // Nothing to do: the popup simply reappears on the next visit.
-    }
   };
 
   useEffect(() => {

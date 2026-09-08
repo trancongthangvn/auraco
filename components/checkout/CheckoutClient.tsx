@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -181,15 +181,6 @@ export default function CheckoutClient() {
   // request. Desktop ignores this entirely (forced open via lg: below),
   // matching its own always-expanded sticky sidebar.
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(true);
-  // Measured max-height animation, not the grid-template-rows/fr trick
-  // CatalogClient's own filter accordion uses — explicit follow-up
-  // request ("t muốn trượt lên trượt xuống"): that technique depends on
-  // browsers being able to smoothly interpolate an `fr`-unit grid track,
-  // which isn't reliable everywhere. Animating `max-height` between 0 and
-  // the panel's own measured scrollHeight is the older, more universally
-  // supported way to get an actual slide instead of an instant snap.
-  const orderSummaryContentRef = useRef<HTMLDivElement>(null);
-  const [orderSummaryHeight, setOrderSummaryHeight] = useState(0);
 
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherMessage, setVoucherMessage] = useState("");
@@ -219,20 +210,6 @@ export default function CheckoutClient() {
     (subtotal / FREE_SHIPPING_THRESHOLD) * 100
   );
   const freeShippingRemaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-
-  // Re-measure the order-summary panel's natural height whenever its own
-  // content can change size (items loading in, a voucher message
-  // appearing, etc.) — the max-height animation above needs a real target
-  // to animate to/from, not just "however tall it happened to be once".
-  useEffect(() => {
-    const el = orderSummaryContentRef.current;
-    if (!el) return;
-    const update = () => setOrderSummaryHeight(el.scrollHeight);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [items, itemsLoading, subtotal, discountAmount, taxAmount, total, voucherMessage]);
 
   useEffect(() => {
     (async () => {
@@ -902,23 +879,28 @@ export default function CheckoutClient() {
               )}
             </button>
 
-            {/* Slides via a measured max-height (orderSummaryHeight, set
-                above from the content's own scrollHeight) rather than
-                CatalogClient.tsx's grid-template-rows/fr trick — explicit
-                follow-up request for an actual visible slide, not a snap.
+            {/* Slides via a large fixed max-height instead of measuring the
+                panel's real scrollHeight with JS (the earlier approach) —
+                bug report: the voucher field at the very bottom of the
+                panel kept ending up clipped on a real iPhone even after
+                fixing the sticky card's own safe-area padding, which
+                pointed at the measurement itself rather than the card's
+                positioning. A CSS custom property driving `max-height`
+                through a `transition-[max-height]`, recomputed via
+                ResizeObserver + a dependency-array effect, is exactly the
+                kind of thing WebKit has known bugs re-applying correctly;
+                4000px can never be reached by any realistic cart, so
+                nothing is ever actually clipped once open — the only
+                cost is the open transition finishing faster than 300ms
+                for a short cart, not a snap or missing content.
                 lg:max-h-none forces this open on desktop no matter what
-                `orderSummaryOpen` is; the CSS custom property carries the
-                target height into the class-based max-height so the
-                lg: override still wins through normal cascade (an inline
-                max-height, by contrast, would beat any class regardless of
-                breakpoint). */}
+                `orderSummaryOpen` is. */}
             <div
               className={`overflow-hidden transition-[max-height] duration-300 ease-out lg:max-h-none ${
-                orderSummaryOpen ? "max-h-[var(--order-summary-h)]" : "max-h-0"
+                orderSummaryOpen ? "max-h-[4000px]" : "max-h-0"
               }`}
-              style={{ "--order-summary-h": `${orderSummaryHeight}px` } as React.CSSProperties}
             >
-              <div ref={orderSummaryContentRef} className="mt-6">
+              <div className="mt-6">
 
             {itemsLoading ? (
               <p className="mb-6 font-ui text-sm text-black/50">Loading…</p>

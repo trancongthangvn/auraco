@@ -243,7 +243,11 @@ export default async function ProductPage({
                 where the rating would be. */}
             <p className="flex items-center gap-[7.2px] mt-1 mb-3 text-[15.2px] leading-[23.56px] text-[#5c554a]">
               <StarRating rating={product.rating} size={16} />
-              <span>{product.rating.toFixed(1)}</span>
+              {/* Beside the stars we show the number of reviews, not the
+                  average score (explicit request, matching the reference
+                  storefront). Hidden entirely at 0 so products without
+                  reviews show the dimmed star row alone, not "(0)". */}
+              {product.reviewCount > 0 && <span>({product.reviewCount})</span>}
             </p>
 
             <div id="add-to-bag-anchor">

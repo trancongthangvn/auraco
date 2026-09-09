@@ -3,6 +3,7 @@ import LanguageProvider from "@/components/i18n/LanguageProvider";
 import CurrencyProvider from "@/components/currency/CurrencyProvider";
 import CartProvider from "@/components/cart/CartProvider";
 import CartDrawer from "@/components/cart/CartDrawer";
+import WelcomePopup from "@/components/WelcomePopup";
 import { getLocale } from "@/lib/i18n/server";
 import { serverApiFetch } from "@/lib/server-api";
 
@@ -48,6 +49,10 @@ export default async function StorefrontLayout({
         <CartProvider>
           {children}
           <CartDrawer />
+          {/* Here rather than on the homepage alone: the Announcement bar
+              renders on every storefront page and its button reopens this
+              dialog, so the listener has to exist on every one of them. */}
+          <WelcomePopup />
         </CartProvider>
       </CurrencyProvider>
     </LanguageProvider>

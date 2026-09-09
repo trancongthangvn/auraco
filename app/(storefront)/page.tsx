@@ -14,7 +14,6 @@ import TrustBadges from "@/components/TrustBadges";
 import ITGirlEdit from "@/components/ITGirlEdit";
 import Journal from "@/components/Journal";
 import Footer from "@/components/Footer";
-import WelcomePopup from "@/components/WelcomePopup";
 import type { Product as CarouselProduct } from "@/data/site";
 import { serverApiFetch } from "@/lib/server-api";
 import { toFullProduct, type ApiProduct } from "@/lib/catalog-mappers";
@@ -241,7 +240,6 @@ export default async function Home() {
         <Journal />
       </main>
       <Footer />
-      <WelcomePopup />
     </>
   );
 }

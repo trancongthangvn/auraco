@@ -6,6 +6,7 @@ import LanguageProvider from "@/components/i18n/LanguageProvider";
 import CurrencyProvider from "@/components/currency/CurrencyProvider";
 import CartProvider from "@/components/cart/CartProvider";
 import CartDrawer from "@/components/cart/CartDrawer";
+import WelcomePopup from "@/components/WelcomePopup";
 
 // Rendered for any URL that matches no route at all, so it sits outside the
 // `(storefront)` route group's layout (and its cookie-driven locale) — wrap
@@ -41,6 +42,7 @@ export default function NotFound() {
           </main>
           <Footer />
           <CartDrawer />
+          <WelcomePopup />
         </CartProvider>
       </CurrencyProvider>
     </LanguageProvider>

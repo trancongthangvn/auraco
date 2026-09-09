@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -12,20 +13,35 @@ const ARTWORK = "/images/settings/welcome-popup/98418fc0-5417-4aa4-a7b5-322bc1a2
  * it stacks — a 210px artwork band above the form — which is where the
  * reference's own breakpoint sits, not at a Tailwind default.
  *
- * Shows on every page load/reload — explicit request. A prior version
- * remembered a dismissal in localStorage so it only ever showed once per
- * visitor; that persistence is gone now, so closing it only lasts for the
- * current page view, not future ones.
+ * Shows by itself on every load/reload OF THE HOMEPAGE — explicit request.
+ * A prior version remembered a dismissal in localStorage so it only ever
+ * showed once per visitor; that persistence is gone now, so closing it only
+ * lasts for the current page view, not future ones.
+ *
+ * Mounted once in the storefront layout (and again, standalone, on the
+ * 404 page, which sits outside that layout) so the Announcement bar can
+ * reopen it from ANY page. It used to be mounted on the homepage alone,
+ * which left that bar's button dead everywhere else: it dispatched
+ * `open-welcome-popup` into a page with nothing listening.
  */
 export default function WelcomePopup() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const pathname = usePathname();
+
+  // Homepage only. Now that this component lives in the layout it renders
+  // on every storefront route, and letting the timer fire everywhere would
+  // pop the dialog over the catalog, a product page, even checkout — a
+  // behaviour change nobody asked for. Everywhere else it opens on demand,
+  // through the event below.
+  const autoOpens = pathname === "/";
 
   useEffect(() => {
+    if (!autoOpens) return;
     const id = setTimeout(() => setOpen(true), 2500);
     return () => clearTimeout(id);
-  }, []);
+  }, [autoOpens]);
 
   // The Announcement bar's own "Sign up for 10% off" button is a deliberate
   // re-open, so it bypasses the dismissed-once gate above — matching the

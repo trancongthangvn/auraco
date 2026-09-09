@@ -68,7 +68,10 @@ export default function Lightbox({
           onClick={onClose}
           className="absolute inset-0 h-full w-full cursor-zoom-out"
         />
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+        {/* [container-type:size] makes this padded stage the reference box
+            for the cqw/cqh units below — that is what lets the frame be
+            sized against BOTH of the stage's dimensions at once. */}
+        <div className="pointer-events-none absolute inset-0 flex [container-type:size] items-center justify-center p-6">
           {images[index] && (
             // Fixed aspect-[4/5] frame, not object-contain filling however
             // much space each photo's own ratio happens to need — explicit
@@ -76,16 +79,24 @@ export default function Lightbox({
             // nearly the whole screen while a near-square product shot
             // showed much smaller with big margins, reading as
             // inconsistent between photos. Same fixed 4:5 frame + crop
-            // trade-off already applied to the gallery's own hero image;
-            // h-full plus max-w-full/max-h-full sizes this box as large as
-            // possible within the available stage while keeping the ratio
-            // exact (modern browsers resolve aspect-ratio against both
-            // constraints together), so every photo now occupies the same
-            // shape and size. object-cover crops a mismatched photo's own
-            // margin to fill it — source images are still served at full
-            // resolution (`sizes` unchanged), so this doesn't affect
-            // sharpness.
-            <div className="relative h-full max-h-full w-auto max-w-full aspect-[4/5]">
+            // trade-off already applied to the gallery's own hero image.
+            // object-cover crops a mismatched photo's own margin to fill
+            // it — source images are still served at full resolution
+            // (`sizes` unchanged), so this doesn't affect sharpness.
+            //
+            // The height is picked explicitly rather than left to
+            // `h-full` + `max-w-full`, which silently broke the ratio on
+            // phones: with a definite height, the width is derived from
+            // the ratio and then CLAMPED by max-width, but the height is
+            // never recomputed from that clamp — so on a 375px viewport
+            // the frame came out 327x698 (ratio 0.47) instead of 4:5,
+            // cropping far harder than the same photo on the page behind
+            // it. Desktop never showed it because a wide stage means
+            // max-width never bites. min(100cqh, 125cqw) is the tallest
+            // 4:5 box that fits the stage BOTH ways: the derived width,
+            // 80% of it, is min(80cqh, 100cqw), so neither dimension can
+            // overflow and the ratio stays exact at every viewport.
+            <div className="relative aspect-[4/5] h-[min(100cqh,125cqw)]">
               <Image
                 src={images[index]}
                 alt={name}

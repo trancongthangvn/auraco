@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Announcement from "@/components/Announcement";
+import DeliveryHighlights from "@/components/product/DeliveryHighlights";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Gallery from "@/components/product/Gallery";
@@ -182,6 +183,14 @@ export default async function ProductPage({
       : toFrequentlyBoughtCompanions(rawRelated);
   const bundleDiscountPercent = bundle.companions.length > 0 ? bundle.discountPercent : 0;
   const { dict } = await getServerDictionary();
+  // Admin-set list wins; the dictionary copy stands in until an admin saves
+  // one of their own. Read in two places now (the rotating row under the
+  // buttons and the "Delivery & Returns" accordion row), so it is resolved
+  // here once rather than duplicated at each use.
+  const deliveryReturnsItems =
+    siteSettings.deliveryReturnsItems && siteSettings.deliveryReturnsItems.length > 0
+      ? siteSettings.deliveryReturnsItems
+      : dict.product.deliveryReturnsItems;
 
   // "See It IRL" shows only THIS product's own uploaded video(s) (a product
   // can have several, see migration 018) — explicit request. It used to
@@ -254,6 +263,13 @@ export default async function ProductPage({
               <AddToBag product={product} />
             </div>
 
+            {/* Explicit request with a screenshot: the same Giao hàng &
+                Đổi trả lines the accordion below lists in full also ride
+                directly under the buttons, one at a time, the way the
+                reference storefront shows them. Same resolved list, so an
+                admin edit moves both together. */}
+            <DeliveryHighlights items={deliveryReturnsItems} />
+
             {/* "Why You'll Love It" used to render always-expanded, no
                 toggle, right above Add to Bag (explicit request at the
                 time). Reversed on a later explicit request to match
@@ -296,10 +312,7 @@ export default async function ProductPage({
                 {
                   title: dict.product.deliveryReturns,
                   content: "",
-                  bulletItems:
-                    siteSettings.deliveryReturnsItems && siteSettings.deliveryReturnsItems.length > 0
-                      ? siteSettings.deliveryReturnsItems
-                      : dict.product.deliveryReturnsItems,
+                  bulletItems: deliveryReturnsItems,
                 },
               ]}
             />

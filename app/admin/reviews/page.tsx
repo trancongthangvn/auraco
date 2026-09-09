@@ -30,7 +30,7 @@ type ProductReview = {
   photo_url: string | null;
 };
 
-type ProductOption = { id: number; name: string };
+type ProductOption = { id: number; name: string; review_count_override: number | null };
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -157,8 +157,24 @@ const EMPTY_CREATE_FORM = {
   customer_name: "",
   rating: 5,
   comment: "",
+  // Displayed review count for the whole product (not for this one review) —
+  // what shows in brackets beside the stars on the public product page.
+  // Empty string = no override, i.e. keep showing the real derived count.
+  review_count_override: "",
   status: "Đã duyệt" as ReviewStatus,
 };
+
+/** "" -> null (clear the override); "279" -> 279. Validated before send. */
+function parseCountInput(raw: string): number | null {
+  return raw.trim() === "" ? null : Number(raw.trim());
+}
+
+/** Rejects anything that is not empty or a whole number >= 0. */
+function countInputInvalid(raw: string) {
+  const t = raw.trim();
+  if (t === "") return false;
+  return !/^\d+$/.test(t);
+}
 
 export default function AdminReviewsPage() {
   const { session } = useAdminAuth();
@@ -170,6 +186,21 @@ export default function AdminReviewsPage() {
   const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
 
   const isAdmin = session?.role === "admin";
+
+  /** The product's current displayed-count override as a form string ("" = none). */
+  const currentOverrideFor = (productId: number | null) => {
+    if (!productId) return "";
+    const p = productOptions.find((o) => o.id === productId);
+    return p?.review_count_override != null ? String(p.review_count_override) : "";
+  };
+
+  /** Keeps the in-memory product list in step after a save, so reopening a
+   *  modal shows the number that was just written rather than the stale one. */
+  const rememberOverride = (productId: number, value: number | null) => {
+    setProductOptions((list) =>
+      list.map((o) => (o.id === productId ? { ...o, review_count_override: value } : o))
+    );
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -193,8 +224,18 @@ export default function AdminReviewsPage() {
   }, []);
 
   useEffect(() => {
-    apiFetch<{ id: number; name: string }[]>("/api/products/admin/products")
-      .then((data) => setProductOptions(data.map((p) => ({ id: p.id, name: p.name }))))
+    apiFetch<{ id: number; name: string; review_count_override: number | null }[]>(
+      "/api/products/admin/products"
+    )
+      .then((data) =>
+        setProductOptions(
+          data.map((p) => ({
+            id: p.id,
+            name: p.name,
+            review_count_override: p.review_count_override ?? null,
+          }))
+        )
+      )
       .catch(() => {
         // Non-critical — the create form falls back to an empty product list.
       });
@@ -252,6 +293,10 @@ export default function AdminReviewsPage() {
     if (!createForm.product_id) return setCreateError("Chọn một sản phẩm.");
     if (!createForm.customer_name.trim()) return setCreateError("Nhập tên khách hàng.");
     if (!createForm.comment.trim()) return setCreateError("Nhập nội dung đánh giá.");
+    if (countInputInvalid(createForm.review_count_override)) {
+      return setCreateError("Số lượt đánh giá hiển thị phải là số nguyên không âm (hoặc để trống).");
+    }
+    const createOverride = parseCountInput(createForm.review_count_override);
     setCreateSaving(true);
     try {
       const created = await apiFetch<ProductReview>("/api/admin/reviews", {
@@ -262,9 +307,11 @@ export default function AdminReviewsPage() {
           rating: createForm.rating,
           comment: createForm.comment.trim(),
           status: createForm.status,
+          reviewCountOverride: createOverride,
         }),
       });
       setReviews((list) => [created, ...list]);
+      if (createForm.product_id) rememberOverride(createForm.product_id, createOverride);
       setCreating(false);
     } catch (err) {
       setCreateError(err instanceof ApiError ? err.message : "Không thể tạo đánh giá");
@@ -275,12 +322,22 @@ export default function AdminReviewsPage() {
 
   // Edit modal -------------------------------------------------------------
   const [editing, setEditing] = useState<ProductReview | null>(null);
-  const [editForm, setEditForm] = useState({ customer_name: "", rating: 5, comment: "" });
+  const [editForm, setEditForm] = useState({
+    customer_name: "",
+    rating: 5,
+    comment: "",
+    review_count_override: "",
+  });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
 
   const openEdit = (r: ProductReview) => {
-    setEditForm({ customer_name: r.customer_name, rating: r.rating, comment: r.comment });
+    setEditForm({
+      customer_name: r.customer_name,
+      rating: r.rating,
+      comment: r.comment,
+      review_count_override: currentOverrideFor(r.product_id),
+    });
     setEditError("");
     setEditing(r);
   };
@@ -290,6 +347,10 @@ export default function AdminReviewsPage() {
     setEditError("");
     if (!editForm.customer_name.trim()) return setEditError("Nhập tên khách hàng.");
     if (!editForm.comment.trim()) return setEditError("Nhập nội dung đánh giá.");
+    if (countInputInvalid(editForm.review_count_override)) {
+      return setEditError("Số lượt đánh giá hiển thị phải là số nguyên không âm (hoặc để trống).");
+    }
+    const editOverride = parseCountInput(editForm.review_count_override);
     setEditSaving(true);
     try {
       const updated = await apiFetch<ProductReview>(`/api/admin/reviews/${editing.id}`, {
@@ -299,9 +360,11 @@ export default function AdminReviewsPage() {
           customerName: editForm.customer_name.trim(),
           rating: editForm.rating,
           comment: editForm.comment.trim(),
+          reviewCountOverride: editOverride,
         }),
       });
       setReviews((list) => list.map((r) => (r.id === editing.id ? updated : r)));
+      rememberOverride(editing.product_id, editOverride);
       setEditing(null);
     } catch (err) {
       setEditError(err instanceof ApiError ? err.message : "Không thể cập nhật");
@@ -417,7 +480,15 @@ export default function AdminReviewsPage() {
                   productId={createForm.product_id}
                   productName={createForm.product_name}
                   onSelect={(id, name) =>
-                    setCreateForm((f) => ({ ...f, product_id: id || null, product_name: name }))
+                    setCreateForm((f) => ({
+                      ...f,
+                      product_id: id || null,
+                      product_name: name,
+                      // Show what this product currently displays, so the box
+                      // reads as "edit the product's number", not "type a new
+                      // one from scratch every time".
+                      review_count_override: currentOverrideFor(id) ?? "",
+                    }))
                   }
                   disabled={createSaving}
                 />
@@ -431,13 +502,31 @@ export default function AdminReviewsPage() {
                   placeholder="Nguyễn Văn A"
                 />
               </div>
-              <div>
-                <Label>Số sao</Label>
-                <StarPicker
-                  value={createForm.rating}
-                  onChange={(rating) => setCreateForm((f) => ({ ...f, rating }))}
-                  disabled={createSaving}
-                />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Số sao</Label>
+                  <StarPicker
+                    value={createForm.rating}
+                    onChange={(rating) => setCreateForm((f) => ({ ...f, rating }))}
+                    disabled={createSaving}
+                  />
+                </div>
+                <div>
+                  <Label>Số lượt đánh giá hiển thị</Label>
+                  <Input
+                    value={createForm.review_count_override}
+                    onChange={(e) =>
+                      setCreateForm((f) => ({ ...f, review_count_override: e.target.value }))
+                    }
+                    disabled={createSaving}
+                    inputMode="numeric"
+                    placeholder="Tự động"
+                  />
+                  <p className="mt-1 text-[11px] leading-4 text-neutral-500">
+                    Số trong ngoặc cạnh sao ở trang sản phẩm. Để trống = đếm tự động theo
+                    số đánh giá đã duyệt. Áp dụng cho cả sản phẩm, không riêng đánh giá này.
+                  </p>
+                </div>
               </div>
               <div>
                 <Label>Nội dung</Label>
@@ -492,13 +581,31 @@ export default function AdminReviewsPage() {
                   disabled={editSaving}
                 />
               </div>
-              <div>
-                <Label>Số sao</Label>
-                <StarPicker
-                  value={editForm.rating}
-                  onChange={(rating) => setEditForm((f) => ({ ...f, rating }))}
-                  disabled={editSaving}
-                />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Số sao</Label>
+                  <StarPicker
+                    value={editForm.rating}
+                    onChange={(rating) => setEditForm((f) => ({ ...f, rating }))}
+                    disabled={editSaving}
+                  />
+                </div>
+                <div>
+                  <Label>Số lượt đánh giá hiển thị</Label>
+                  <Input
+                    value={editForm.review_count_override}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, review_count_override: e.target.value }))
+                    }
+                    disabled={editSaving}
+                    inputMode="numeric"
+                    placeholder="Tự động"
+                  />
+                  <p className="mt-1 text-[11px] leading-4 text-neutral-500">
+                    Số trong ngoặc cạnh sao ở trang sản phẩm. Để trống = đếm tự động theo
+                    số đánh giá đã duyệt. Áp dụng cho cả sản phẩm, không riêng đánh giá này.
+                  </p>
+                </div>
               </div>
               <div>
                 <Label>Nội dung</Label>

@@ -209,6 +209,40 @@ router.get('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * Parses the optional `reviewCountOverride` field that the admin review
+ * modals send alongside a review (migration 020): the number the admin
+ * wants shown beside that product's stars on the public product page,
+ * independent of how many review rows actually exist.
+ *
+ * Three distinct inputs, three distinct meanings:
+ *   undefined       -> field not sent at all; leave the product untouched
+ *   null / ''       -> admin cleared the box; drop the override so the real
+ *                      derived count shows again
+ *   integer >= 0    -> set that as the displayed count
+ *
+ * Returns { ok: true, value } where `value === undefined` means "don't
+ * touch", or { ok: false, error } for a bad input.
+ */
+function parseReviewCountOverride(raw) {
+  if (raw === undefined) return { ok: true, value: undefined };
+  if (raw === null || raw === '') return { ok: true, value: null };
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0) {
+    return { ok: false, error: 'reviewCountOverride must be a non-negative integer, null, or omitted' };
+  }
+  return { ok: true, value: n };
+}
+
+/** Writes a parsed override onto the product. No-op when `value` is undefined. */
+async function applyReviewCountOverride(productId, value) {
+  if (value === undefined) return;
+  await query(
+    'UPDATE products SET review_count_override = $1, updated_at = now() WHERE id = $2',
+    [value, productId]
+  );
+}
+
 // POST /admin/reviews — admin manually adds a review (e.g. one collected
 // off-site, or seeding a new product's page) rather than only ever
 // receiving them through the public submit form. Defaults to 'Đã duyệt'
@@ -216,7 +250,8 @@ router.get('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => {
 // the queue exists to screen customer-submitted content, not admin's own.
 router.post('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => {
   const VALID_STATUSES = ['Chờ duyệt', 'Đã duyệt', 'Từ chối'];
-  const { productId, customerName, rating, comment, photoUrl, status } = req.body || {};
+  const { productId, customerName, rating, comment, photoUrl, status, reviewCountOverride } =
+    req.body || {};
 
   const productIdNum = Number(productId);
   if (!Number.isInteger(productIdNum) || productIdNum <= 0) {
@@ -239,6 +274,10 @@ router.post('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => 
   if (!VALID_STATUSES.includes(finalStatus)) {
     return res.status(400).json({ error: `status must be one of ${VALID_STATUSES.join(', ')}` });
   }
+  const overrideParsed = parseReviewCountOverride(reviewCountOverride);
+  if (!overrideParsed.ok) {
+    return res.status(400).json({ error: overrideParsed.error });
+  }
 
   try {
     const productResult = await query('SELECT id, name FROM products WHERE id = $1', [productIdNum]);
@@ -253,6 +292,7 @@ router.post('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => 
        RETURNING *`,
       [product.id, product.name, customerName.trim(), ratingNum, comment.trim(), finalStatus, photoUrl || null]
     );
+    await applyReviewCountOverride(product.id, overrideParsed.value);
     return res.status(201).json({ data: result.rows[0] });
   } catch (err) {
     console.error(err);
@@ -269,7 +309,7 @@ router.post('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => 
 router.put('/admin/reviews/:id', authMiddleware, requireAdmin, async (req, res) => {
   const VALID_STATUSES = ['Chờ duyệt', 'Đã duyệt', 'Từ chối'];
   const { id } = req.params;
-  const { status, photoUrl, customerName, rating, comment } = req.body || {};
+  const { status, photoUrl, customerName, rating, comment, reviewCountOverride } = req.body || {};
 
   if (!/^\d+$/.test(id)) {
     return res.status(400).json({ error: 'Invalid review id' });
@@ -292,6 +332,10 @@ router.put('/admin/reviews/:id', authMiddleware, requireAdmin, async (req, res) 
   }
   if (comment !== undefined && (typeof comment !== 'string' || !comment.trim())) {
     return res.status(400).json({ error: 'comment must be a non-empty string' });
+  }
+  const overrideParsed = parseReviewCountOverride(reviewCountOverride);
+  if (!overrideParsed.ok) {
+    return res.status(400).json({ error: overrideParsed.error });
   }
 
   // Built dynamically (rather than one fixed statement per field
@@ -326,6 +370,9 @@ router.put('/admin/reviews/:id', authMiddleware, requireAdmin, async (req, res) 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Review not found' });
     }
+    // The override belongs to the product, not the review — read the owning
+    // product off the row we just updated rather than trusting a client-sent id.
+    await applyReviewCountOverride(result.rows[0].product_id, overrideParsed.value);
     return res.json({ data: result.rows[0] });
   } catch (err) {
     console.error(err);

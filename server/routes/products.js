@@ -99,6 +99,15 @@ async function attachRelations(products, opts = {}) {
       p.rating = stats.rating;
       p.review_count = stats.reviewCount;
     }
+    // An admin-typed display count (migration 020) wins over both the
+    // derived and the stored number — it exists precisely because the
+    // derived one under-reports a catalogue imported without its
+    // individual review rows. NULL means "no override", so the derived
+    // count above stands. The average rating is never overridden: only
+    // real reviews move the stars.
+    if (p.review_count_override !== null && p.review_count_override !== undefined) {
+      p.review_count = p.review_count_override;
+    }
   }
 
   return products;

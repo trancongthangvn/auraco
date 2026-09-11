@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -102,6 +102,52 @@ function SortRadioMark({ checked }: { checked: boolean }) {
       />
       {checked && <circle cx="9" cy="9" r="4" fill="#000000" />}
     </svg>
+  );
+}
+
+type SortValue = (typeof SORT_OPTIONS)[number]["value"];
+
+/**
+ * The mobile "Sort by" list. Its own component only so each rendered copy
+ * gets its own radio-group name from useId(): filterPanelBody (which holds
+ * this list) is mounted twice — the mobile inline panel and the desktop
+ * sidebar — and two groups sharing one `name` are one group to the browser,
+ * which then unchecks one copy's input whenever the other is set.
+ */
+function MobileSortOptions({
+  sort,
+  onChange,
+}: {
+  sort: SortValue;
+  onChange: (value: SortValue) => void;
+}) {
+  const groupName = useId();
+  return (
+    <div className="space-y-3">
+      {SORT_OPTIONS.map((opt) => (
+        <label
+          key={opt.value}
+          className="flex cursor-pointer items-center gap-2.5 text-[14px] text-black"
+        >
+          {/* Was a checkbox, which read as "tick any number" for what is a
+              one-of-four choice. A real radio input (kept for keyboard and
+              screen readers, visually hidden) drives the same SortRadioMark
+              the desktop dropdown uses. */}
+          <input
+            type="radio"
+            name={groupName}
+            value={opt.value}
+            checked={sort === opt.value}
+            onChange={() => onChange(opt.value)}
+            className="peer sr-only"
+          />
+          <span className="flex rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-black peer-focus-visible:ring-offset-2">
+            <SortRadioMark checked={sort === opt.value} />
+          </span>
+          <span>{opt.label}</span>
+        </label>
+      ))}
+    </div>
   );
 }
 
@@ -627,38 +673,7 @@ export default function CatalogClient({
           onToggle={() => setOpenSections((s) => ({ ...s, sort: !s.sort }))}
           onClear={sort !== "featured" ? () => setSort("featured") : undefined}
         >
-          <div className="space-y-3">
-            {(
-              [
-                { value: "featured", label: "Featured" },
-                { value: "newest", label: "Newest" },
-                { value: "price-asc", label: "Price: low to high" },
-                { value: "price-desc", label: "Price: high to low" },
-              ] as const
-            ).map((opt) => (
-              <label
-                key={opt.value}
-                className="flex cursor-pointer items-center gap-2.5 text-[14px] text-black"
-              >
-                {/* Was a checkbox, which read as "tick any number" for what
-                    is a one-of-four choice. A real radio input (kept for
-                    keyboard and screen readers, visually hidden) drives the
-                    same SortRadioMark the desktop dropdown uses. */}
-                <input
-                  type="radio"
-                  name="catalog-sort-mobile"
-                  value={opt.value}
-                  checked={sort === opt.value}
-                  onChange={() => setSort(opt.value)}
-                  className="peer sr-only"
-                />
-                <span className="flex rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-black peer-focus-visible:ring-offset-2">
-                  <SortRadioMark checked={sort === opt.value} />
-                </span>
-                <span>{opt.label}</span>
-              </label>
-            ))}
-          </div>
+          <MobileSortOptions sort={sort} onChange={setSort} />
         </FilterSection>
       </div>
 

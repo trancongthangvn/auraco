@@ -95,49 +95,6 @@ export default function Gallery({
     ];
   })();
 
-  // Explicit follow-up request: object-contain (above) stopped photos being
-  // cropped, but any photo whose own aspect ratio isn't exactly 4:5 now
-  // showed the bg-[#f6f0e6] fill on its sides/top-bottom, which read as a
-  // border. The only way to get neither cropping nor a visible fill is for
-  // every tile's own box to match that photo's real proportions instead of
-  // a fixed ratio — accepted trade-off: the hero (and so the thumbnail
-  // column height matched to it) now resizes slightly per photo instead of
-  // staying fixed. 4/5 is only ever a placeholder for a photo not yet
-  // measured, so nothing collapses to 0 height before its first paint.
-  const [aspects, setAspects] = useState<Record<string, number>>({});
-  const registerAspect = (src: string, ratio: number) => {
-    setAspects((prev) => (prev[src] ? prev : { ...prev, [src]: ratio }));
-  };
-  // Measured via a plain, off-DOM `Image()` per src rather than each
-  // rendered `<img>`'s own `onLoad` — this same photo is mounted in up to
-  // four places at once (desktop hero, desktop thumbnail rail, mobile hero,
-  // mobile thumbnail strip), each requesting its own differently-sized
-  // rendition from Next's image optimizer (`sizes` differs per spot) and
-  // firing `onLoad` independently; live measurement caught those onLoad
-  // callbacks registering one photo's box with a DIFFERENT photo's ratio
-  // (bug report: a perfectly square photo ended up sized like its
-  // neighbour). A single dedicated probe per unique src, decoupled from
-  // whichever rendered `<img>` happens to load first, removes that
-  // ambiguity entirely. Keyed off a joined string, not the array itself —
-  // `effectiveImages` is a new array every render, which would otherwise
-  // re-run this on every render (harmless but wasteful: each `Image()` is a
-  // browser-cache hit after the first time, `registerAspect`'s own guard
-  // still no-ops once a src is known).
-  const effectiveImagesKey = effectiveImages.join("|");
-  useEffect(() => {
-    effectiveImages.forEach((src) => {
-      if (!src) return;
-      const probe = new window.Image();
-      probe.onload = () => {
-        if (probe.naturalWidth && probe.naturalHeight) {
-          registerAspect(src, probe.naturalWidth / probe.naturalHeight);
-        }
-      };
-      probe.src = src;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveImagesKey]);
-
   const [active, setActive] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const goPrev = () =>
@@ -407,15 +364,12 @@ export default function Gallery({
     // below both, however tall either currently is.
     <div className="min-w-0 lg:sticky lg:top-[calc(var(--announcement-h,0px)+var(--header-h,64px)+16px)] lg:self-start">
       {/* Desktop mosaic — >= 1000px only.
-          object-contain, not object-cover: explicit follow-up request —
-          some product photos (a bracelet shot as a full circle, say) were
-          losing their edges to the fixed aspect-[4/5] box under
-          object-cover, which the customer flagged as photos looking cut
-          off. Every tile keeps its bg-[#f6f0e6] fill behind the now
-          possibly-letterboxed photo, so an image whose own aspect ratio
-          doesn't match 4/5 shows a neutral border instead of a crop.
-          Supersedes the prior "every box filled edge-to-edge, accepting
-          some cropping" decision below.
+          Fit history (now settled): object-contain letterboxing was
+          rejected as reading like a border, per-photo tile ratios were
+          rejected as uneven tile sizes, and a blurred backdrop was rejected
+          as a fuzzy edge. Hero and thumbnails alike are now one fixed
+          aspect-[4/5] frame filled with object-cover, cropping only a
+          photo's own centred margin — see each element's own comment.
           Column ratio: explicit request to narrow the right column to 3/4 of
           its previous width (318px → ~239px) while the hero absorbs the
           reclaimed space — `1.4fr 1fr` gave the right column a 1/2.4≈0.417
@@ -538,29 +492,30 @@ export default function Gallery({
                   // No selected-state outline: explicit request to leave the
                   // thumbnails as plain images. `aria-current` above still
                   // conveys the selection to screen readers.
-                  // Height comes from this photo's own measured aspect ratio
-                  // (`aspects`, populated on load below), not a fixed or
-                  // rail-derived height — explicit follow-up request: fitting
-                  // a mismatched photo (a bracelet shot as a wide circle,
-                  // say) into a box with a different ratio always left
-                  // either a crop (object-cover) or a visible bg-[#f6f0e6]
-                  // letterbox border (object-contain) on one axis. Sizing
-                  // the box itself to the photo's real proportions is the
-                  // only way to get neither. Supersedes the prior "exactly
-                  // 2 tiles fill the rail" sizing — the rail can now show a
-                  // partial 3rd tile or leave a gap above the chevron
-                  // depending on the active photo's own ratio, an accepted
-                  // trade-off for showing every photo uncropped and
-                  // borderless.
-                  className="group relative w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
-                  style={{ aspectRatio: aspects[src] ?? 4 / 5 }}
+                  // One fixed aspect-[4/5] frame for every tile, not each
+                  // photo's own ratio — explicit request with screenshots
+                  // ("khung nhỏ bên phải chưa đồng bộ về 1 kích thước"): a
+                  // square packshot next to a tall lifestyle photo made
+                  // one short tile and one tall one. This supersedes
+                  // 8c5c8bb's per-photo sizing, the same way 5732322
+                  // already did for the mobile thumbnail strip.
+                  // object-cover fills the frame edge-to-edge (no
+                  // bg-[#f6f0e6] letterbox, which was rejected earlier as
+                  // reading like a border) by cropping a mismatched
+                  // photo's own margin, centred. Same 4:5 ratio and same
+                  // crop as the hero beside it, so a tile never hides
+                  // anything the hero doesn't already — measured across
+                  // the catalogue's 232 photos: 53 are exactly 4:5, most
+                  // of the rest lose 6-20% of margin, and the rare 9:16
+                  // phone shot loses ~15% top and bottom.
+                  className="group relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-[10px] bg-[#f6f0e6]"
                 >
                   <Image
                     src={src}
                     alt=""
                     fill
                     sizes="30vw"
-                    className="object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                 </button>
               ))}

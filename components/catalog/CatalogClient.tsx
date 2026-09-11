@@ -76,6 +76,35 @@ const CATEGORY_LEDE: Record<string, string> = {
 /** One collapsible facet group inside the inline filter panel — a bold
  *  title row with a +/− toggle, and (only while open) a muted "Clear" link
  *  above the option list. */
+/**
+ * Radio mark for both sort lists (desktop "Sort" dropdown and the mobile
+ * "Sort by" filter section) — explicit request with a screenshot: the dot
+ * sat visibly off-centre and should be black, like the reference.
+ *
+ * Drawn as SVG rather than a bordered box with a smaller box inside: the
+ * old 18px ring with a 2px border left a 14px interior around a 9px dot,
+ * i.e. a 2.5px half-pixel gap per side that browsers round unevenly — which
+ * is exactly the lopsided dot in the report. Two circles sharing one centre
+ * point can't drift apart at any zoom level or device pixel ratio.
+ */
+function SortRadioMark({ checked }: { checked: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="shrink-0">
+      {/* Outer edge is 9 either way (radius + half the stroke), so the ring
+          fills the same 18px box checked or not and nothing shifts. */}
+      <circle
+        cx="9"
+        cy="9"
+        r={checked ? 8 : 8.5}
+        fill="#ffffff"
+        stroke={checked ? "#000000" : "#d4d4d4"}
+        strokeWidth={checked ? 2 : 1}
+      />
+      {checked && <circle cx="9" cy="9" r="4" fill="#000000" />}
+    </svg>
+  );
+}
+
 function FilterSection({
   title,
   count = 0,
@@ -557,19 +586,13 @@ export default function CatalogClient({
                     setSort(opt.value);
                     setSortOpen(false);
                   }}
-                  className={`flex w-full items-center gap-[11px] rounded-[10px] px-[11.52px] py-[10.88px] text-left font-ui text-[13.44px] hover:bg-black/5 ${
-                    active ? "font-semibold text-[#2b261f]" : "text-[#2b261f]"
+                  className={`flex w-full items-center gap-[11px] rounded-[10px] px-[11.52px] py-[10.88px] text-left font-ui text-[13.44px] text-black hover:bg-black/5 ${
+                    active ? "font-semibold" : ""
                   }`}
                 >
                   {/* Radio circle, not a checkmark-on-tinted-row — explicit
                       request, matching the reference's own list exactly. */}
-                  <span
-                    className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 ${
-                      active ? "border-gold" : "border-[#2b261f]/25"
-                    }`}
-                  >
-                    {active && <span className="h-[9px] w-[9px] rounded-full bg-gold" />}
-                  </span>
+                  <SortRadioMark checked={active} />
                   {opt.label}
                 </button>
               </li>
@@ -615,14 +638,23 @@ export default function CatalogClient({
             ).map((opt) => (
               <label
                 key={opt.value}
-                className="flex items-center gap-2.5 text-[14px] text-[#2b261f]"
+                className="flex cursor-pointer items-center gap-2.5 text-[14px] text-black"
               >
+                {/* Was a checkbox, which read as "tick any number" for what
+                    is a one-of-four choice. A real radio input (kept for
+                    keyboard and screen readers, visually hidden) drives the
+                    same SortRadioMark the desktop dropdown uses. */}
                 <input
-                  type="checkbox"
+                  type="radio"
+                  name="catalog-sort-mobile"
+                  value={opt.value}
                   checked={sort === opt.value}
                   onChange={() => setSort(opt.value)}
-                  className="h-4 w-4 accent-ink"
+                  className="peer sr-only"
                 />
+                <span className="flex rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-black peer-focus-visible:ring-offset-2">
+                  <SortRadioMark checked={sort === opt.value} />
+                </span>
                 <span>{opt.label}</span>
               </label>
             ))}

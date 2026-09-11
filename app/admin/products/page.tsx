@@ -72,7 +72,14 @@ type AdminVariant = {
   compare_at_price: string;
   stock: string;
   sku: string;
-  front_image: string | null;
+  // The variant's own photo set, in display order — explicit request: a
+  // variant can carry a whole gallery like the product itself, and choosing
+  // that colour on the storefront shows only these (components/product/
+  // Gallery.tsx). Stored on the existing columns rather than a new one:
+  // images[0] -> front_image (still what the cart line and sticky bar show
+  // for this colour), the rest -> hover_images (a JSONB array nothing wrote
+  // to before). Empty = fall back to the product's own photos.
+  images: EditImage[];
   is_default: boolean;
   active: boolean;
 };
@@ -112,7 +119,7 @@ const emptyVariant = (): AdminVariant => ({
   compare_at_price: "",
   stock: "0",
   sku: "",
-  front_image: null,
+  images: [],
   is_default: false,
   active: true,
 });
@@ -444,6 +451,27 @@ export default function AdminProductsPage() {
   const removeVariant = (index: number) => {
     setEditVariants((list) => list.filter((_, i) => i !== index));
   };
+  // Per-variant photo list — same add / reorder / remove behaviour as the
+  // product's own "Ảnh sản phẩm" list, scoped to one variant.
+  const updateVariantImages = (
+    variantIndex: number,
+    change: (images: EditImage[]) => EditImage[]
+  ) => {
+    setEditVariants((list) =>
+      list.map((v, i) => (i === variantIndex ? { ...v, images: change(v.images) } : v))
+    );
+  };
+  const addVariantImage = (variantIndex: number) =>
+    updateVariantImages(variantIndex, (imgs) => [...imgs, { _key: newImageKey(), url: "" }]);
+  const setVariantImage = (variantIndex: number, imageIndex: number, url: string | null) =>
+    updateVariantImages(variantIndex, (imgs) =>
+      imgs.map((img, i) => (i === imageIndex ? { ...img, url: url ?? "" } : img))
+    );
+  const removeVariantImage = (variantIndex: number, imageIndex: number) =>
+    updateVariantImages(variantIndex, (imgs) => imgs.filter((_, i) => i !== imageIndex));
+  const moveVariantImage = (variantIndex: number, imageIndex: number, direction: -1 | 1) =>
+    updateVariantImages(variantIndex, (imgs) => moveItem(imgs, imageIndex, direction));
+
   const addVariant = () => {
     setEditVariants((list) => [
       ...list,
@@ -534,6 +562,7 @@ export default function AdminProductsPage() {
           stock: number;
           sku: string | null;
           front_image: string | null;
+          hover_images: string[] | null;
           is_default: boolean;
           active: boolean;
         }[]
@@ -548,7 +577,9 @@ export default function AdminProductsPage() {
         compare_at_price: v.compare_at_price !== null ? String(v.compare_at_price) : "",
         stock: String(v.stock),
         sku: v.sku ?? "",
-        front_image: v.front_image,
+        images: [v.front_image, ...(v.hover_images ?? [])]
+          .filter((url): url is string => Boolean(url))
+          .map((url) => ({ _key: newImageKey(), url })),
         is_default: v.is_default,
         active: v.active,
       }));
@@ -778,6 +809,9 @@ export default function AdminProductsPage() {
         editVariants.filter((v) => v.id !== undefined).map((v) => v.id)
       );
       for (const variant of editVariants) {
+        const variantImageUrls = variant.images
+          .map((img) => img.url.trim())
+          .filter((url) => url.length > 0);
         const body = JSON.stringify({
           colorName: variant.color_name.trim() || null,
           colorSwatch: variant.color_swatch || null,
@@ -788,7 +822,8 @@ export default function AdminProductsPage() {
             : null,
           stock: Number.parseInt(variant.stock, 10) || 0,
           sku: variant.sku.trim() || null,
-          frontImage: variant.front_image,
+          frontImage: variantImageUrls[0] ?? null,
+          hoverImages: variantImageUrls.slice(1),
           isDefault: variant.is_default,
           active: variant.active,
         });
@@ -1653,13 +1688,80 @@ export default function AdminProductsPage() {
                     </div>
 
                     <div className="mb-2">
-                      <ImageField
-                        label="Ảnh biến thể (để trống dùng ảnh mặc định)"
-                        value={v.front_image}
-                        onChange={(url) => updateVariant(i, { front_image: url })}
-                        disabled={saving}
-                        onUploadingChange={(u) => trackUploading(u ? 1 : -1)}
-                      />
+                      <div className="mb-1 flex items-center justify-between">
+                        <Label className="mb-0">Ảnh biến thể</Label>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => addVariantImage(i)}
+                          disabled={saving}
+                        >
+                          + Thêm ảnh
+                        </Button>
+                      </div>
+                      <p className="mb-2 text-xs text-black/40">
+                        Khi khách chọn màu này, trang sản phẩm chỉ hiện các ảnh dưới đây
+                        (ảnh #1 cũng là ảnh trong giỏ hàng). Để trống thì dùng ảnh sản
+                        phẩm gốc.
+                      </p>
+                      <div className="space-y-2">
+                        {v.images.length === 0 && (
+                          <p className="text-xs italic text-black/30">
+                            Chưa có ảnh riêng — đang dùng ảnh sản phẩm gốc.
+                          </p>
+                        )}
+                        {v.images.map((image, imgIndex) => (
+                          <div key={image._key} className="flex gap-2 border border-black/10 p-2">
+                            <div className="flex shrink-0 flex-col">
+                              <span className="mb-1 text-[10px] font-semibold text-black/40">
+                                #{imgIndex + 1}
+                              </span>
+                              <IconButton
+                                type="button"
+                                tone="default"
+                                aria-label="Di chuyển lên"
+                                disabled={saving || imgIndex === 0}
+                                onClick={() => moveVariantImage(i, imgIndex, -1)}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="5 15.5 12 8.5 19 15.5" />
+                                </svg>
+                              </IconButton>
+                              <IconButton
+                                type="button"
+                                tone="default"
+                                aria-label="Di chuyển xuống"
+                                disabled={saving || imgIndex === v.images.length - 1}
+                                onClick={() => moveVariantImage(i, imgIndex, 1)}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="5 8.5 12 15.5 19 8.5" />
+                                </svg>
+                              </IconButton>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <ImageField
+                                value={image.url || null}
+                                onChange={(url) => setVariantImage(i, imgIndex, url)}
+                                disabled={saving}
+                                onUploadingChange={(u) => trackUploading(u ? 1 : -1)}
+                              />
+                            </div>
+                            <IconButton
+                              type="button"
+                              tone="danger"
+                              className="shrink-0"
+                              aria-label="Xóa ảnh biến thể"
+                              disabled={saving}
+                              onClick={() => removeVariantImage(i, imgIndex)}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                              </svg>
+                            </IconButton>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-4 text-xs">

@@ -70,29 +70,22 @@ export default function Gallery({
   name: string;
 }) {
   const { selectedVariant } = useVariant();
-  // A variant only ever supplies its own hero shot (the admin has no field
-  // for anything beyond `front_image` — `hoverImages` is a DB column no UI
-  // writes to, so it's empty for every variant in practice). An earlier
-  // version replaced the WHOLE gallery with just that one image whenever a
-  // variant was selected, wiping every other product photo. That was fixed
-  // to swap the FIRST (hero) slot instead — but the product's own hero shot
-  // is usually a styled/lifestyle photo, and a variant's `front_image` is
-  // typically a plain product-only shot (see the admin's "Ảnh biến thể" field
-  // on ProductVariants), so replacing the hero with it made the page open on
-  // a visibly lower-effort image. Per explicit request: the product's own
-  // photos stay in their original order and position — including the hero —
-  // and the variant's image is inserted as the second photo instead of
-  // displacing anything. Deduped in case the variant's image happens to
-  // already be one of the product's own gallery photos.
+  // A variant with photos of its own shows ONLY those — explicit request,
+  // with the storefront opening on the default variant's set (the variant
+  // provider preselects it). This supersedes the earlier rule of inserting a
+  // variant's single image as the second photo among the product's own:
+  // variants can now carry a whole gallery in the admin (front_image first,
+  // then hover_images), and mixing another colour's photos in would show the
+  // customer a colour they didn't pick. A variant with no photos keeps the
+  // product's own set, as the admin field's "để trống" hint promises.
+  // Deduped in case the same file was added to a variant twice.
   const effectiveImages = (() => {
-    if (!selectedVariant?.frontImage) return images;
-    const rest = images.filter((src) => src !== selectedVariant.frontImage);
-    return [
-      rest[0] ?? selectedVariant.frontImage,
-      selectedVariant.frontImage,
-      ...selectedVariant.hoverImages,
-      ...rest.slice(1),
-    ];
+    const variantImages = selectedVariant
+      ? [selectedVariant.frontImage, ...selectedVariant.hoverImages].filter(
+          (src): src is string => Boolean(src)
+        )
+      : [];
+    return variantImages.length > 0 ? Array.from(new Set(variantImages)) : images;
   })();
 
   const [active, setActive] = useState(0);

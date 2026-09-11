@@ -54,36 +54,39 @@ type AdminProduct = {
   show_at_home?: boolean;
 };
 
-type AdminVariant = {
-  // Client-only React list key — stable across add/remove, unlike the
-  // array index the row used to key off (`v.id ?? \`new-${i}\``). Removing
-  // any variant but the last one shifts every later index down, so React
-  // matched rows to the wrong position and reused each row's ImageField
-  // instance — with its OWN local upload/error/mode state — for a
-  // different variant's data. That's what made a variant several rows
-  // down look like its "add image" control was broken: it was actually
-  // showing a stale uploading/error state left over from the row that
-  // used to sit at that index. Never sent to the API (saveEdit builds the
-  // payload from named fields, not a spread).
+/** One purchasable size of a colour — exactly one product_variants row. */
+type AdminSizeRow = {
+  // Client-only React list key, stable across add/remove (an index key reused
+  // a row's local input/upload state for a different row after a removal).
   _key: string;
   id?: number;
-  color_name: string;
-  color_swatch: string;
   size: string;
   price: string;
   compare_at_price: string;
   stock: string;
   sku: string;
-  // The variant's own photo set, in display order — explicit request: a
-  // variant can carry a whole gallery like the product itself, and choosing
-  // that colour on the storefront shows only these (components/product/
-  // Gallery.tsx). Stored on the existing columns rather than a new one:
-  // images[0] -> front_image (still what the cart line and sticky bar show
-  // for this colour), the rest -> hover_images (a JSONB array nothing wrote
-  // to before). Empty = fall back to the product's own photos.
-  images: EditImage[];
   is_default: boolean;
   active: boolean;
+};
+
+/**
+ * One colour block in the variant editor — explicit request to enter
+ * variants grouped by colour: a colour's name, swatch and photos are typed
+ * once, with as many sizes inside it as needed, each with its own price,
+ * stock and SKU.
+ *
+ * Storage is unchanged. Every size row is still its own product_variants
+ * row, and each is saved carrying its colour's name, swatch and photos
+ * (photo #1 -> front_image, the rest -> hover_images), which is exactly the
+ * shape the storefront's colour swatches, size row and per-colour gallery
+ * already read. Grouping is purely how the admin edits them.
+ */
+type AdminColorGroup = {
+  _key: string;
+  color_name: string;
+  color_swatch: string;
+  images: EditImage[];
+  sizes: AdminSizeRow[];
 };
 
 let variantKeySeq = 0;
@@ -112,19 +115,56 @@ type EditVideo = { _key: string; url: string };
 let videoKeySeq = 0;
 const newVideoKey = () => `vid${Date.now()}-${videoKeySeq++}`;
 
-const emptyVariant = (): AdminVariant => ({
+const emptySizeRow = (price = ""): AdminSizeRow => ({
   _key: newVariantKey(),
-  color_name: "",
-  color_swatch: "#c9a876",
   size: "",
-  price: "",
+  price,
   compare_at_price: "",
   stock: "0",
   sku: "",
-  images: [],
   is_default: false,
   active: true,
 });
+
+// A colour always holds at least one row: a colour with no sizes is one row
+// with an empty size, which is how a colour-only variant is stored anyway.
+const emptyColorGroup = (price = ""): AdminColorGroup => ({
+  _key: newVariantKey(),
+  color_name: "",
+  color_swatch: "#c9a876",
+  images: [],
+  sizes: [emptySizeRow(price)],
+});
+
+/**
+ * Checked before saving, because the storefront groups variants by colour
+ * name and then by size: two colours with the same name would merge into one
+ * swatch, and two identical sizes in a colour would be indistinguishable
+ * buttons. Returns a message for the modal, or null when the set is valid.
+ */
+function colorGroupsError(groups: AdminColorGroup[]): string | null {
+  if (groups.length > 1 && groups.some((g) => !g.color_name.trim())) {
+    return "Có từ 2 màu trở lên thì mỗi màu cần có tên màu.";
+  }
+  const seen = new Set<string>();
+  for (const g of groups) {
+    const name = g.color_name.trim();
+    const key = name.toLowerCase();
+    if (name && seen.has(key)) return `Tên màu "${name}" bị trùng.`;
+    seen.add(key);
+    const label = name || "không tên";
+    if (g.sizes.length > 1 && g.sizes.some((r) => !r.size.trim())) {
+      return `Màu "${label}" có nhiều dòng thì mỗi dòng cần nhập size.`;
+    }
+    const sizes = new Set<string>();
+    for (const r of g.sizes) {
+      const sz = r.size.trim().toLowerCase();
+      if (sz && sizes.has(sz)) return `Màu "${label}" có size "${r.size.trim()}" bị trùng.`;
+      sizes.add(sz);
+    }
+  }
+  return null;
+}
 
 type AdminAttribute = { id?: number; name: string; value: string };
 
@@ -311,8 +351,10 @@ export default function AdminProductsPage() {
   const [editMetaTitle, setEditMetaTitle] = useState("");
   const [editMetaDescription, setEditMetaDescription] = useState("");
   const [editShowAtHome, setEditShowAtHome] = useState(false);
-  const [editVariants, setEditVariants] = useState<AdminVariant[]>([]);
-  const [originalVariants, setOriginalVariants] = useState<AdminVariant[]>([]);
+  const [editColorGroups, setEditColorGroups] = useState<AdminColorGroup[]>([]);
+  // Ids of the variant rows the product had when the modal opened — any not
+  // present at save time were removed in the editor and get deleted.
+  const [originalVariantIds, setOriginalVariantIds] = useState<number[]>([]);
   const [editBundleCompanions, setEditBundleCompanions] = useState<string[]>([]);
   const [bundleSearch, setBundleSearch] = useState("");
   const [editBundleDiscount, setEditBundleDiscount] = useState("0");
@@ -439,47 +481,69 @@ export default function AdminProductsPage() {
     setEditFeatures((list) => moveItem(list, index, direction));
   };
 
-  const updateVariant = (index: number, patch: Partial<AdminVariant>) => {
-    setEditVariants((list) =>
-      list.map((v, i) => {
-        if (i !== index) {
-          // Only one variant can be the default at a time.
-          return patch.is_default ? { ...v, is_default: false } : v;
-        }
-        return { ...v, ...patch };
-      })
+  const updateColorGroup = (
+    groupIndex: number,
+    patch: Partial<Pick<AdminColorGroup, "color_name" | "color_swatch">>
+  ) =>
+    setEditColorGroups((list) =>
+      list.map((g, i) => (i === groupIndex ? { ...g, ...patch } : g))
     );
-  };
-  const removeVariant = (index: number) => {
-    setEditVariants((list) => list.filter((_, i) => i !== index));
-  };
-  // Per-variant photo list — same add / reorder / remove behaviour as the
-  // product's own "Ảnh sản phẩm" list, scoped to one variant.
-  const updateVariantImages = (
-    variantIndex: number,
+  const addColorGroup = () =>
+    setEditColorGroups((list) => {
+      // New rows start at the product's own price rather than 0, so a colour
+      // added and saved in a hurry doesn't go live at $0.00.
+      const group = emptyColorGroup(editPrice);
+      if (list.length === 0) group.sizes[0].is_default = true;
+      return [...list, group];
+    });
+  const removeColorGroup = (groupIndex: number) =>
+    setEditColorGroups((list) => list.filter((_, i) => i !== groupIndex));
+  const addSizeRow = (groupIndex: number) =>
+    setEditColorGroups((list) =>
+      list.map((g, i) =>
+        i === groupIndex
+          ? { ...g, sizes: [...g.sizes, emptySizeRow(g.sizes[g.sizes.length - 1]?.price ?? editPrice)] }
+          : g
+      )
+    );
+  const removeSizeRow = (groupIndex: number, sizeIndex: number) =>
+    setEditColorGroups((list) =>
+      list.map((g, i) =>
+        i === groupIndex && g.sizes.length > 1
+          ? { ...g, sizes: g.sizes.filter((_, j) => j !== sizeIndex) }
+          : g
+      )
+    );
+  const updateSizeRow = (groupIndex: number, sizeIndex: number, patch: Partial<AdminSizeRow>) =>
+    setEditColorGroups((list) =>
+      list.map((g, i) => ({
+        ...g,
+        sizes: g.sizes.map((r, j) => {
+          if (i === groupIndex && j === sizeIndex) return { ...r, ...patch };
+          // Only one row across every colour can be the default.
+          return patch.is_default ? { ...r, is_default: false } : r;
+        }),
+      }))
+    );
+  // A colour's photo list — same add / reorder / remove behaviour as the
+  // product's own "Ảnh sản phẩm" list, shared by every size of that colour.
+  const updateColorImages = (
+    groupIndex: number,
     change: (images: EditImage[]) => EditImage[]
-  ) => {
-    setEditVariants((list) =>
-      list.map((v, i) => (i === variantIndex ? { ...v, images: change(v.images) } : v))
+  ) =>
+    setEditColorGroups((list) =>
+      list.map((g, i) => (i === groupIndex ? { ...g, images: change(g.images) } : g))
     );
-  };
-  const addVariantImage = (variantIndex: number) =>
-    updateVariantImages(variantIndex, (imgs) => [...imgs, { _key: newImageKey(), url: "" }]);
-  const setVariantImage = (variantIndex: number, imageIndex: number, url: string | null) =>
-    updateVariantImages(variantIndex, (imgs) =>
+  const addColorImage = (groupIndex: number) =>
+    updateColorImages(groupIndex, (imgs) => [...imgs, { _key: newImageKey(), url: "" }]);
+  const setColorImage = (groupIndex: number, imageIndex: number, url: string | null) =>
+    updateColorImages(groupIndex, (imgs) =>
       imgs.map((img, i) => (i === imageIndex ? { ...img, url: url ?? "" } : img))
     );
-  const removeVariantImage = (variantIndex: number, imageIndex: number) =>
-    updateVariantImages(variantIndex, (imgs) => imgs.filter((_, i) => i !== imageIndex));
-  const moveVariantImage = (variantIndex: number, imageIndex: number, direction: -1 | 1) =>
-    updateVariantImages(variantIndex, (imgs) => moveItem(imgs, imageIndex, direction));
-
-  const addVariant = () => {
-    setEditVariants((list) => [
-      ...list,
-      { ...emptyVariant(), is_default: list.length === 0 },
-    ]);
-  };
+  const removeColorImage = (groupIndex: number, imageIndex: number) =>
+    updateColorImages(groupIndex, (imgs) => imgs.filter((_, i) => i !== imageIndex));
+  const moveColorImage = (groupIndex: number, imageIndex: number, direction: -1 | 1) =>
+    updateColorImages(groupIndex, (imgs) => moveItem(imgs, imageIndex, direction));
 
   const updateImage = (index: number, url: string | null) => {
     setEditImages((list) =>
@@ -550,8 +614,8 @@ export default function AdminProductsPage() {
     setEditBundleCompanions([]);
     setEditBundleDiscount("0");
     setBundleSearch("");
-    setEditVariants([]);
-    setOriginalVariants([]);
+    setEditColorGroups([]);
+    setOriginalVariantIds([]);
     try {
       const variants = await apiFetch<
         {
@@ -569,24 +633,45 @@ export default function AdminProductsPage() {
           active: boolean;
         }[]
       >(`/api/products/admin/products/${p.slug}/variants`);
-      const mapped: AdminVariant[] = variants.map((v) => ({
-        _key: newVariantKey(),
-        id: v.id,
-        color_name: v.color_name ?? "",
-        color_swatch: v.color_swatch ?? "#c9a876",
-        size: v.size ?? "",
-        price: String(v.price),
-        compare_at_price: v.compare_at_price !== null ? String(v.compare_at_price) : "",
-        stock: String(v.stock),
-        sku: v.sku ?? "",
-        images: [v.front_image, ...(v.hover_images ?? [])]
-          .filter((url): url is string => Boolean(url))
-          .map((url) => ({ _key: newImageKey(), url })),
-        is_default: v.is_default,
-        active: v.active,
-      }));
-      setEditVariants(mapped);
-      setOriginalVariants(mapped);
+      // Rows arrive in admin order (sort_order, id); grouped by colour name,
+      // case-insensitively, keeping that order for colours and for sizes.
+      // A colour's photos come from its first row that has any — rows saved
+      // by this editor all carry the same set.
+      const groups: AdminColorGroup[] = [];
+      for (const v of variants) {
+        const name = v.color_name ?? "";
+        let group = groups.find(
+          (g) => g.color_name.trim().toLowerCase() === name.trim().toLowerCase()
+        );
+        if (!group) {
+          group = {
+            _key: newVariantKey(),
+            color_name: name,
+            color_swatch: v.color_swatch ?? "#c9a876",
+            images: [],
+            sizes: [],
+          };
+          groups.push(group);
+        }
+        if (group.images.length === 0) {
+          group.images = [v.front_image, ...(v.hover_images ?? [])]
+            .filter((url): url is string => Boolean(url))
+            .map((url) => ({ _key: newImageKey(), url }));
+        }
+        group.sizes.push({
+          _key: newVariantKey(),
+          id: v.id,
+          size: v.size ?? "",
+          price: String(v.price),
+          compare_at_price: v.compare_at_price !== null ? String(v.compare_at_price) : "",
+          stock: String(v.stock),
+          sku: v.sku ?? "",
+          is_default: v.is_default,
+          active: v.active,
+        });
+      }
+      setEditColorGroups(groups);
+      setOriginalVariantIds(variants.map((v) => v.id));
     } catch {
       // no variants yet — the product behaves as non-variant, form starts empty
     }
@@ -712,6 +797,11 @@ export default function AdminProductsPage() {
 
   const saveEdit = async () => {
     if (!editing) return;
+    const variantError = colorGroupsError(editColorGroups);
+    if (variantError) {
+      setModalError(variantError);
+      return;
+    }
     setSaving(true);
     setModalError(null);
     try {
@@ -807,44 +897,52 @@ export default function AdminProductsPage() {
         }),
       });
 
-      const variantRemainingIds = new Set(
-        editVariants.filter((v) => v.id !== undefined).map((v) => v.id)
+      // Each size row is one variant row, saved with its colour's name,
+      // swatch and photos. sortOrder follows the editor's order (colours top
+      // to bottom, sizes within each), which is the order the storefront
+      // lists swatches and sizes in. If no row was marked default, the first
+      // one becomes it, so the storefront always opens on a real variant.
+      const variantRows = editColorGroups.flatMap((group) =>
+        group.sizes.map((row) => ({ group, row }))
       );
-      for (const variant of editVariants) {
-        const variantImageUrls = variant.images
+      const anyDefault = variantRows.some(({ row }) => row.is_default);
+      const variantRemainingIds = new Set(
+        variantRows.map(({ row }) => row.id).filter((id): id is number => id !== undefined)
+      );
+      for (const [index, { group, row }] of variantRows.entries()) {
+        const colorImageUrls = group.images
           .map((img) => img.url.trim())
           .filter((url) => url.length > 0);
         const body = JSON.stringify({
-          colorName: variant.color_name.trim() || null,
-          colorSwatch: variant.color_swatch || null,
-          size: variant.size.trim() || null,
-          price: Number(variant.price) || 0,
-          compareAtPrice: variant.compare_at_price.trim()
-            ? Number(variant.compare_at_price)
-            : null,
-          stock: Number.parseInt(variant.stock, 10) || 0,
-          sku: variant.sku.trim() || null,
-          frontImage: variantImageUrls[0] ?? null,
-          hoverImages: variantImageUrls.slice(1),
-          isDefault: variant.is_default,
-          active: variant.active,
+          colorName: group.color_name.trim() || null,
+          colorSwatch: group.color_swatch || null,
+          size: row.size.trim() || null,
+          price: Number(row.price) || 0,
+          compareAtPrice: row.compare_at_price.trim() ? Number(row.compare_at_price) : null,
+          stock: Number.parseInt(row.stock, 10) || 0,
+          sku: row.sku.trim() || null,
+          frontImage: colorImageUrls[0] ?? null,
+          hoverImages: colorImageUrls.slice(1),
+          isDefault: anyDefault ? row.is_default : index === 0,
+          active: row.active,
+          sortOrder: index,
         });
-        if (variant.id === undefined) {
+        if (row.id === undefined) {
           await apiFetch(`/api/products/admin/products/${editing.slug}/variants`, {
             method: "POST",
             body,
           });
         } else {
           await apiFetch(
-            `/api/products/admin/products/${editing.slug}/variants/${variant.id}`,
+            `/api/products/admin/products/${editing.slug}/variants/${row.id}`,
             { method: "PUT", body }
           );
         }
       }
-      for (const original of originalVariants) {
-        if (original.id !== undefined && !variantRemainingIds.has(original.id)) {
+      for (const id of originalVariantIds) {
+        if (!variantRemainingIds.has(id)) {
           await apiFetch(
-            `/api/products/admin/products/${editing.slug}/variants/${original.id}`,
+            `/api/products/admin/products/${editing.slug}/variants/${id}`,
             { method: "DELETE" }
           );
         }
@@ -1622,119 +1720,78 @@ export default function AdminProductsPage() {
 
               <div className="mt-6 flex items-center justify-between mb-2">
                 <Label className="mb-0">Biến thể (màu/size)</Label>
-                <Button size="sm" variant="ghost" onClick={addVariant} disabled={saving}>
-                  + Thêm biến thể
+                <Button size="sm" variant="ghost" onClick={addColorGroup} disabled={saving}>
+                  + Thêm màu
                 </Button>
               </div>
               <p className="text-xs text-black/40 mb-3">
-                Mỗi biến thể có giá/tồn kho/ảnh riêng. Để trống nếu sản phẩm
-                không có nhiều màu/size — sản phẩm vẫn dùng giá/tồn kho ở
-                trên như bình thường.
+                Mỗi màu nhập tên, ô màu và ảnh một lần; bên trong thêm bao nhiêu
+                size tùy ý, mỗi size có giá, tồn kho, SKU riêng. Màu không chia
+                size thì để trống ô size. Không thêm màu nào thì sản phẩm dùng
+                giá/tồn kho ở trên như bình thường.
               </p>
               <div className="space-y-3 mb-2">
-                {editVariants.length === 0 && (
+                {editColorGroups.length === 0 && (
                   <p className="text-xs text-black/30 italic">
                     Chưa có biến thể nào.
                   </p>
                 )}
-                {editVariants.map((v, i) => (
-                  <div key={v._key} className="rounded-lg border border-black/10 p-3">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                {editColorGroups.map((group, gi) => (
+                  <div key={group._key} className="rounded-lg border border-black/15 p-3">
+                    {/* Colour header: swatch, name, remove the whole colour */}
+                    <div className="mb-3 flex items-center gap-2">
                       <input
                         type="color"
-                        value={v.color_swatch}
-                        onChange={(e) => updateVariant(i, { color_swatch: e.target.value })}
+                        value={group.color_swatch}
+                        onChange={(e) => updateColorGroup(gi, { color_swatch: e.target.value })}
                         disabled={saving}
-                        className="h-8 w-8 shrink-0 rounded border border-black/10 cursor-pointer"
-                        aria-label="Màu swatch"
+                        className="h-8 w-8 shrink-0 cursor-pointer rounded border border-black/10"
+                        aria-label={`Màu ô tròn của ${group.color_name || "màu này"}`}
                       />
                       <Input
-                        value={v.color_name}
-                        onChange={(e) => updateVariant(i, { color_name: e.target.value })}
+                        value={group.color_name}
+                        onChange={(e) => updateColorGroup(gi, { color_name: e.target.value })}
                         placeholder="Tên màu (VD: Gold)"
-                        className="min-w-[140px] flex-1 basis-40 text-xs"
-                        disabled={saving}
-                      />
-                      <Input
-                        value={v.size}
-                        onChange={(e) => updateVariant(i, { size: e.target.value })}
-                        placeholder="Size (VD: One Size)"
-                        className="min-w-[140px] flex-1 basis-40 text-xs"
+                        className="min-w-0 flex-1 text-xs font-medium"
                         disabled={saving}
                       />
                       <IconButton
                         type="button"
                         tone="danger"
                         className="shrink-0"
-                        aria-label="Xóa biến thể"
+                        aria-label={`Xóa màu ${group.color_name || "này"}`}
+                        title="Xóa màu này (cùng mọi size bên trong)"
                         disabled={saving}
-                        onClick={() => removeVariant(i)}
+                        onClick={() => removeColorGroup(gi)}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
-                        </svg>
+                            <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                          </svg>
                       </IconButton>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 mb-2 sm:grid-cols-4">
-                      <Input
-                        value={v.price}
-                        onChange={(e) => updateVariant(i, { price: e.target.value })}
-                        type="number"
-                        placeholder="Giá"
-                        className="text-xs"
-                        disabled={saving}
-                      />
-                      <Input
-                        value={v.compare_at_price}
-                        onChange={(e) => updateVariant(i, { compare_at_price: e.target.value })}
-                        type="number"
-                        placeholder="Giá gốc (gạch)"
-                        className="text-xs"
-                        disabled={saving}
-                      />
-                      <Input
-                        value={v.stock}
-                        onChange={(e) => updateVariant(i, { stock: e.target.value })}
-                        type="number"
-                        min={0}
-                        placeholder="Tồn kho"
-                        className="text-xs"
-                        disabled={saving}
-                      />
-                      <Input
-                        value={v.sku}
-                        onChange={(e) => updateVariant(i, { sku: e.target.value })}
-                        placeholder="SKU"
-                        className="text-xs"
-                        disabled={saving}
-                      />
-                    </div>
-
-                    <div className="mb-2">
+                    {/* Colour photos — shared by every size of this colour */}
+                    <div className="mb-3">
                       <div className="mb-1 flex items-center justify-between">
-                        <Label className="mb-0">Ảnh biến thể</Label>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => addVariantImage(i)}
-                          disabled={saving}
-                        >
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-black/50">
+                          Ảnh của màu này
+                        </span>
+                        <Button size="sm" variant="ghost" onClick={() => addColorImage(gi)} disabled={saving}>
                           + Thêm ảnh
                         </Button>
                       </div>
                       <p className="mb-2 text-xs text-black/40">
-                        Khi khách chọn màu này, trang sản phẩm chỉ hiện các ảnh dưới đây
-                        (ảnh #1 cũng là ảnh trong giỏ hàng). Để trống thì dùng ảnh sản
-                        phẩm gốc.
+                        Khách chọn màu này thì trang sản phẩm chỉ hiện các ảnh dưới
+                        đây (ảnh #1 cũng là ảnh trong giỏ hàng). Để trống thì dùng
+                        ảnh sản phẩm gốc.
                       </p>
                       <div className="space-y-2">
-                        {v.images.length === 0 && (
+                        {group.images.length === 0 && (
                           <p className="text-xs italic text-black/30">
                             Chưa có ảnh riêng — đang dùng ảnh sản phẩm gốc.
                           </p>
                         )}
-                        {v.images.map((image, imgIndex) => (
+                        {group.images.map((image, imgIndex) => (
                           <div key={image._key} className="flex gap-2 border border-black/10 p-2">
                             <div className="flex shrink-0 flex-col">
                               <span className="mb-1 text-[10px] font-semibold text-black/40">
@@ -1745,7 +1802,7 @@ export default function AdminProductsPage() {
                                 tone="default"
                                 aria-label="Di chuyển lên"
                                 disabled={saving || imgIndex === 0}
-                                onClick={() => moveVariantImage(i, imgIndex, -1)}
+                                onClick={() => moveColorImage(gi, imgIndex, -1)}
                               >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <polyline points="5 15.5 12 8.5 19 15.5" />
@@ -1755,8 +1812,8 @@ export default function AdminProductsPage() {
                                 type="button"
                                 tone="default"
                                 aria-label="Di chuyển xuống"
-                                disabled={saving || imgIndex === v.images.length - 1}
-                                onClick={() => moveVariantImage(i, imgIndex, 1)}
+                                disabled={saving || imgIndex === group.images.length - 1}
+                                onClick={() => moveColorImage(gi, imgIndex, 1)}
                               >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <polyline points="5 8.5 12 15.5 19 8.5" />
@@ -1766,7 +1823,7 @@ export default function AdminProductsPage() {
                             <div className="min-w-0 flex-1">
                               <ImageField
                                 value={image.url || null}
-                                onChange={(url) => setVariantImage(i, imgIndex, url)}
+                                onChange={(url) => setColorImage(gi, imgIndex, url)}
                                 disabled={saving}
                                 onUploadingChange={(u) => trackUploading(u ? 1 : -1)}
                               />
@@ -1775,41 +1832,119 @@ export default function AdminProductsPage() {
                               type="button"
                               tone="danger"
                               className="shrink-0"
-                              aria-label="Xóa ảnh biến thể"
+                              aria-label="Xóa ảnh"
                               disabled={saving}
-                              onClick={() => removeVariantImage(i, imgIndex)}
+                              onClick={() => removeColorImage(gi, imgIndex)}
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
-                              </svg>
+                            <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                          </svg>
                             </IconButton>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 text-xs">
-                      <label className="flex items-center gap-1.5">
-                        <input
-                          type="radio"
-                          name="variant-default"
-                          checked={v.is_default}
-                          onChange={() => updateVariant(i, { is_default: true })}
-                          disabled={saving}
-                          className="accent-ink"
-                        />
-                        Mặc định
-                      </label>
-                      <label className="flex items-center gap-1.5">
-                        <input
-                          type="checkbox"
-                          checked={v.active}
-                          onChange={(e) => updateVariant(i, { active: e.target.checked })}
-                          disabled={saving}
-                          className="h-3.5 w-3.5 accent-ink"
-                        />
-                        Đang bán
-                      </label>
+                    {/* Sizes of this colour */}
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-black/50">
+                        Size của màu này ({group.sizes.length})
+                      </span>
+                      <Button size="sm" variant="ghost" onClick={() => addSizeRow(gi)} disabled={saving}>
+                        + Thêm size
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {group.sizes.map((row, si) => (
+                        <div key={row._key} className="rounded-md border border-black/10 bg-black/[0.015] p-2">
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            <label className="block">
+                              <span className="mb-0.5 block text-[10px] text-black/45">Size</span>
+                              <Input
+                                value={row.size}
+                                onChange={(e) => updateSizeRow(gi, si, { size: e.target.value })}
+                                placeholder="VD: 16cm"
+                                className="text-xs"
+                                disabled={saving}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="mb-0.5 block text-[10px] text-black/45">Giá</span>
+                              <Input
+                                value={row.price}
+                                onChange={(e) => updateSizeRow(gi, si, { price: e.target.value })}
+                                type="number"
+                                className="text-xs"
+                                disabled={saving}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="mb-0.5 block text-[10px] text-black/45">Giá gốc (gạch)</span>
+                              <Input
+                                value={row.compare_at_price}
+                                onChange={(e) => updateSizeRow(gi, si, { compare_at_price: e.target.value })}
+                                type="number"
+                                className="text-xs"
+                                disabled={saving}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="mb-0.5 block text-[10px] text-black/45">Tồn kho</span>
+                              <Input
+                                value={row.stock}
+                                onChange={(e) => updateSizeRow(gi, si, { stock: e.target.value })}
+                                type="number"
+                                min={0}
+                                className="text-xs"
+                                disabled={saving}
+                              />
+                            </label>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                            <Input
+                              value={row.sku}
+                              onChange={(e) => updateSizeRow(gi, si, { sku: e.target.value })}
+                              placeholder="SKU"
+                              className="w-36 text-xs"
+                              disabled={saving}
+                            />
+                            <label className="flex items-center gap-1.5">
+                              <input
+                                type="radio"
+                                name="variant-default"
+                                checked={row.is_default}
+                                onChange={() => updateSizeRow(gi, si, { is_default: true })}
+                                disabled={saving}
+                                className="accent-ink"
+                              />
+                              Mặc định
+                            </label>
+                            <label className="flex items-center gap-1.5">
+                              <input
+                                type="checkbox"
+                                checked={row.active}
+                                onChange={(e) => updateSizeRow(gi, si, { active: e.target.checked })}
+                                disabled={saving}
+                                className="h-3.5 w-3.5 accent-ink"
+                              />
+                              Đang bán
+                            </label>
+                            <IconButton
+                              type="button"
+                              tone="danger"
+                              className="ml-auto shrink-0"
+                              aria-label="Xóa size này"
+                              title={group.sizes.length <= 1 ? "Mỗi màu cần ít nhất 1 dòng — xóa cả màu bằng nút × phía trên" : "Xóa size này"}
+                              disabled={saving || group.sizes.length <= 1}
+                              onClick={() => removeSizeRow(gi, si)}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                          </svg>
+                            </IconButton>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}

@@ -94,6 +94,8 @@ export interface Dictionary {
     details: string;
     material: string;
     metal: string;
+    size: string;
+    selectSize: string;
     handFinishedNote: string;
     deliveryReturns: string;
     deliveryReturnsItems: string[];

@@ -69,7 +69,7 @@ export default function Gallery({
   images: string[];
   name: string;
 }) {
-  const { selectedVariant } = useVariant();
+  const { selectedVariant, variants } = useVariant();
   // A variant with photos of its own shows ONLY those — explicit request,
   // with the storefront opening on the default variant's set (the variant
   // provider preselects it). This supersedes the earlier rule of inserting a
@@ -79,12 +79,20 @@ export default function Gallery({
   // customer a colour they didn't pick. A variant with no photos keeps the
   // product's own set, as the admin field's "để trống" hint promises.
   // Deduped in case the same file was added to a variant twice.
+  // With a size row, one colour is several variants (Rose/16cm, Rose/17cm)
+  // and an admin will usually upload the photos to just one of them — so a
+  // size with no photos borrows its colour's, instead of dropping back to
+  // the product's own set (another colour's photos) on a size click.
   const effectiveImages = (() => {
-    const variantImages = selectedVariant
-      ? [selectedVariant.frontImage, ...selectedVariant.hoverImages].filter(
-          (src): src is string => Boolean(src)
-        )
-      : [];
+    const photosOf = (v: typeof selectedVariant) =>
+      v ? [v.frontImage, ...v.hoverImages].filter((src): src is string => Boolean(src)) : [];
+    let variantImages = photosOf(selectedVariant);
+    if (variantImages.length === 0 && selectedVariant) {
+      const sibling = variants.find(
+        (v) => v.colorName === selectedVariant.colorName && photosOf(v).length > 0
+      );
+      variantImages = photosOf(sibling ?? null);
+    }
     return variantImages.length > 0 ? Array.from(new Set(variantImages)) : images;
   })();
 
@@ -265,9 +273,15 @@ export default function Gallery({
   // out-of-range/undefined image. Adjusted during render (React's own
   // pattern for resetting state when a prop changes) rather than in an
   // effect, which would cause an extra cascading render.
-  const [prevVariantId, setPrevVariantId] = useState(selectedVariant?.id);
-  if (prevVariantId !== selectedVariant?.id) {
-    setPrevVariantId(selectedVariant?.id);
+  //
+  // Keyed on the photo SET, not the variant id: picking a size switches to a
+  // different variant of the same colour, usually showing the very same
+  // photos — resetting there would jump the customer back to photo 1 just
+  // for choosing a size. A different set (another colour) still resets.
+  const imagesKey = effectiveImages.join("|");
+  const [prevImagesKey, setPrevImagesKey] = useState(imagesKey);
+  if (prevImagesKey !== imagesKey) {
+    setPrevImagesKey(imagesKey);
     setActive(0);
   }
 

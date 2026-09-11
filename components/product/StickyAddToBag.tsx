@@ -6,7 +6,7 @@ import type { FullProduct } from "@/data/products";
 import { MinusIcon, PlusIcon, CheckIcon } from "@/components/icons";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useCart } from "@/components/cart/CartProvider";
-import { useVariant } from "./VariantProvider";
+import { useVariant, SIZE_PICKER_ID } from "./VariantProvider";
 import { currencyMeta } from "@/lib/currency";
 
 /**
@@ -29,7 +29,7 @@ export default function StickyAddToBag({
   const symbol = currencyMeta[currency].symbol;
   const rate = rates[currency];
   const { addItem } = useCart();
-  const { variants, selectedVariant } = useVariant();
+  const { variants, selectedVariant, needsSizeChoice } = useVariant();
   const hasVariants = variants.length > 0;
 
   const [qty, setQty] = useState(1);
@@ -43,6 +43,13 @@ export default function StickyAddToBag({
     (hasVariants ? selectedVariant?.frontImage : undefined) ?? product.images[0] ?? null;
 
   const addToCart = () => {
+    // Same rule as the in-page button (see AddToBag): a colour with several
+    // sizes waits for one to be picked. This bar has no size row of its own,
+    // so it takes the customer to the one in the page instead of adding.
+    if (needsSizeChoice) {
+      document.getElementById(SIZE_PICKER_ID)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     addItem({
       slug: product.slug,
       name: product.name,

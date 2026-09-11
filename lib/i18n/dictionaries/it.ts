@@ -99,6 +99,8 @@ const dictionary = {
     details: "Dettagli",
     material: "Materiale",
     metal: "Metallo",
+    size: "Taglia",
+    selectSize: "Seleziona una taglia",
     handFinishedNote:
       "Ogni pezzo è rifinito a mano e ispezionato per la qualità prima della spedizione.",
     deliveryReturns: "Consegna e resi",

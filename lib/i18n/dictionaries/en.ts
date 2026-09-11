@@ -102,6 +102,8 @@ const dictionary: Dictionary = {
     details: "Details",
     material: "Material",
     metal: "Metal",
+    size: "Size",
+    selectSize: "Please select a size",
     handFinishedNote:
       "Every piece is finished by hand and inspected for quality before it ships.",
     deliveryReturns: "Delivery & Returns",

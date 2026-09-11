@@ -7,7 +7,7 @@ import { MinusIcon, PlusIcon, CheckIcon } from "@/components/icons";
 import { useDictionary } from "@/components/i18n/LanguageProvider";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useCart } from "@/components/cart/CartProvider";
-import { useVariant } from "./VariantProvider";
+import { useVariant, SIZE_PICKER_ID } from "./VariantProvider";
 import { currencyMeta } from "@/lib/currency";
 
 export default function AddToBag({ product }: { product: FullProduct }) {
@@ -17,14 +17,21 @@ export default function AddToBag({ product }: { product: FullProduct }) {
   const rate = rates[currency];
   const router = useRouter();
   const { addItem } = useCart();
-  const { variants, selectedVariant, setSelectedVariant } = useVariant();
+  const {
+    variants,
+    selectedVariant,
+    selectColor,
+    selectSize,
+    sizeOptions,
+    sizeChosen,
+    needsSizeChoice,
+  } = useVariant();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const hasVariants = variants.length > 0;
 
   // One swatch per distinct color — a color with several sizes still shows
-  // once here (there's no size picker yet, so it selects that color's first
-  // variant; wiring a size control is a follow-up, not this pass).
+  // once here; choosing among its sizes is the size row's job below.
   const colorSwatches = hasVariants
     ? variants.filter(
         (v, i) => variants.findIndex((o) => o.colorName === v.colorName) === i
@@ -41,6 +48,16 @@ export default function AddToBag({ product }: { product: FullProduct }) {
     : product.compareAtPrice;
   const maxQty = hasVariants ? (selectedVariant?.stock ?? 0) : product.stock;
   const outOfStock = hasVariants ? maxQty <= 0 : product.stock <= 0;
+
+  // A colour with several sizes can't go in the bag until one is picked —
+  // explicit request, matching the reference's "Please select a size". The
+  // button stays clickable (a disabled button explains nothing); the click
+  // brings the size row into view instead, where the prompt is already red.
+  const blockedOnSize = () => {
+    if (!needsSizeChoice) return false;
+    document.getElementById(SIZE_PICKER_ID)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return true;
+  };
 
   const addToCart = () => {
     addItem({
@@ -98,13 +115,17 @@ export default function AddToBag({ product }: { product: FullProduct }) {
         </p>
       )}
 
+      {/* Colour row, laid out like the reference (explicit request with a
+          screenshot): the same "Metal:" label treatment as the material line
+          above, the chosen colour's name beside it, and round swatches below
+          with a thin ring around the selected one. */}
       {showSwatches && (
         <div className="mb-4">
-          <span className="font-ui text-[11px] uppercase tracking-[0.08em] text-[#5c554a]">
-            {dict.metal}: {selectedVariant?.colorName}
-            {selectedVariant?.size ? ` / ${selectedVariant.size}` : ""}
-          </span>
-          <div className="mt-1.5 flex items-center gap-2.5">
+          <p className="font-ui text-[13px] leading-[18px] text-[#5c554a]">
+            <span className="text-[15px] font-semibold text-[#302c27]">{dict.metal}:</span>{" "}
+            {selectedVariant?.colorName}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 pl-[3px]">
             {colorSwatches.map((v) => {
               const active = selectedVariant?.colorName === v.colorName;
               return (
@@ -114,23 +135,61 @@ export default function AddToBag({ product }: { product: FullProduct }) {
                   title={v.colorName}
                   aria-label={v.colorName}
                   aria-pressed={active}
-                  onClick={() => setSelectedVariant(v)}
-                  className={`h-6 w-6 rounded-full ring-2 ring-offset-2 transition-[transform,box-shadow] hover:scale-110 ${
-                    active
-                      ? "ring-[#2b261f]"
-                      : "ring-transparent hover:ring-[#2b261f]/70"
+                  onClick={() => selectColor(v)}
+                  className={`h-[26px] w-[26px] rounded-full border border-black/15 ring-offset-[3px] transition-[box-shadow,transform] hover:scale-105 ${
+                    active ? "ring-1 ring-[#2b261f]" : "ring-0 hover:ring-1 hover:ring-[#2b261f]/40"
                   }`}
                   style={{ backgroundColor: v.colorSwatch || "#e5e0d8" }}
                 />
               );
             })}
           </div>
-          {outOfStock && (
-            <p className="mt-2 text-[11px] text-red-700">
-              This color/size is currently out of stock.
-            </p>
-          )}
         </div>
+      )}
+
+      {/* Size row — only when the selected colour actually has sizes entered
+          in the admin, so every product without sizes looks exactly as
+          before. Deliberately independent of the colour row: a product can
+          come in one colour and several sizes. */}
+      {sizeOptions.length > 0 && (
+        <div id={SIZE_PICKER_ID} className="mb-4 scroll-mt-32">
+          <p className="font-ui text-[13px] leading-[18px] text-[#5c554a]">
+            <span className="text-[15px] font-semibold text-[#302c27]">{dict.size}:</span>{" "}
+            {needsSizeChoice ? (
+              <span className="text-red-700">{dict.selectSize}</span>
+            ) : (
+              selectedVariant?.size
+            )}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {sizeOptions.map((v) => {
+              const active = sizeChosen && selectedVariant?.id === v.id;
+              const soldOut = v.stock <= 0;
+              return (
+                <button
+                  key={`${v.colorName}-${v.size}`}
+                  type="button"
+                  aria-pressed={active}
+                  aria-label={soldOut ? `${v.size} (out of stock)` : v.size ?? undefined}
+                  onClick={() => selectSize(v)}
+                  className={`min-h-[36px] min-w-[48px] rounded-full border px-3.5 font-ui text-[13px] leading-none transition-colors ${
+                    active
+                      ? "border-[#2b261f] bg-[#2b261f] text-white"
+                      : "border-black/20 bg-white text-[#302c27] hover:border-[#2b261f]"
+                  } ${soldOut ? "line-through opacity-50" : ""}`}
+                >
+                  {v.size}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {hasVariants && outOfStock && !needsSizeChoice && (
+        <p className="-mt-2 mb-4 text-[11px] text-red-700">
+          This color/size is currently out of stock.
+        </p>
       )}
 
       <div className="flex items-center gap-2.5 mb-2.5">
@@ -165,6 +224,7 @@ export default function AddToBag({ product }: { product: FullProduct }) {
         <button
           disabled={outOfStock}
           onClick={() => {
+            if (blockedOnSize()) return;
             addToCart();
             setAdded(true);
             setTimeout(() => setAdded(false), 1800);
@@ -183,6 +243,7 @@ export default function AddToBag({ product }: { product: FullProduct }) {
           type="button"
           disabled={outOfStock}
           onClick={() => {
+            if (blockedOnSize()) return;
             addToCart();
             router.push("/checkout");
           }}

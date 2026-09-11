@@ -250,7 +250,7 @@ async function applyReviewCountOverride(productId, value) {
 // the queue exists to screen customer-submitted content, not admin's own.
 router.post('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => {
   const VALID_STATUSES = ['Chờ duyệt', 'Đã duyệt', 'Từ chối'];
-  const { productId, customerName, rating, comment, photoUrl, status, reviewCountOverride } =
+  const { productId, customerName, rating, comment, photoUrl, status, reviewCountOverride, reviewDate } =
     req.body || {};
 
   const productIdNum = Number(productId);
@@ -278,6 +278,30 @@ router.post('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => 
   if (!overrideParsed.ok) {
     return res.status(400).json({ error: overrideParsed.error });
   }
+  // Optional "Ngày đánh giá" (YYYY-MM-DD) — for a review collected off-site
+  // on an earlier day. Omitted means "now", exactly as before this field
+  // existed; the admin form only sends it when the date was changed from
+  // today, so an ordinary same-day entry keeps its precise timestamp and
+  // still sorts above that day's other reviews.
+  // Stored at 12:00 UTC, not midnight: the public page renders it with the
+  // viewer's own toLocaleDateString(), and midnight UTC shows as the
+  // PREVIOUS day anywhere west of Greenwich (this store sells to the US).
+  // Noon keeps the same calendar date from UTC-12 through UTC+11.
+  let createdAt = null;
+  if (reviewDate !== undefined && reviewDate !== null && reviewDate !== '') {
+    const m = typeof reviewDate === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/.exec(reviewDate);
+    const d = m ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12)) : null;
+    // Round-trip check rejects impossible dates like 2026-02-31, which
+    // Date.UTC would otherwise silently roll over into March.
+    if (!d || d.toISOString().slice(0, 10) !== reviewDate) {
+      return res.status(400).json({ error: 'reviewDate must be a valid date (YYYY-MM-DD)' });
+    }
+    // A day of slack for the admin's timezone being ahead of the server's.
+    if (d.getTime() > Date.now() + 36 * 60 * 60 * 1000) {
+      return res.status(400).json({ error: 'reviewDate cannot be in the future' });
+    }
+    createdAt = d.toISOString();
+  }
 
   try {
     const productResult = await query('SELECT id, name FROM products WHERE id = $1', [productIdNum]);
@@ -286,11 +310,13 @@ router.post('/admin/reviews', authMiddleware, requireAdmin, async (req, res) => 
     }
     const product = productResult.rows[0];
 
+    // COALESCE falls back to now() — the column's own default — when no
+    // date was given, so an omitted date behaves exactly as before.
     const result = await query(
-      `INSERT INTO product_reviews (product_id, product_name, customer_name, rating, comment, status, photo_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO product_reviews (product_id, product_name, customer_name, rating, comment, status, photo_url, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8::timestamptz, now()))
        RETURNING *`,
-      [product.id, product.name, customerName.trim(), ratingNum, comment.trim(), finalStatus, photoUrl || null]
+      [product.id, product.name, customerName.trim(), ratingNum, comment.trim(), finalStatus, photoUrl || null, createdAt]
     );
     await applyReviewCountOverride(product.id, overrideParsed.value);
     return res.status(201).json({ data: result.rows[0] });

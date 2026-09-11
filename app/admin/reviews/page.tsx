@@ -161,8 +161,22 @@ const EMPTY_CREATE_FORM = {
   // what shows in brackets beside the stars on the public product page.
   // Empty string = no override, i.e. keep showing the real derived count.
   review_count_override: "",
+  // YYYY-MM-DD for the date input. Filled with today when the modal opens
+  // (see openCreate) — not here, since this constant is built once at module
+  // load and a tab left open overnight would otherwise default to yesterday.
+  review_date: "",
+  photo_url: "",
   status: "Đã duyệt" as ReviewStatus,
 };
+
+/** Today in the admin's own timezone, as the YYYY-MM-DD a date input uses.
+ *  toISOString() would give the UTC date, which is already tomorrow for an
+ *  admin in Vietnam late in the evening... and yesterday early morning. */
+function todayInputValue() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 /** "" -> null (clear the override); "279" -> 279. Validated before send. */
 function parseCountInput(raw: string): number | null {
@@ -281,9 +295,12 @@ export default function AdminReviewsPage() {
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
   const [createSaving, setCreateSaving] = useState(false);
   const [createError, setCreateError] = useState("");
+  // Saving mid-upload would store the review with no photo while the file
+  // quietly finishes uploading into nothing — so saving waits for it.
+  const [createPhotoUploading, setCreatePhotoUploading] = useState(false);
 
   const openCreate = () => {
-    setCreateForm(EMPTY_CREATE_FORM);
+    setCreateForm({ ...EMPTY_CREATE_FORM, review_date: todayInputValue() });
     setCreateError("");
     setCreating(true);
   };
@@ -293,6 +310,10 @@ export default function AdminReviewsPage() {
     if (!createForm.product_id) return setCreateError("Chọn một sản phẩm.");
     if (!createForm.customer_name.trim()) return setCreateError("Nhập tên khách hàng.");
     if (!createForm.comment.trim()) return setCreateError("Nhập nội dung đánh giá.");
+    if (!createForm.review_date) return setCreateError("Chọn ngày đánh giá.");
+    if (createForm.review_date > todayInputValue()) {
+      return setCreateError("Ngày đánh giá không được ở tương lai.");
+    }
     if (countInputInvalid(createForm.review_count_override)) {
       return setCreateError("Số lượt đánh giá hiển thị phải là số nguyên không âm (hoặc để trống).");
     }
@@ -308,6 +329,13 @@ export default function AdminReviewsPage() {
           comment: createForm.comment.trim(),
           status: createForm.status,
           reviewCountOverride: createOverride,
+          // Sent only when moved off today: an untouched date keeps the
+          // server's own now(), so a same-day entry keeps its exact time
+          // and still lists above that day's earlier reviews.
+          ...(createForm.review_date !== todayInputValue()
+            ? { reviewDate: createForm.review_date }
+            : {}),
+          photoUrl: createForm.photo_url || null,
         }),
       });
       setReviews((list) => [created, ...list]);
@@ -470,11 +498,59 @@ export default function AdminReviewsPage() {
 
       {creating && (
         <ModalBackdrop onClose={() => !createSaving && setCreating(false)}>
-          <ModalPanel maxWidth="max-w-lg">
+          {/* Laid out like the homepage "Đánh giá khách hàng" editor
+              (admin/homepage) — explicit request with a screenshot of it:
+              same field order, labels, star picker, product pill and photo
+              field, same max-w-md width. Two fields that editor doesn't have
+              stay, because removing them would remove working features: the
+              displayed review count beside the stars (a product-level
+              setting added on an earlier explicit request) and the
+              moderation status. The product is required here, unlike that
+              editor's "(tùy chọn)": a product review is only ever shown on
+              its own product's page, so one without a product would appear
+              nowhere. */}
+          <ModalPanel maxWidth="max-w-md">
             <ModalHeader title="Thêm đánh giá" onClose={() => setCreating(false)} />
             <div className="space-y-4 px-6 py-5">
               <div>
-                <Label>Sản phẩm</Label>
+                <Label>Tên khách hàng</Label>
+                <Input
+                  value={createForm.customer_name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, customer_name: e.target.value }))}
+                  disabled={createSaving}
+                  placeholder="Nguyễn Văn A"
+                />
+              </div>
+              <div>
+                <Label>Nội dung đánh giá</Label>
+                <Textarea
+                  rows={4}
+                  value={createForm.comment}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, comment: e.target.value }))}
+                  disabled={createSaving}
+                  placeholder="Nội dung đánh giá của khách hàng..."
+                />
+              </div>
+              <div>
+                <Label>Ngày đánh giá</Label>
+                <Input
+                  type="date"
+                  value={createForm.review_date}
+                  max={todayInputValue()}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, review_date: e.target.value }))}
+                  disabled={createSaving}
+                />
+              </div>
+              <div>
+                <Label>Số sao</Label>
+                <StarPicker
+                  value={createForm.rating}
+                  onChange={(rating) => setCreateForm((f) => ({ ...f, rating }))}
+                  disabled={createSaving}
+                />
+              </div>
+              <div>
+                <Label>Sản phẩm liên quan</Label>
                 <ProductPickerField
                   products={productOptions}
                   productId={createForm.product_id}
@@ -493,50 +569,28 @@ export default function AdminReviewsPage() {
                   disabled={createSaving}
                 />
               </div>
+              <ImageField
+                label="Ảnh khách hàng"
+                value={createForm.photo_url || null}
+                onChange={(url) => setCreateForm((f) => ({ ...f, photo_url: url ?? "" }))}
+                disabled={createSaving}
+                onUploadingChange={setCreatePhotoUploading}
+              />
               <div>
-                <Label>Tên khách hàng</Label>
+                <Label>Số lượt đánh giá hiển thị</Label>
                 <Input
-                  value={createForm.customer_name}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, customer_name: e.target.value }))}
+                  value={createForm.review_count_override}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, review_count_override: e.target.value }))
+                  }
                   disabled={createSaving}
-                  placeholder="Nguyễn Văn A"
+                  inputMode="numeric"
+                  placeholder="Tự động"
                 />
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <Label>Số sao</Label>
-                  <StarPicker
-                    value={createForm.rating}
-                    onChange={(rating) => setCreateForm((f) => ({ ...f, rating }))}
-                    disabled={createSaving}
-                  />
-                </div>
-                <div>
-                  <Label>Số lượt đánh giá hiển thị</Label>
-                  <Input
-                    value={createForm.review_count_override}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({ ...f, review_count_override: e.target.value }))
-                    }
-                    disabled={createSaving}
-                    inputMode="numeric"
-                    placeholder="Tự động"
-                  />
-                  <p className="mt-1 text-[11px] leading-4 text-neutral-500">
-                    Số trong ngoặc cạnh sao ở trang sản phẩm. Để trống = đếm tự động theo
-                    số đánh giá đã duyệt. Áp dụng cho cả sản phẩm, không riêng đánh giá này.
-                  </p>
-                </div>
-              </div>
-              <div>
-                <Label>Nội dung</Label>
-                <Textarea
-                  rows={4}
-                  value={createForm.comment}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, comment: e.target.value }))}
-                  disabled={createSaving}
-                  placeholder="Nội dung đánh giá của khách hàng..."
-                />
+                <p className="mt-1 text-[11px] leading-4 text-neutral-500">
+                  Số trong ngoặc cạnh sao ở trang sản phẩm. Để trống = đếm tự động theo
+                  số đánh giá đã duyệt. Áp dụng cho cả sản phẩm, không riêng đánh giá này.
+                </p>
               </div>
               <div>
                 <Label>Trạng thái</Label>
@@ -554,14 +608,14 @@ export default function AdminReviewsPage() {
                   ))}
                 </Select>
               </div>
-              {createError && <p className="text-xs text-red-700">{createError}</p>}
+            {createError && <p className="text-xs text-red-700">{createError}</p>}
             </div>
             <ModalFooter>
               <Button variant="secondary" onClick={() => setCreating(false)} disabled={createSaving}>
                 Hủy
               </Button>
-              <Button onClick={submitCreate} disabled={createSaving}>
-                {createSaving ? "Đang lưu..." : "Thêm đánh giá"}
+              <Button onClick={submitCreate} disabled={createSaving || createPhotoUploading}>
+                {createSaving ? "Đang lưu..." : createPhotoUploading ? "Đang tải ảnh..." : "Thêm đánh giá"}
               </Button>
             </ModalFooter>
           </ModalPanel>

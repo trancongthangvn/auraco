@@ -37,10 +37,12 @@ export default function AddToBag({ product }: { product: FullProduct }) {
         (v, i) => variants.findIndex((o) => o.colorName === v.colorName) === i
       )
     : [];
-  // A single color isn't a real choice — showing one static swatch would
-  // look like a picker with nothing to pick. Only surface this row once
-  // there's an actual decision to make.
-  const showSwatches = colorSwatches.length >= 2;
+  // Every colour the admin has set up (and left "Đang bán") appears here,
+  // even when there is only one — explicit request: "admin cài đặt màu nào
+  // thì ngoài trang công khai có màu đó". This replaces the earlier
+  // two-or-more threshold, which hid a product's only configured colour.
+  // A product with no variants at all still shows its plain material line.
+  const showSwatches = colorSwatches.length >= 1;
 
   const displayPrice = hasVariants && selectedVariant ? selectedVariant.price : product.price;
   const displayCompareAt = hasVariants

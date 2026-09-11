@@ -338,13 +338,20 @@ export default function Gallery({
   // click restarts the 5s window from wherever the customer just jumped to,
   // instead of the next auto-step landing a moment later and feeling like
   // the click didn't register.
+  //
+  // Paused while the lightbox is open — explicit request: the lightbox
+  // shows `active` too, so this same timer was flipping the photo a
+  // customer had deliberately opened to inspect every 5s. Closing it
+  // re-runs this effect and starts a fresh 5s window, so the on-page
+  // rotation carries on exactly as before, from whichever photo the
+  // lightbox was left on.
   useEffect(() => {
-    if (effectiveImages.length <= 1) return;
+    if (effectiveImages.length <= 1 || lightboxOpen) return;
     const id = setTimeout(() => {
       setActive((i) => (i + 1) % effectiveImages.length);
     }, 5000);
     return () => clearTimeout(id);
-  }, [active, effectiveImages.length]);
+  }, [active, effectiveImages.length, lightboxOpen]);
 
   return (
     // Explicit request, confirmed against missoma.com's own

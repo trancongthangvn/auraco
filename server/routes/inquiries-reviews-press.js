@@ -1,6 +1,9 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const { query } = require('../db');
 const { authMiddleware, requireAdmin } = require('../middleware/auth');
+const { upload, verifyMagicBytes } = require('../lib/upload');
 
 const router = express.Router();
 
@@ -111,29 +114,60 @@ router.delete('/admin/inquiries/:id', authMiddleware, requireAdmin, async (req, 
 // Product reviews
 // ============================================================================
 
-// POST /products/:slug/reviews — public: customer submits a review (pending)
-// photoUrl is optional and, today, nothing public writes it — there is no
-// public-facing image upload endpoint in this codebase (the only one,
-// POST /media/admin/images, is admin/staff-gated, same as how testimonial
-// photos are only ever set from the admin homepage editor). Accepting it
-// here just threads the column through end to end so an admin can set it
-// later via PUT /admin/reviews/:id.
-router.post('/products/:slug/reviews', async (req, res) => {
+// POST /products/:slug/reviews — public: customer submits a review (pending).
+//
+// Contract line item 21 ("khách hàng gửi đánh giá kèm hình ảnh") — a
+// customer can now attach a photo directly: send multipart/form-data with
+// a `photo` file field (upload.single below is a no-op passthrough on a
+// plain JSON request — multer only engages for multipart content-type, so
+// the existing JSON-only callers of this route are untouched). The
+// server-side `photoUrl` string field from before still works too, kept
+// for whatever might still send it. An uploaded file takes priority if
+// somehow both are present.
+//
+// Rate-limited (see server/index.js's reviewRateLimiter) — a file write to
+// disk is a meaningfully different cost from the plain-text submission this
+// route already accepted unlimited.
+router.post('/products/:slug/reviews', upload.single('photo'), async (req, res) => {
   const { slug } = req.params;
   const { customerName, rating, comment, photoUrl } = req.body || {};
 
+  const cleanupUploadedFile = () => {
+    if (req.file) fs.unlink(req.file.path, () => {});
+  };
+
   if (!customerName || typeof customerName !== 'string' || !customerName.trim()) {
+    cleanupUploadedFile();
     return res.status(400).json({ error: 'customerName is required' });
   }
   const ratingNum = Number(rating);
   if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+    cleanupUploadedFile();
     return res.status(400).json({ error: 'rating must be an integer between 1 and 5' });
   }
   if (!comment || typeof comment !== 'string' || !comment.trim()) {
+    cleanupUploadedFile();
     return res.status(400).json({ error: 'comment is required' });
   }
   if (photoUrl !== undefined && photoUrl !== null && typeof photoUrl !== 'string') {
+    cleanupUploadedFile();
     return res.status(400).json({ error: 'photoUrl must be a string' });
+  }
+
+  let uploadedPhotoUrl = null;
+  if (req.file) {
+    // The shared `upload` instance's MIME whitelist also covers video/mp4
+    // (used elsewhere for product videos) — a review "photo" field is
+    // image-only, same explicit check media.js's admin image upload uses.
+    if (!req.file.mimetype.startsWith('image/')) {
+      cleanupUploadedFile();
+      return res.status(400).json({ error: 'photo must be an image file' });
+    }
+    if (!verifyMagicBytes(req.file.path, req.file.mimetype)) {
+      cleanupUploadedFile();
+      return res.status(400).json({ error: 'Uploaded file failed content verification' });
+    }
+    uploadedPhotoUrl = `/uploads/${path.basename(req.file.path)}`;
   }
 
   try {
@@ -142,6 +176,7 @@ router.post('/products/:slug/reviews', async (req, res) => {
       [slug]
     );
     if (productResult.rows.length === 0) {
+      cleanupUploadedFile();
       return res.status(404).json({ error: 'Product not found' });
     }
     const product = productResult.rows[0];
@@ -150,10 +185,11 @@ router.post('/products/:slug/reviews', async (req, res) => {
       `INSERT INTO product_reviews (product_id, product_name, customer_name, rating, comment, status, photo_url)
        VALUES ($1, $2, $3, $4, $5, 'Chờ duyệt', $6)
        RETURNING *`,
-      [product.id, product.name, customerName.trim(), ratingNum, comment.trim(), photoUrl || null]
+      [product.id, product.name, customerName.trim(), ratingNum, comment.trim(), uploadedPhotoUrl || photoUrl || null]
     );
     return res.status(201).json({ data: result.rows[0] });
   } catch (err) {
+    cleanupUploadedFile();
     console.error(err);
     return res.status(500).json({ error: 'Failed to submit review' });
   }

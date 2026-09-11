@@ -9,6 +9,7 @@ import {
   WarrantyBadgeIcon,
   GemIcon,
   GiftIcon,
+  SparkleIcon,
 } from "@/components/icons";
 
 // The reference's Delivery & Returns panel is a fixed five-line policy list —
@@ -34,6 +35,11 @@ export default function Accordion({
      * whitespace-pre-line path — used for the real per-product Details copy
      * imported from the reference site (see docs/product-details.sql). */
     html?: boolean;
+    /** Admin's own "Điểm nổi bật" (Highlights) bullet list for this product
+     *  — separate field from `content`/`descriptionSections`, rendered
+     *  below whichever of those is showing, each line prefixed with a
+     *  sparkle bullet. An admin-set "Label: value" line bolds the label. */
+    featureItems?: string[];
   }[];
 }) {
   const [open, setOpen] = useState<number | null>(null);
@@ -77,6 +83,35 @@ export default function Accordion({
                 <p className="whitespace-pre-line pb-4 font-ui text-[14px] font-medium leading-[21.7px] tracking-[0.14px] text-[#302c27]">
                   {item.content}
                 </p>
+              )}
+              {item.featureItems && item.featureItems.length > 0 && (
+                <ul className={item.bulletItems || item.html ? "pb-4" : "-mt-2 pb-4"}>
+                  {item.featureItems.map((f) => {
+                    // Admin can save a feature as "Label: value" (two boxes
+                    // in the edit form); bold the label when present,
+                    // otherwise render the plain sentence as-is.
+                    const sep = f.indexOf(": ");
+                    const label = sep === -1 ? null : f.slice(0, sep);
+                    const rest = sep === -1 ? f : f.slice(sep + 2);
+                    return (
+                      <li
+                        key={f}
+                        className="flex gap-2 font-ui text-[14px] font-medium leading-[21.7px] tracking-[0.14px] text-[#302c27] first:mt-0"
+                      >
+                        <SparkleIcon size={14} className="text-gold mt-1 shrink-0" />
+                        <span>
+                          {label ? (
+                            <>
+                              <strong className="font-semibold">{label}:</strong>&nbsp;{rest}
+                            </>
+                          ) : (
+                            rest
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </>
           )}

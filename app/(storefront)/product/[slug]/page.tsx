@@ -306,6 +306,16 @@ export default async function ProductPage({
                         // admin-set/dictionary value itself is untouched.
                         title: (siteSettings.whyLoveItLabel || dict.product.whyLoveIt).replace(/:\s*$/, ""),
                         content: product.description,
+                        // Contract line item 4 ("tính năng nổi bật"): the
+                        // admin's "Điểm nổi bật" bullet list, real data on
+                        // every product, had stopped rendering anywhere on
+                        // this page when descriptionSections replaced the
+                        // old single Description block. Restored here only
+                        // — not on the descriptionSections branch above,
+                        // whose rows are an admin's own authored write-up
+                        // and shouldn't also get this separate field mixed
+                        // in underneath.
+                        featureItems: product.features,
                       },
                     ]),
                 // "Details" row removed per explicit request — the

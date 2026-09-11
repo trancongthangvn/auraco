@@ -35,6 +35,9 @@ export default function ReviewsClient({
   const [formRating, setFormRating] = useState(0);
   const [formName, setFormName] = useState("");
   const [formComment, setFormComment] = useState("");
+  // Contract line item 21 ("khách hàng gửi đánh giá kèm hình ảnh") — an
+  // optional photo the customer attaches to their own review.
+  const [formPhoto, setFormPhoto] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -68,19 +71,34 @@ export default function ReviewsClient({
     if (!formComment.trim()) return setSubmitError("Write a short review.");
     setSubmitting(true);
     try {
+      // Plain JSON when there's no photo (unchanged from before — every
+      // existing pending/approved review went through this exact path).
+      // multipart/form-data only when a photo is actually attached, so the
+      // common case doesn't pay for a request encoding it doesn't need.
+      const body = formPhoto
+        ? (() => {
+            const fd = new FormData();
+            fd.set("customerName", formName.trim());
+            fd.set("rating", String(formRating));
+            fd.set("comment", formComment.trim());
+            fd.set("photo", formPhoto);
+            return fd;
+          })()
+        : JSON.stringify({
+            customerName: formName.trim(),
+            rating: formRating,
+            comment: formComment.trim(),
+          });
       await apiFetch(`/api/products/${encodeURIComponent(slug)}/reviews`, {
         method: "POST",
-        body: JSON.stringify({
-          customerName: formName.trim(),
-          rating: formRating,
-          comment: formComment.trim(),
-        }),
+        body,
       });
       setSubmitted(true);
       setWriting(false);
       setFormName("");
       setFormComment("");
       setFormRating(0);
+      setFormPhoto(null);
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : "Failed to submit review.");
     } finally {
@@ -105,6 +123,8 @@ export default function ReviewsClient({
             setFormName={setFormName}
             formComment={formComment}
             setFormComment={setFormComment}
+            formPhoto={formPhoto}
+            setFormPhoto={setFormPhoto}
             submitError={submitError}
             submitting={submitting}
             onSubmit={submitReview}
@@ -175,6 +195,8 @@ export default function ReviewsClient({
                 setFormName={setFormName}
                 formComment={formComment}
                 setFormComment={setFormComment}
+                formPhoto={formPhoto}
+                setFormPhoto={setFormPhoto}
                 submitError={submitError}
                 submitting={submitting}
                 onSubmit={submitReview}
@@ -269,6 +291,8 @@ function ReviewForm({
   setFormName,
   formComment,
   setFormComment,
+  formPhoto,
+  setFormPhoto,
   submitError,
   submitting,
   onSubmit,
@@ -280,6 +304,8 @@ function ReviewForm({
   setFormName: (s: string) => void;
   formComment: string;
   setFormComment: (s: string) => void;
+  formPhoto: File | null;
+  setFormPhoto: (f: File | null) => void;
   submitError: string;
   submitting: boolean;
   onSubmit: () => void;
@@ -319,6 +345,29 @@ function ReviewForm({
         disabled={submitting}
         className="mb-2 w-full border border-black/15 px-2 py-1.5 text-sm outline-none focus:border-ink"
       />
+      <label className="mb-2 block text-xs text-black/50">
+        Add a photo (optional)
+        <input
+          type="file"
+          accept="image/*"
+          disabled={submitting}
+          onChange={(e) => setFormPhoto(e.target.files?.[0] ?? null)}
+          className="mt-1 block w-full text-xs file:mr-2 file:rounded-full file:border file:border-black/15 file:bg-transparent file:px-3 file:py-1 file:text-xs file:text-[#2b261f] disabled:opacity-50"
+        />
+      </label>
+      {formPhoto && (
+        <p className="mb-2 flex items-center gap-2 text-xs text-black/50">
+          {formPhoto.name}
+          <button
+            type="button"
+            onClick={() => setFormPhoto(null)}
+            disabled={submitting}
+            className="text-black/40 underline hover:text-ink"
+          >
+            Remove
+          </button>
+        </p>
+      )}
       {submitError && <p className="mb-2 text-xs text-red-700">{submitError}</p>}
       <div className="flex items-center gap-2">
         <button

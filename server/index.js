@@ -69,6 +69,88 @@ setInterval(() => {
 app.post('/api/admin/login', loginRateLimiter);
 
 // ----------------------------------------------------------------------------
+// Same per-IP limiter shape as login's, kept as its own Map rather than a
+// shared factory so nothing about the login limiter's existing behavior is
+// touched. Applies to POST /api/orders/lookup (contract line item 16, public
+// order lookup by code + email) — that route matches two customer-supplied
+// values against a DB row with no other auth, so it gets the same guard
+// against being hammered as the credential-checking login route does.
+// ----------------------------------------------------------------------------
+const ORDER_LOOKUP_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const ORDER_LOOKUP_RATE_LIMIT_MAX_ATTEMPTS = 10;
+const orderLookupAttempts = new Map(); // ip -> { count, windowStart }
+
+function orderLookupRateLimiter(req, res, next) {
+  const ip = req.ip;
+  const now = Date.now();
+  const entry = orderLookupAttempts.get(ip);
+
+  if (!entry || now - entry.windowStart > ORDER_LOOKUP_RATE_LIMIT_WINDOW_MS) {
+    orderLookupAttempts.set(ip, { count: 1, windowStart: now });
+    return next();
+  }
+
+  if (entry.count >= ORDER_LOOKUP_RATE_LIMIT_MAX_ATTEMPTS) {
+    return res.status(429).json({ error: 'Too many lookup attempts. Please try again later.' });
+  }
+
+  entry.count += 1;
+  next();
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of orderLookupAttempts.entries()) {
+    if (now - entry.windowStart > ORDER_LOOKUP_RATE_LIMIT_WINDOW_MS) {
+      orderLookupAttempts.delete(ip);
+    }
+  }
+}, ORDER_LOOKUP_RATE_LIMIT_WINDOW_MS).unref();
+
+app.post('/api/orders/lookup', orderLookupRateLimiter);
+
+// ----------------------------------------------------------------------------
+// Same shape again for POST /api/products/:slug/reviews (contract line item
+// 21, "khách hàng gửi đánh giá kèm hình ảnh"). That route always accepted an
+// unauthenticated write; the review text alone was already cheap to spam
+// with no rate limit at all, unchanged here. What's new is a file write to
+// disk, which is a materially different cost — this limiter is scoped to
+// that new capability, not a general redesign of the review flow.
+// ----------------------------------------------------------------------------
+const REVIEW_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const REVIEW_RATE_LIMIT_MAX_ATTEMPTS = 10;
+const reviewAttempts = new Map(); // ip -> { count, windowStart }
+
+function reviewRateLimiter(req, res, next) {
+  const ip = req.ip;
+  const now = Date.now();
+  const entry = reviewAttempts.get(ip);
+
+  if (!entry || now - entry.windowStart > REVIEW_RATE_LIMIT_WINDOW_MS) {
+    reviewAttempts.set(ip, { count: 1, windowStart: now });
+    return next();
+  }
+
+  if (entry.count >= REVIEW_RATE_LIMIT_MAX_ATTEMPTS) {
+    return res.status(429).json({ error: 'Too many reviews submitted. Please try again later.' });
+  }
+
+  entry.count += 1;
+  next();
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of reviewAttempts.entries()) {
+    if (now - entry.windowStart > REVIEW_RATE_LIMIT_WINDOW_MS) {
+      reviewAttempts.delete(ip);
+    }
+  }
+}, REVIEW_RATE_LIMIT_WINDOW_MS).unref();
+
+app.post('/api/products/:slug/reviews', reviewRateLimiter);
+
+// ----------------------------------------------------------------------------
 // Serve uploaded media. The upload routes hand back "/uploads/<file>" URLs and
 // next.config.ts rewrites /uploads/* here, so without this every uploaded
 // image 404s. Files are served read-only with a long cache (names are

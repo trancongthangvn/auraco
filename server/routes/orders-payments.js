@@ -260,6 +260,41 @@ router.post('/orders', async (req, res) => {
 });
 
 // ----------------------------------------------------------------------------
+// POST /orders/lookup — public order lookup for customers (contract line
+// item 16, "tra cứu đơn hàng theo mã"). Requires BOTH the order code and the
+// email it was placed under, unlike GET /orders/:id below (which answers to
+// the bare code or numeric id alone). order_code is short and sequential
+// ('AC-1042'), so a code-only public lookup would let anyone enumerate every
+// customer's name, phone and shipping address — this route exists so the
+// storefront's lookup page never has to make that call. GET /orders/:id
+// itself is left exactly as it was; nothing else in the app was calling it.
+// ----------------------------------------------------------------------------
+router.post('/orders/lookup', async (req, res) => {
+  const { orderCode, email } = req.body || {};
+  if (!isNonEmptyString(orderCode) || !isNonEmptyString(email)) {
+    return res.status(400).json({ error: 'orderCode and email are required' });
+  }
+  try {
+    const orderRes = await query(
+      `SELECT * FROM orders WHERE order_code = $1 AND lower(email) = lower($2)`,
+      [orderCode.trim(), email.trim()]
+    );
+    const order = orderRes.rows[0];
+    // Same message whether the code doesn't exist or the email doesn't
+    // match it — telling those apart would let an attacker confirm a
+    // guessed order code even without its email.
+    if (!order) {
+      return res.status(404).json({ error: 'No order found for that order code and email.' });
+    }
+    const itemsRes = await query(`SELECT * FROM order_items WHERE order_id = $1 ORDER BY id`, [order.id]);
+    return res.json({ data: { ...order, items: itemsRes.rows } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to look up order' });
+  }
+});
+
+// ----------------------------------------------------------------------------
 // GET /orders/:id — public order lookup (by numeric id or order_code).
 // ----------------------------------------------------------------------------
 router.get('/orders/:id', async (req, res) => {

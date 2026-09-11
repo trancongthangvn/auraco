@@ -112,6 +112,9 @@ function FloatingField({
   );
 }
 
+// Contract line item 15 calls for delivery support across 20+ countries.
+// The original 13 stay first and in the same order (nothing reorders an
+// already-placed order's stored country), with 8 more appended after.
 const countries = [
   "Vietnam",
   "United States",
@@ -126,6 +129,14 @@ const countries = [
   "New Zealand",
   "Netherlands",
   "Ireland",
+  "Italy",
+  "Spain",
+  "Switzerland",
+  "Sweden",
+  "Belgium",
+  "United Arab Emirates",
+  "Hong Kong",
+  "Malaysia",
 ];
 
 // Payment methods accepted by the orders API (server/routes/orders-payments.js
@@ -849,6 +860,13 @@ export default function CheckoutClient() {
               <p className="font-ui text-sm">
                 Order <strong>{order.order_code}</strong> placed successfully.
                 Total: ${Number(order.total).toFixed(2)}
+              </p>
+              <p className="font-ui text-xs text-black/50">
+                Save your order code — you can check its status any time at{" "}
+                <Link href="/pages/track-order" className="text-[#2b261f] underline hover:text-gold">
+                  Track Your Order
+                </Link>
+                .
               </p>
 
               {(order.payment_method === "cashapp" ||

@@ -288,7 +288,7 @@ router.get('/:slug/bundle', async (req, res) => {
     const product = productResult.rows[0];
 
     const companionsResult = await query(
-      `SELECT c.slug, c.name, c.price, c.compare_at_price, c.images
+      `SELECT c.slug, c.name, c.price, c.compare_at_price, c.images, c.stock
          FROM product_bundles pb
          JOIN products c ON c.id = pb.companion_id
         WHERE pb.product_id = $1 AND c.active = TRUE
@@ -305,6 +305,9 @@ router.get('/:slug/bundle', async (req, res) => {
           price: Number(c.price),
           compareAtPrice: c.compare_at_price != null ? Number(c.compare_at_price) : null,
           image: Array.isArray(c.images) ? c.images[0] : undefined,
+          // Lets the product page render a sold-out companion as unavailable
+          // from its very first paint, before any client-side stock lookup.
+          stock: Number(c.stock),
         })),
       },
     });

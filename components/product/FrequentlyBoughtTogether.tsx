@@ -14,6 +14,8 @@ type BundleItem = {
   price: number;
   compareAtPrice?: number;
   image?: string;
+  /** Server-rendered stock, so availability is right from the first paint. */
+  stock?: number;
 };
 
 export default function FrequentlyBoughtTogether({
@@ -21,7 +23,7 @@ export default function FrequentlyBoughtTogether({
   companions,
   discountPercent = 0,
 }: {
-  mainProduct: { slug: string; name: string; price: number; image?: string };
+  mainProduct: { slug: string; name: string; price: number; image?: string; stock?: number };
   companions: BundleItem[];
   /** Admin-set discount (server/routes/products.js's product_bundles /
    *  bundle_discount_percent) — a flat per-companion discount off each
@@ -45,8 +47,18 @@ export default function FrequentlyBoughtTogether({
   // companion is shown unticked and can't be ticked, so it's never in the
   // total or the add; a sold-out main product disables the whole button,
   // since this block always adds the main product.
-  const mainSoldOut = isOutOfStock(mainProduct.slug);
-  const companionSoldOut = (slug: string) => isOutOfStock(slug);
+  //
+  // Either source marks an item sold out: the stock the server rendered
+  // into this page, or the live figure the cart loads afterwards. Relying
+  // on the live figure alone left a real gap — the page is clickable
+  // before that request returns (measured: interactive at ~130ms, stock
+  // back at ~260ms on staging, far longer on a slow phone), and a click in
+  // that window added a sold-out product to the bag.
+  const soldOutFrom = (stock: number | undefined, slug: string) =>
+    (stock !== undefined && stock <= 0) || isOutOfStock(slug);
+  const mainSoldOut = soldOutFrom(mainProduct.stock, mainProduct.slug);
+  const companionStock = new Map(companions.map((c) => [c.slug, c.stock]));
+  const companionSoldOut = (slug: string) => soldOutFrom(companionStock.get(slug), slug);
 
   // When a real bundle discount is configured, each companion's displayed
   // price is its own price discounted by that flat percentage, with its

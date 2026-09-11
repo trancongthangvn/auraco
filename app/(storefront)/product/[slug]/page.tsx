@@ -115,6 +115,7 @@ function toFrequentlyBoughtCompanions(list: ApiProduct[]) {
     compareAtPrice:
       p.compare_at_price != null ? Number(p.compare_at_price) : undefined,
     image: p.images[0],
+    stock: Number(p.stock),
   }));
 }
 
@@ -126,6 +127,7 @@ type BundleApiResponse = {
     price: number;
     compareAtPrice: number | null;
     image?: string;
+    stock?: number;
   }[];
 };
 
@@ -179,6 +181,7 @@ export default async function ProductPage({
           price: c.price,
           compareAtPrice: c.compareAtPrice ?? undefined,
           image: c.image,
+          stock: c.stock,
         }))
       : toFrequentlyBoughtCompanions(rawRelated);
   const bundleDiscountPercent = bundle.companions.length > 0 ? bundle.discountPercent : 0;
@@ -323,6 +326,7 @@ export default async function ProductPage({
                 name: product.name,
                 price: product.price,
                 image: product.images[0],
+                stock: product.stock,
               }}
               companions={frequentlyBoughtCompanions}
               discountPercent={bundleDiscountPercent}

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { CART_STORAGE_KEY, cartItemKey, type CartItem } from "@/lib/cart";
 import { apiFetch } from "@/lib/api";
 
@@ -85,8 +85,13 @@ export default function CartProvider({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState<AddInput | null>(null);
   const [stockBySlug, setStockBySlug] = useState<Record<string, StockEntry> | null>(null);
+  // The same map, readable inside an add that had to wait for it (state in
+  // that closure would still be the value from before the wait), plus the
+  // one in-flight load every early add can share.
+  const stockRef = useRef<Record<string, StockEntry> | null>(null);
+  const stockLoadRef = useRef<Promise<void> | null>(null);
 
-  const refreshStock = useCallback(async () => {
+  const loadStock = useCallback(async () => {
     try {
       const list = await apiFetch<
         { slug: string; stock: number; variants?: { id: number; stock: number }[] }[]
@@ -98,12 +103,21 @@ export default function CartProvider({
           variants: Object.fromEntries((p.variants ?? []).map((v) => [v.id, Number(v.stock)])),
         };
       }
+      stockRef.current = next;
       setStockBySlug(next);
     } catch {
       // Stock unavailable — the storefront can't pre-empt here, but the
       // orders API still refuses out-of-stock items at checkout.
     }
   }, []);
+
+  const refreshStock = useCallback(() => {
+    const load = loadStock().finally(() => {
+      if (stockLoadRef.current === load) stockLoadRef.current = null;
+    });
+    stockLoadRef.current = load;
+    return load;
+  }, [loadStock]);
 
   // Deferred with queueMicrotask, the same pattern the stored-cart load
   // above uses: the state update lands after the fetch, never synchronously
@@ -114,8 +128,8 @@ export default function CartProvider({
     });
   }, [refreshStock]);
 
-  const isOutOfStock = (slug: string, variantId?: number) => {
-    const entry = stockBySlug?.[slug];
+  const stockSays = (map: Record<string, StockEntry> | null, slug: string, variantId?: number) => {
+    const entry = map?.[slug];
     if (!entry) return false;
     if (variantId != null) {
       // A variant missing from the public list has been taken off sale.
@@ -124,6 +138,9 @@ export default function CartProvider({
     }
     return entry.stock <= 0;
   };
+
+  const isOutOfStock = (slug: string, variantId?: number) =>
+    stockSays(stockBySlug, slug, variantId);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -157,7 +174,23 @@ export default function CartProvider({
     // Add"), so refusing here covers them all, including any added later.
     // Those controls also show themselves as unavailable; this is the
     // backstop for when they don't.
-    if (isOutOfStock(input.slug, input.variantId)) return;
+    //
+    // Until live stock has loaded the answer isn't known, and letting the
+    // add through then was a real hole (a click right after the page became
+    // interactive put a sold-out item in the bag). So an early add waits for
+    // the load and decides on the result instead of guessing.
+    if (stockRef.current === null) {
+      void (stockLoadRef.current ?? refreshStock()).then(() => {
+        if (stockSays(stockRef.current, input.slug, input.variantId)) return;
+        commitAdd(input);
+      });
+      return;
+    }
+    if (stockSays(stockRef.current, input.slug, input.variantId)) return;
+    commitAdd(input);
+  };
+
+  const commitAdd = (input: AddInput) => {
     const key = cartItemKey(input);
     const qty = Math.max(1, input.qty ?? 1);
     setItems((list) => {

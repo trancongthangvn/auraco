@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
@@ -380,6 +380,15 @@ export default function AdminProductsPage() {
   const trackUploading = (delta: 1 | -1) =>
     setUploadingImages((n) => Math.max(0, n + delta));
   const [modalError, setModalError] = useState<string | null>(null);
+  // The edit form is long and its Save button sits at the very bottom, but
+  // the only error box used to be at the very top — a refused save (e.g. a
+  // colour without a name) looked like the button did nothing, and the new
+  // colours simply never reached the server. The message is now repeated
+  // next to the Save button and scrolled into view whenever it's set.
+  const saveErrorRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (modalError) saveErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [modalError]);
 
   const isAdmin = session?.role === "admin";
 
@@ -2014,6 +2023,15 @@ export default function AdminProductsPage() {
               </p>
             </div>
 
+            {modalError && (
+              <div
+                ref={saveErrorRef}
+                role="alert"
+                className="mx-6 mb-3 rounded-xl border border-red-700/30 bg-red-50 px-3 py-2 text-xs text-red-700"
+              >
+                Chưa lưu được: {modalError}
+              </div>
+            )}
             <ModalFooter>
               <Button variant="secondary" onClick={() => setEditing(null)} disabled={saving}>
                 Hủy

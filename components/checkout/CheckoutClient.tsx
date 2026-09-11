@@ -151,8 +151,27 @@ type CreatedOrder = {
 };
 
 export default function CheckoutClient() {
-  const { items, hydrated, subtotal, clear } = useCart();
+  const {
+    items,
+    hydrated,
+    subtotal,
+    clear,
+    removeItem,
+    isOutOfStock,
+    outOfStockItems,
+    refreshStock,
+  } = useCart();
   const itemsLoading = !hydrated;
+  // Explicit request: an out-of-stock item can't be paid for in any case.
+  // Checkout re-reads stock as it opens (the bag may have been filled days
+  // ago), and won't place the order while any line is sold out. The orders
+  // API refuses such lines too, so this is the explanation, not the guard.
+  const checkoutBlocked = outOfStockItems.length > 0;
+  useEffect(() => {
+    queueMicrotask(() => {
+      void refreshStock();
+    });
+  }, [refreshStock]);
 
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
   const [paymentMethodsError, setPaymentMethodsError] = useState("");
@@ -291,6 +310,10 @@ export default function CheckoutClient() {
     if (!phone.trim()) return setSubmitError("Phone is required.");
     if (!payment) return setSubmitError("Select a payment method.");
     if (items.length === 0) return setSubmitError("Your bag is empty.");
+    if (checkoutBlocked)
+      return setSubmitError(
+        "Some items in your bag are out of stock. Remove them to place your order."
+      );
 
     setSubmitting(true);
     try {
@@ -305,7 +328,13 @@ export default function CheckoutClient() {
             (await apiFetch<{ id: number }>(
               `/api/products/${encodeURIComponent(item.slug)}`
             ).then((p) => p.id));
-          return { product_id: productId, qty: item.qty };
+          // variant_id lets the orders API judge that exact variant's
+          // stock rather than the product's combined total.
+          return {
+            product_id: productId,
+            qty: item.qty,
+            ...(item.variantId != null ? { variant_id: item.variantId } : {}),
+          };
         })
       );
 
@@ -332,6 +361,9 @@ export default function CheckoutClient() {
       setSubmitError(
         err instanceof ApiError ? err.message : "Failed to place order"
       );
+      // Stock ran out between opening checkout and paying: re-read it so the
+      // sold-out line is labelled below, not just named in the error.
+      if (err instanceof ApiError && err.status === 409) void refreshStock();
     } finally {
       setSubmitting(false);
     }
@@ -786,9 +818,15 @@ export default function CheckoutClient() {
 
           {!order && (
             <>
+              {checkoutBlocked && (
+                <p role="alert" className="mb-3 font-ui text-sm text-red-700">
+                  Some items in your bag are out of stock. Remove them to place
+                  your order.
+                </p>
+              )}
               <button
                 type="button"
-                disabled={submitting || itemsLoading}
+                disabled={submitting || itemsLoading || checkoutBlocked}
                 onClick={handlePayNow}
                 className="w-full rounded-[4px] bg-[#2b261f] py-4 font-ui text-sm tracking-wide text-white transition-colors hover:bg-black disabled:opacity-50"
               >
@@ -978,6 +1016,18 @@ export default function CheckoutClient() {
                         <span>× {item.qty}</span>
                         <span>${(item.price * item.qty).toFixed(2)}</span>
                       </p>
+                      {!order && isOutOfStock(item.slug, item.variantId) && (
+                        <p className="mt-1 flex items-center gap-2 font-ui text-xs font-medium text-red-700">
+                          <span>Out of stock</span>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(cartItemKey(item))}
+                            className="underline underline-offset-2 hover:text-black"
+                          >
+                            Remove
+                          </button>
+                        </p>
+                      )}
                     </div>
                   </li>
                 ))}

@@ -1,7 +1,15 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { CART_STORAGE_KEY, cartItemKey, type CartItem } from "@/lib/cart";
+import { apiFetch } from "@/lib/api";
+
+/** Live stock per product slug, as the public product list reports it. */
+type StockEntry = {
+  stock: number;
+  /** Only variants still on sale appear in the public list. */
+  variants: Record<number, number>;
+};
 
 type AddInput = Omit<CartItem, "qty"> & { qty?: number };
 
@@ -30,6 +38,18 @@ type CartContextValue = {
   previewItem: AddInput | null;
   showPreview: (item: AddInput) => void;
   confirmPreview: () => void;
+  /**
+   * True when this product (or this variant of it) has no stock left —
+   * explicit request: an out-of-stock item can't go in the bag or be paid
+   * for in any case. Unknown products (stock not loaded yet, or a product
+   * no longer public) return false here; the orders API is the final check
+   * and refuses them either way.
+   */
+  isOutOfStock: (slug: string, variantId?: number) => boolean;
+  /** Lines already in the bag that have since run out — checkout waits on these. */
+  outOfStockItems: CartItem[];
+  /** Re-reads stock, e.g. when checkout opens, so it judges current numbers. */
+  refreshStock: () => Promise<void>;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -64,6 +84,46 @@ export default function CartProvider({
   const [hydrated, setHydrated] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState<AddInput | null>(null);
+  const [stockBySlug, setStockBySlug] = useState<Record<string, StockEntry> | null>(null);
+
+  const refreshStock = useCallback(async () => {
+    try {
+      const list = await apiFetch<
+        { slug: string; stock: number; variants?: { id: number; stock: number }[] }[]
+      >("/api/products");
+      const next: Record<string, StockEntry> = {};
+      for (const p of list) {
+        next[p.slug] = {
+          stock: Number(p.stock),
+          variants: Object.fromEntries((p.variants ?? []).map((v) => [v.id, Number(v.stock)])),
+        };
+      }
+      setStockBySlug(next);
+    } catch {
+      // Stock unavailable — the storefront can't pre-empt here, but the
+      // orders API still refuses out-of-stock items at checkout.
+    }
+  }, []);
+
+  // Deferred with queueMicrotask, the same pattern the stored-cart load
+  // above uses: the state update lands after the fetch, never synchronously
+  // inside the effect body.
+  useEffect(() => {
+    queueMicrotask(() => {
+      void refreshStock();
+    });
+  }, [refreshStock]);
+
+  const isOutOfStock = (slug: string, variantId?: number) => {
+    const entry = stockBySlug?.[slug];
+    if (!entry) return false;
+    if (variantId != null) {
+      // A variant missing from the public list has been taken off sale.
+      const variantStock = entry.variants[variantId];
+      return variantStock === undefined || variantStock <= 0;
+    }
+    return entry.stock <= 0;
+  };
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -92,6 +152,12 @@ export default function CartProvider({
   }, []);
 
   const addItem = (input: AddInput) => {
+    // The one place every add-to-bag control goes through (product page,
+    // product cards, Frequently bought together, the bag's own "Why Not
+    // Add"), so refusing here covers them all, including any added later.
+    // Those controls also show themselves as unavailable; this is the
+    // backstop for when they don't.
+    if (isOutOfStock(input.slug, input.variantId)) return;
     const key = cartItemKey(input);
     const qty = Math.max(1, input.qty ?? 1);
     setItems((list) => {
@@ -129,6 +195,8 @@ export default function CartProvider({
 
   const clear = () => setItems([]);
 
+  const outOfStockItems = items.filter((it) => isOutOfStock(it.slug, it.variantId));
+
   const totalQty = items.reduce((sum, it) => sum + it.qty, 0);
   const subtotal = items.reduce((sum, it) => sum + it.price * it.qty, 0);
 
@@ -152,6 +220,9 @@ export default function CartProvider({
         previewItem,
         showPreview,
         confirmPreview,
+        isOutOfStock,
+        outOfStockItems,
+        refreshStock,
       }}
     >
       {children}

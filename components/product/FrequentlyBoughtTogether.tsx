@@ -37,9 +37,16 @@ export default function FrequentlyBoughtTogether({
   );
   const [added, setAdded] = useState(false);
   const { currency, rates } = useCurrency();
-  const { addItem } = useCart();
+  const { addItem, isOutOfStock } = useCart();
 
   if (companions.length === 0) return null;
+
+  // Out-of-stock items can't be bought here — explicit request. A sold-out
+  // companion is shown unticked and can't be ticked, so it's never in the
+  // total or the add; a sold-out main product disables the whole button,
+  // since this block always adds the main product.
+  const mainSoldOut = isOutOfStock(mainProduct.slug);
+  const companionSoldOut = (slug: string) => isOutOfStock(slug);
 
   // When a real bundle discount is configured, each companion's displayed
   // price is its own price discounted by that flat percentage, with its
@@ -52,7 +59,7 @@ export default function FrequentlyBoughtTogether({
       ? { price: c.price * (1 - discountPercent / 100), compareAtPrice: c.price }
       : { price: c.price, compareAtPrice: c.compareAtPrice };
 
-  const selectedCompanions = companions.filter((c) => checked[c.slug]);
+  const selectedCompanions = companions.filter((c) => checked[c.slug] && !companionSoldOut(c.slug));
   const selectedDisplays = selectedCompanions.map(displayOf);
   const total =
     mainProduct.price + selectedDisplays.reduce((sum, d) => sum + d.price, 0);
@@ -75,20 +82,22 @@ export default function FrequentlyBoughtTogether({
       {/* Each row is its own bordered card on the reference, not a divided
           list — a 10px-radius white tile with a 10.4px grid gutter. */}
       <ul className="grid gap-[10.4px]">
-        {rows.map(({ item, locked }) => (
+        {rows.map(({ item, locked }) => {
+          const soldOut = locked ? mainSoldOut : companionSoldOut(item.slug);
+          return (
           <li
             key={item.slug}
-            className="rounded-[10px] border border-gold-light/35 bg-white"
+            className={`rounded-[10px] border border-gold-light/35 bg-white ${soldOut ? "opacity-60" : ""}`}
           >
             <label
               className={`flex items-start gap-3 p-3 ${
-                locked ? "cursor-not-allowed" : "cursor-pointer"
+                locked || soldOut ? "cursor-not-allowed" : "cursor-pointer"
               }`}
             >
               <input
                 type="checkbox"
-                checked={locked ? true : !!checked[item.slug]}
-                disabled={locked}
+                checked={locked ? !mainSoldOut : !soldOut && !!checked[item.slug]}
+                disabled={locked || soldOut}
                 onChange={(e) =>
                   setChecked((prev) => ({
                     ...prev,
@@ -126,15 +135,23 @@ export default function FrequentlyBoughtTogether({
                     </span>
                   )}
                 </div>
+                {soldOut && (
+                  <span className="font-ui text-[12px] font-medium uppercase tracking-[0.06em] text-red-700">
+                    Out of stock
+                  </span>
+                )}
               </div>
             </label>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       <button
         type="button"
+        disabled={mainSoldOut}
         onClick={() => {
+          if (mainSoldOut) return;
           // Main product at full price, each selected companion at its own
           // already-discounted price (see displayOf above) — a real
           // localStorage cart now (not a demo checkmark), so the total
@@ -156,9 +173,11 @@ export default function FrequentlyBoughtTogether({
           setAdded(true);
           setTimeout(() => setAdded(false), 1800);
         }}
-        className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-[10px] bg-[#2b261f] px-5 py-[15.2px] font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] text-white transition-colors hover:bg-black"
+        className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-[10px] bg-[#2b261f] px-5 py-[15.2px] font-ui text-[13px] font-medium uppercase leading-[20.15px] tracking-[1.04px] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#2b261f]"
       >
-        {added ? (
+        {mainSoldOut ? (
+          <span>Out of stock</span>
+        ) : added ? (
           <span className="flex items-center gap-2">
             Added <CheckIcon size={15} />
           </span>

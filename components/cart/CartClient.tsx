@@ -30,8 +30,18 @@ export default function CartClient({
   /** Reference shows a "Best sellers" rail below the cart, empty or not. */
   bestSellers: CarouselProduct[];
 }) {
-  const { items, hydrated, totalQty, subtotal, updateQty, removeItem } =
-    useCart();
+  const {
+    items,
+    hydrated,
+    totalQty,
+    subtotal,
+    updateQty,
+    removeItem,
+    isOutOfStock,
+    outOfStockItems,
+  } = useCart();
+  // Explicit request: out-of-stock items can't be paid for in any case.
+  const checkoutBlocked = outOfStockItems.length > 0;
 
   // Same display-only tax line as checkout (see CheckoutClient.tsx) — the
   // reference shows it on the cart page too, and orders have no
@@ -159,6 +169,11 @@ export default function CartClient({
                             {item.variantLabel || item.material}
                           </p>
                         )}
+                        {isOutOfStock(item.slug, item.variantId) && (
+                          <p className="mt-1 text-xs font-medium text-red-700">
+                            Out of stock — please remove to check out
+                          </p>
+                        )}
                         {/* Price sits directly under the name, above the
                             qty stepper — matching the reference's single
                             text column, not a separate right-aligned
@@ -239,12 +254,28 @@ export default function CartClient({
             Have a discount code? Enter it at checkout.
           </p>
 
-          <Link
-            href="/checkout"
-            className="mt-6 flex h-[44px] w-full items-center justify-center border-[0.667px] border-[#111] bg-[#111] text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-white transition-opacity hover:opacity-85"
-          >
-            Secure Checkout
-          </Link>
+          {checkoutBlocked ? (
+            <>
+              <p role="alert" className="mt-6 text-xs text-red-700">
+                Some items in your bag are out of stock. Remove them to continue.
+              </p>
+              {/* A link can't be disabled, so the blocked state renders an
+                  inert lookalike instead of an href to /checkout. */}
+              <span
+                aria-disabled="true"
+                className="mt-3 flex h-[44px] w-full cursor-not-allowed items-center justify-center border-[0.667px] border-[#111] bg-[#111] text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-white opacity-40"
+              >
+                Secure Checkout
+              </span>
+            </>
+          ) : (
+            <Link
+              href="/checkout"
+              className="mt-6 flex h-[44px] w-full items-center justify-center border-[0.667px] border-[#111] bg-[#111] text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-white transition-opacity hover:opacity-85"
+            >
+              Secure Checkout
+            </Link>
+          )}
           <p className="mt-3 text-center text-xs text-black/60">
             Have an account?{" "}
             <Link href="/login" className="text-[#2b261f] underline hover:text-gold">

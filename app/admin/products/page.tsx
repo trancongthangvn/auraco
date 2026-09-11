@@ -38,6 +38,8 @@ type AdminProduct = {
   stock: number;
   active: boolean;
   video_url: string | null;
+  /** Present on the admin list (attachRelations includes inactive ones too). */
+  variants?: { active: boolean }[];
   video_urls?: string[];
   sort_order: number;
   attributes?: AdminAttribute[];
@@ -888,7 +890,7 @@ export default function AdminProductsPage() {
       />
 
       <TableCard>
-        <table className="w-full text-sm min-w-[640px]">
+        <table className="w-full text-sm min-w-[720px]">
           <thead>
             <tr className="border-b border-black/10">
               <Th>Ảnh</Th>
@@ -896,6 +898,7 @@ export default function AdminProductsPage() {
               <Th>Danh mục</Th>
               <Th align="center">Ưu tiên</Th>
               <Th align="right">Giá</Th>
+              <Th align="center">Tồn kho</Th>
               <Th align="center">Trạng thái</Th>
               <Th align="right">Thao tác</Th>
             </tr>
@@ -903,21 +906,21 @@ export default function AdminProductsPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <EmptyState>Đang tải...</EmptyState>
                 </td>
               </tr>
             )}
             {!loading && products.length > 0 && filteredProducts.length === 0 && (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <EmptyState>Không tìm thấy sản phẩm nào khớp &quot;{search}&quot;.</EmptyState>
                 </td>
               </tr>
             )}
             {!loading && products.length === 0 && (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <EmptyState>Chưa có sản phẩm nào.</EmptyState>
                 </td>
               </tr>
@@ -948,6 +951,27 @@ export default function AdminProductsPage() {
                   )}
                 </Td>
                 <Td align="right">${Number(p.price).toFixed(2)}</Td>
+                {/* Explicit request: stock visible at a glance, so an admin
+                    can spot what's run out. At 0 the storefront refuses the
+                    item everywhere (add to bag, Frequently bought together,
+                    checkout, and the orders API itself). For a product with
+                    variants this is the sum of its active variants' stock,
+                    which the server keeps in step (recomputeProductStock) —
+                    it's edited per variant in "Sửa", not here. */}
+                <Td align="center">
+                  {Number(p.stock) <= 0 ? (
+                    <span className="inline-flex items-center whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700">
+                      0 · Hết hàng
+                    </span>
+                  ) : (
+                    <span className="font-semibold tabular-nums text-ink">{p.stock}</span>
+                  )}
+                  {(p.variants?.filter((v) => v.active).length ?? 0) > 0 && (
+                    <span className="mt-0.5 block text-[10px] text-black/40">
+                      tổng {p.variants?.filter((v) => v.active).length} biến thể
+                    </span>
+                  )}
+                </Td>
                 <Td align="center">
                   <button
                     onClick={() => toggleVisible(p)}

@@ -62,7 +62,7 @@ function toNumber(v) {
 //   customer_name, email, phone, address, city, country?,
 //   payment_method: 'card'|'paypal'|'cashapp'|'zelle',
 //   shipping_fee?, discount_code?,
-//   items: [{ product_id, qty }]
+//   items: [{ product_id, qty, variant_id? }]
 // }
 // Assumption: the client sends product_id + qty per line; the server looks
 // up each product's current name/material/price/image to snapshot into
@@ -112,10 +112,32 @@ router.post('/orders', async (req, res) => {
     // Resolve product snapshots
     const productIds = items.map((it) => it.product_id);
     const prodRes = await client.query(
-      `SELECT id, name, material, price, images FROM products WHERE id = ANY($1::int[])`,
+      `SELECT id, name, material, price, images, stock FROM products WHERE id = ANY($1::int[])`,
       [productIds]
     );
     const productMap = new Map(prodRes.rows.map((p) => [p.id, p]));
+
+    // Out-of-stock items can't be ordered, however they reached the cart —
+    // explicit request ("không thể add vào giỏ hàng và thanh toán trong bất
+    // kỳ trường hợp nào"). The storefront already refuses them, but a cart
+    // saved in localStorage before stock ran out, another open tab, or a
+    // hand-made request all bypass the UI, so this is the check that can't
+    // be skipped. A line naming a variant is judged by that variant's own
+    // stock (and must belong to the product and still be on sale); a plain
+    // line by products.stock, which is already the sum of the active
+    // variants' stock for a product that has any (recomputeProductStock in routes/products.js).
+    const variantIds = items
+      .map((it) => it.variant_id)
+      .filter((v) => v !== undefined && v !== null)
+      .map(Number);
+    const variantMap = new Map();
+    if (variantIds.length > 0) {
+      const varRes = await client.query(
+        `SELECT id, product_id, stock, active FROM product_variants WHERE id = ANY($1::int[])`,
+        [variantIds]
+      );
+      for (const v of varRes.rows) variantMap.set(v.id, v);
+    }
 
     let subtotal = 0;
     const lineItems = [];
@@ -124,6 +146,16 @@ router.post('/orders', async (req, res) => {
       if (!product) {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: `Product ${it.product_id} not found` });
+      }
+      if (it.variant_id !== undefined && it.variant_id !== null) {
+        const variant = variantMap.get(Number(it.variant_id));
+        if (!variant || variant.product_id !== product.id || !variant.active || variant.stock <= 0) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ error: `${product.name} is out of stock`, code: 'OUT_OF_STOCK', product_id: product.id });
+        }
+      } else if (Number(product.stock) <= 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: `${product.name} is out of stock`, code: 'OUT_OF_STOCK', product_id: product.id });
       }
       const qty = Math.trunc(toNumber(it.qty));
       const unitPrice = parseFloat(product.price);

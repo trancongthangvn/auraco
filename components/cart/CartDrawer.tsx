@@ -73,7 +73,13 @@ export default function CartDrawer() {
     addItem,
     previewItem,
     confirmPreview,
+    isOutOfStock,
+    outOfStockItems,
   } = useCart();
+  // Explicit request: an out-of-stock item can't be added or paid for in any
+  // case. Suggestions below can't be added, sold-out lines already in the
+  // bag are labelled, and checkout waits until they're removed.
+  const checkoutBlocked = outOfStockItems.length > 0;
   const router = useRouter();
   const pathname = usePathname();
   const cartSlugs = items.map((it) => it.slug);
@@ -144,6 +150,7 @@ export default function CartDrawer() {
                   <p className="mt-1 text-[13px] text-[#2b261f]">{money(s.price)}</p>
                   <button
                     type="button"
+                    disabled={isOutOfStock(s.slug)}
                     onClick={() =>
                       addItem({
                         slug: s.slug,
@@ -152,9 +159,9 @@ export default function CartDrawer() {
                         image: s.image ?? null,
                       })
                     }
-                    className="mt-2 border border-[#28241f] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#28241f] hover:bg-black/5"
+                    className="mt-2 border border-[#28241f] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#28241f] hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                   >
-                    Add to Bag
+                    {isOutOfStock(s.slug) ? "Out of Stock" : "Add to Bag"}
                   </button>
                 </div>
               </li>
@@ -202,9 +209,10 @@ export default function CartDrawer() {
               <button
                 type="button"
                 onClick={confirmPreview}
-                className="mt-3 flex h-11 w-full items-center justify-center border border-[#28241f] text-[11px] font-semibold uppercase tracking-[0.08em] text-[#28241f] transition-colors hover:bg-black/5"
+                disabled={isOutOfStock(previewItem.slug, previewItem.variantId)}
+                className="mt-3 flex h-11 w-full items-center justify-center border border-[#28241f] text-[11px] font-semibold uppercase tracking-[0.08em] text-[#28241f] transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Add to Bag
+                {isOutOfStock(previewItem.slug, previewItem.variantId) ? "Out of Stock" : "Add to Bag"}
               </button>
             </div>
           )}
@@ -250,6 +258,11 @@ export default function CartDrawer() {
                         <p className="mt-0.5 text-xs text-black/50">{item.variantLabel}</p>
                       )}
                       <p className="mt-1 text-[13px] text-[#2b261f]">{money(item.price)}</p>
+                      {isOutOfStock(item.slug, item.variantId) && (
+                        <p className="mt-0.5 text-[11px] font-medium text-red-700">
+                          Out of stock — please remove to check out
+                        </p>
+                      )}
                       <div className="mt-1.5 flex h-6 w-[68px] items-center justify-between rounded-full border border-black/15 px-1.5">
                         <button
                           type="button"
@@ -303,6 +316,7 @@ export default function CartDrawer() {
                     </div>
                     <button
                       type="button"
+                      disabled={isOutOfStock(s.slug)}
                       onClick={() =>
                         addItem({
                           slug: s.slug,
@@ -311,9 +325,9 @@ export default function CartDrawer() {
                           image: s.image ?? null,
                         })
                       }
-                      className="shrink-0 rounded-full border border-[#28241f] px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-[#28241f] hover:bg-black/5"
+                      className="shrink-0 rounded-full border border-[#28241f] px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-[#28241f] hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                     >
-                      Add to Bag
+                      {isOutOfStock(s.slug) ? "Out of Stock" : "Add to Bag"}
                     </button>
                   </li>
                 ))}
@@ -331,13 +345,20 @@ export default function CartDrawer() {
             <p className="mb-4 text-xs text-black/50">
               Have a discount code? Enter it at checkout.
             </p>
+            {checkoutBlocked && (
+              <p role="alert" className="mb-3 text-xs text-red-700">
+                Some items in your bag are out of stock. Remove them to continue.
+              </p>
+            )}
             <button
               type="button"
+              disabled={checkoutBlocked}
               onClick={() => {
+                if (checkoutBlocked) return;
                 closeDrawer();
                 router.push("/checkout");
               }}
-              className="flex h-11 w-full items-center justify-center border border-[#111] bg-[#111] text-[11px] font-semibold uppercase tracking-[0.08em] text-white transition-opacity hover:opacity-85"
+              className="flex h-11 w-full items-center justify-center border border-[#111] bg-[#111] text-[11px] font-semibold uppercase tracking-[0.08em] text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Secure Checkout
             </button>

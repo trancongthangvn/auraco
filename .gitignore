@@ -13,3 +13,6 @@ server/uploads.bak-*
 
 # TypeScript incremental build cache — machine-local, not source.
 tsconfig.tsbuildinfo
+
+# Hợp đồng/tài liệu soạn cạnh dự án — không thuộc mã nguồn
+*.docx

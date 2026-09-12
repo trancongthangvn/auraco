@@ -8,15 +8,22 @@ import type { FullProduct } from "@/data/products";
 import { collectionFilters as fallbackCollectionFilters } from "@/data/products";
 import { StarRating, PlusIcon, MinusIcon, CloseIcon } from "@/components/icons";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
-import { formatPrice } from "@/lib/currency";
+import { formatPrice, currencyMeta } from "@/lib/currency";
 import AddToBagButton from "@/components/AddToBagButton";
 
 export type CollectionFilter = { label: string; value: string };
 
-const PRICE_BANDS: { value: string; label: string; test: (n: number) => boolean }[] = [
-  { value: "u80", label: "Under $80", test: (n) => n < 80 },
-  { value: "80-110", label: "$80 – $110", test: (n) => n >= 80 && n <= 110 },
-  { value: "o110", label: "Over $110", test: (n) => n > 110 },
+// Bands are defined on the stored USD price (that is what `test` receives
+// and what products are actually priced in); only the label is converted,
+// so a shopper browsing in GBP doesn't read "$80" next to "£76.97" cards.
+const PRICE_BANDS: {
+  value: string;
+  label: (fmt: (n: number) => string) => string;
+  test: (n: number) => boolean;
+}[] = [
+  { value: "u80", label: (f) => `Under ${f(80)}`, test: (n) => n < 80 },
+  { value: "80-110", label: (f) => `${f(80)} – ${f(110)}`, test: (n) => n >= 80 && n <= 110 },
+  { value: "o110", label: (f) => `Over ${f(110)}`, test: (n) => n > 110 },
 ];
 
 const SORT_OPTIONS: { value: "featured" | "newest" | "price-asc" | "price-desc"; label: string }[] = [
@@ -255,6 +262,10 @@ export default function CatalogClient({
   const query = queryParam?.toLowerCase().trim();
 
   const { currency, rates } = useCurrency();
+  // Band labels are round numbers, so they read better without decimals
+  // than through formatPrice's "£76.97 GBP" form.
+  const bandMoney = (usd: number) =>
+    `${currencyMeta[currency].symbol}${Math.round(usd * (rates[currency] || 1))}`;
   const [collection] = useState(initialCollection);
   // Explicit request: the sidebar "Category" checkboxes previously called
   // selectCategory(), which navigated to /catalog/<collection> — a full
@@ -797,7 +808,7 @@ export default function CatalogClient({
                 }}
                 className="h-4 w-4 accent-ink"
               />
-              <span>{b.label}</span>
+              <span>{b.label(bandMoney)}</span>
             </label>
           ))}
         </div>
@@ -1133,7 +1144,7 @@ export default function CatalogClient({
               onClick={() => setPriceBand("")}
               className="inline-flex items-center gap-2 rounded-full border border-black/20 px-3 py-1.5 text-xs hover:border-ink"
             >
-              {PRICE_BANDS.find((b) => b.value === priceBand)?.label}
+              {PRICE_BANDS.find((b) => b.value === priceBand)?.label(bandMoney)}
               <span aria-hidden="true">×</span>
               <span className="sr-only">Remove filter</span>
             </button>

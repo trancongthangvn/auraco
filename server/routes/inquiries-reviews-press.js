@@ -7,6 +7,10 @@ const { upload, verifyMagicBytes } = require('../lib/upload');
 
 const router = express.Router();
 
+function isNonEmptyString(v) {
+  return typeof v === 'string' && v.trim().length > 0;
+}
+
 // ============================================================================
 // Inquiries (contact form submissions)
 // ============================================================================
@@ -128,15 +132,60 @@ router.delete('/admin/inquiries/:id', authMiddleware, requireAdmin, async (req, 
 // Rate-limited (see server/index.js's reviewRateLimiter) — a file write to
 // disk is a meaningfully different cost from the plain-text submission this
 // route already accepted unlimited.
-router.post('/products/:slug/reviews', upload.single('photo'), async (req, res) => {
+// `photo` (single) is the original field name and still works unchanged;
+// `photos` (up to 5) was added for the post-purchase review screen, whose
+// design offers "Up to 5 ... images". upload.fields accepts either, so the
+// existing product-page caller (ReviewsClient.tsx) is untouched.
+router.post(
+  '/products/:slug/reviews',
+  upload.fields([
+    { name: 'photo', maxCount: 1 },
+    { name: 'photos', maxCount: 5 },
+  ]),
+  async (req, res) => {
   const { slug } = req.params;
-  const { customerName, rating, comment, photoUrl } = req.body || {};
+  const { customerName, rating, comment, photoUrl, title, orderCode } = req.body || {};
 
+  const uploadedFiles = [
+    ...((req.files && req.files.photo) || []),
+    ...((req.files && req.files.photos) || []),
+  ];
   const cleanupUploadedFile = () => {
-    if (req.file) fs.unlink(req.file.path, () => {});
+    for (const f of uploadedFiles) fs.unlink(f.path, () => {});
   };
 
-  if (!customerName || typeof customerName !== 'string' || !customerName.trim()) {
+  // A review written from the post-purchase screen carries the order code
+  // instead of a typed name — the customer already identified themselves
+  // when they ordered, and the design has no name field. Resolved below;
+  // the name is only required when there is no verified order to take it
+  // from.
+  let verifiedOrder = null;
+  if (isNonEmptyString(orderCode)) {
+    try {
+      const orderRes = await query(
+        `SELECT o.id, o.customer_name
+           FROM orders o
+           JOIN order_items oi ON oi.order_id = o.id
+           JOIN products p ON p.id = oi.product_id
+          WHERE o.order_code = $1 AND lower(p.slug) = lower($2)
+          LIMIT 1`,
+        [orderCode.trim(), slug]
+      );
+      verifiedOrder = orderRes.rows[0] || null;
+    } catch (err) {
+      cleanupUploadedFile();
+      console.error(err);
+      return res.status(500).json({ error: 'Failed to verify order' });
+    }
+    // An order code that doesn't cover this product isn't an error the
+    // customer can act on — the review is simply recorded as unverified
+    // rather than rejected.
+  }
+
+  const resolvedName =
+    isNonEmptyString(customerName) ? customerName.trim() : verifiedOrder?.customer_name;
+
+  if (!resolvedName) {
     cleanupUploadedFile();
     return res.status(400).json({ error: 'customerName is required' });
   }
@@ -154,20 +203,20 @@ router.post('/products/:slug/reviews', upload.single('photo'), async (req, res) 
     return res.status(400).json({ error: 'photoUrl must be a string' });
   }
 
-  let uploadedPhotoUrl = null;
-  if (req.file) {
+  const uploadedPhotoUrls = [];
+  for (const f of uploadedFiles) {
     // The shared `upload` instance's MIME whitelist also covers video/mp4
     // (used elsewhere for product videos) — a review "photo" field is
     // image-only, same explicit check media.js's admin image upload uses.
-    if (!req.file.mimetype.startsWith('image/')) {
+    if (!f.mimetype.startsWith('image/')) {
       cleanupUploadedFile();
       return res.status(400).json({ error: 'photo must be an image file' });
     }
-    if (!verifyMagicBytes(req.file.path, req.file.mimetype)) {
+    if (!verifyMagicBytes(f.path, f.mimetype)) {
       cleanupUploadedFile();
       return res.status(400).json({ error: 'Uploaded file failed content verification' });
     }
-    uploadedPhotoUrl = `/uploads/${path.basename(req.file.path)}`;
+    uploadedPhotoUrls.push(`/uploads/${path.basename(f.path)}`);
   }
 
   try {
@@ -181,11 +230,31 @@ router.post('/products/:slug/reviews', upload.single('photo'), async (req, res) 
     }
     const product = productResult.rows[0];
 
+    const allPhotoUrls = uploadedPhotoUrls.length > 0
+      ? uploadedPhotoUrls
+      : isNonEmptyString(photoUrl)
+        ? [photoUrl.trim()]
+        : [];
+
     const result = await query(
-      `INSERT INTO product_reviews (product_id, product_name, customer_name, rating, comment, status, photo_url)
-       VALUES ($1, $2, $3, $4, $5, 'Chờ duyệt', $6)
+      `INSERT INTO product_reviews
+         (product_id, product_name, customer_name, rating, comment, status,
+          photo_url, photo_urls, title, order_id)
+       VALUES ($1, $2, $3, $4, $5, 'Chờ duyệt', $6, $7, $8, $9)
        RETURNING *`,
-      [product.id, product.name, customerName.trim(), ratingNum, comment.trim(), uploadedPhotoUrl || photoUrl || null]
+      [
+        product.id,
+        product.name,
+        resolvedName,
+        ratingNum,
+        comment.trim(),
+        // photo_url stays the first photo so every existing reader keeps
+        // working — see migration 023.
+        allPhotoUrls[0] || null,
+        allPhotoUrls.length > 0 ? allPhotoUrls : null,
+        isNonEmptyString(title) ? title.trim().slice(0, 200) : null,
+        verifiedOrder ? verifiedOrder.id : null,
+      ]
     );
     return res.status(201).json({ data: result.rows[0] });
   } catch (err) {

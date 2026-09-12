@@ -201,11 +201,28 @@ type ApiPaymentMethod = {
   qr_image_url: string | null;
 };
 
+type CreatedOrderItem = {
+  id: number;
+  name: string;
+  material: string | null;
+  price: string | number;
+  qty: number;
+  image_url: string | null;
+  variant_label?: string | null;
+  /** Joined from products (see ORDER_ITEMS_SQL server-side) so the
+   *  confirmation screen can link each line to its own product page for a
+   *  review. Null for a product deleted after the order was placed. */
+  product_slug?: string | null;
+};
+
 type CreatedOrder = {
   id: number;
   order_code: string;
+  email?: string;
   total: string | number;
   payment_method: string;
+  created_at?: string;
+  items?: CreatedOrderItem[];
 };
 
 export default function CheckoutClient() {
@@ -279,6 +296,12 @@ export default function CheckoutClient() {
   const [order, setOrder] = useState<CreatedOrder | null>(null);
 
   const [proofFile, setProofFile] = useState<File | null>(null);
+  // Object URL for the chosen screenshot, so the customer can see what they
+  // are about to submit (the reference design shows a thumbnail under the
+  // drop zone). Revoked whenever it's replaced — see the effect below.
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [proofDragging, setProofDragging] = useState(false);
+  const [proofReference, setProofReference] = useState("");
   const [proofUploading, setProofUploading] = useState(false);
   const [proofError, setProofError] = useState("");
   const [proofUploaded, setProofUploaded] = useState(false);
@@ -349,6 +372,33 @@ export default function CheckoutClient() {
   const cardMethod = paymentMethods.find((m) => m.key === "card");
   const otherMethods = paymentMethods.filter((m) => m.key !== "card");
   const selectedMethod = paymentMethods.find((m) => m.key === payment);
+
+  // Post-order state. Cash App and Zelle are the manual-confirmation
+  // methods (the customer transfers outside the site, then proves it), so
+  // they — and only they — get the QR screen; every other method is done
+  // the moment the order exists. The settings row is looked up by the
+  // ORDER's own method rather than `selectedMethod`, which follows the
+  // radio group and would be wrong if the customer's selection changed
+  // after the order was written.
+  const orderMethod = order
+    ? paymentMethods.find((m) => m.key === order.payment_method)
+    : undefined;
+  const payMethodLabel = orderMethod?.label ?? order?.payment_method ?? "";
+  const payMethodQr = orderMethod?.qr_image_url ?? null;
+  const payMethodDetail = orderMethod?.detail ?? "";
+  const awaitingProof =
+    !!order &&
+    (order.payment_method === "cashapp" || order.payment_method === "zelle") &&
+    !proofUploaded;
+
+  // The preview is an object: URL owned by this component — release it when
+  // the component unmounts, since the browser keeps the file alive for the
+  // lifetime of the document otherwise.
+  useEffect(() => {
+    return () => {
+      if (proofPreview) URL.revokeObjectURL(proofPreview);
+    };
+  }, [proofPreview]);
 
   async function handleApplyVoucher() {
     const code = voucherCode.trim();
@@ -489,6 +539,48 @@ export default function CheckoutClient() {
     }
   }
 
+  /** Accepts a screenshot from either the file picker or a drag-and-drop,
+   *  converting an iPhone HEIC first. The server's upload whitelist
+   *  deliberately excludes HEIC (no browser outside Safari can render it,
+   *  and this container's sharp has no HEVC decoder — see
+   *  server/lib/upload.js), so an iPhone screenshot used to be rejected
+   *  with "Unsupported file type: application/octet-stream" — the very
+   *  failure behind this bug report. Same conversion the admin's
+   *  ImageField already does, loaded on demand because heic2any pulls a
+   *  ~2MB wasm decoder that only a HEIC drop ever needs. */
+  async function acceptProofFile(file: File | null | undefined) {
+    if (!file) return;
+    setProofError("");
+    let usable = file;
+    const isHeic =
+      file.type === "image/heic" ||
+      file.type === "image/heif" ||
+      /\.(heic|heif)$/i.test(file.name);
+    if (isHeic) {
+      try {
+        const heic2any = (await import("heic2any")).default;
+        const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
+        const blob = Array.isArray(converted) ? converted[0] : converted;
+        usable = new File([blob], file.name.replace(/\.(heic|heif)$/i, "") + ".jpg", {
+          type: "image/jpeg",
+        });
+      } catch {
+        setProofError(
+          "Could not read this iPhone photo (HEIC). Please take a screenshot or save it as JPG and try again."
+        );
+        return;
+      }
+    } else if (!usable.type.startsWith("image/")) {
+      setProofError("Please choose an image file (JPG, PNG, WEBP, GIF or AVIF).");
+      return;
+    }
+    setProofFile(usable);
+    setProofPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(usable);
+    });
+  }
+
   async function handleUploadProof() {
     if (!order || !proofFile) return;
     setProofError("");
@@ -497,6 +589,9 @@ export default function CheckoutClient() {
       const formData = new FormData();
       formData.append("proof", proofFile);
       formData.append("method", order.payment_method);
+      if (proofReference.trim()) {
+        formData.append("reference_code", proofReference.trim());
+      }
       await apiFetch(`/api/orders/${order.id}/payment-proof`, {
         method: "POST",
         body: formData,
@@ -622,9 +717,27 @@ export default function CheckoutClient() {
           card's own collapsed height (pt-38 + pb-38 + one text row +
           safe-area) with some breathing room; lg: restores the original
           value since desktop's card isn't fixed. */}
-      <main className="mx-auto grid w-full max-w-[1280px] grid-cols-1 gap-12 px-6 pt-10 pb-[130px] lg:grid-cols-[1fr_420px] lg:pb-10">
+      {/* Once the order exists the summary aside is gone (there is nothing
+          left to edit or apply a voucher to) and the confirmation flow gets
+          one narrow centred column, matching the reference's dedicated
+          payment / thank-you screens. pb-[130px] also drops away with the
+          fixed mobile summary card it was reserving room for. */}
+      <main
+        className={
+          order
+            ? "mx-auto w-full max-w-[760px] px-6 pt-10 pb-16"
+            : "mx-auto grid w-full max-w-[1280px] grid-cols-1 gap-12 px-6 pt-10 pb-[130px] lg:grid-cols-[1fr_420px] lg:pb-10"
+        }
+      >
         {/* Left column: checkout form */}
         <div>
+          {/* Once the order exists the form is gone, not just disabled:
+              the reference flow moves to a dedicated payment screen and
+              then a thank-you screen, and leaving an editable shipping
+              form on screen after the order is written would invite edits
+              that change nothing. */}
+          {!order && (
+            <>
           {/* Express checkout */}
           <section className="mb-6">
             <h2 className="mb-3 text-center font-ui text-xs uppercase tracking-wide text-black/50">
@@ -963,64 +1076,264 @@ export default function CheckoutClient() {
               )}
             </>
           )}
+            </>
+          )}
 
+          {/* Post-order flow, replacing the checkout form above. Two
+              screens, matching the reference design: a QR payment screen
+              for the manual-confirmation methods (Cash App / Zelle) while
+              their proof is still outstanding, then the thank-you screen —
+              which every other payment method reaches immediately, since
+              nothing further is asked of the customer there. */}
           {order && (
-            <div className="space-y-4 border border-black/10 px-4 py-4">
-              <p className="font-ui text-sm">
-                Order <strong>{order.order_code}</strong> placed successfully.
-                Total: ${Number(order.total).toFixed(2)}
-              </p>
-              <p className="font-ui text-xs text-black/50">
-                Save your order code — you can check its status any time at{" "}
-                <Link href="/pages/track-order" className="text-[#2b261f] underline hover:text-gold">
-                  Track Your Order
-                </Link>
-                .
-              </p>
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-gold-light/45 bg-white px-5 py-4 font-ui text-sm text-[#28241f]">
+                <span>
+                  Order <strong>{order.order_code}</strong>
+                </span>
+                <span>
+                  Total: <strong>USD {Number(order.total).toFixed(2)}</strong>
+                </span>
+              </div>
 
-              {(order.payment_method === "cashapp" ||
-                order.payment_method === "zelle") &&
-                !proofUploaded && (
-                  <div className="space-y-3">
-                    <p className="font-ui text-sm text-black/70">
-                      Please upload a screenshot of your{" "}
-                      {order.payment_method === "cashapp"
-                        ? "Cash App"
-                        : "Zelle"}{" "}
-                      payment as proof.
+              {awaitingProof ? (
+                <div className="rounded-[10px] border border-gold-light/45 bg-white px-5 py-6 sm:px-7">
+                  <h2 className="font-serif-display text-[26px] leading-tight text-[#28241f]">
+                    Pay with {payMethodLabel}
+                  </h2>
+                  <ul className="mt-4 list-disc space-y-1.5 pl-5 font-ui text-sm text-[#4a443c]">
+                    <li>
+                      Scan the QR code below in {payMethodLabel} (or use the pay
+                      link).
+                    </li>
+                    <li>
+                      Send exactly{" "}
+                      <strong>USD {Number(order.total).toFixed(2)}</strong>.
+                    </li>
+                    <li>Upload a screenshot of the completed payment below.</li>
+                  </ul>
+
+                  {/* The QR image is whatever the admin uploaded for this
+                      method (/admin/payments → Cấu hình phương thức). Until
+                      one is set there is nothing to scan, so the written
+                      handle/email from the same settings row is shown on its
+                      own instead of an empty frame. */}
+                  {payMethodQr ? (
+                    <div className="mt-5 flex justify-center rounded-[8px] bg-[#f7f1e8] px-4 py-6">
+                      <div className="relative h-[220px] w-[220px] bg-white p-2">
+                        <Image
+                          src={payMethodQr}
+                          alt={`${payMethodLabel} QR code`}
+                          fill
+                          sizes="220px"
+                          className="object-contain"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-5 rounded-[8px] bg-[#f7f1e8] px-4 py-4 text-center font-ui text-sm text-[#4a443c]">
+                      {payMethodDetail ||
+                        "Payment details will be emailed to you shortly."}
                     </p>
+                  )}
+                  {payMethodQr && payMethodDetail && (
+                    <p className="mt-3 text-center font-ui text-sm text-[#4a443c]">
+                      {payMethodDetail}
+                    </p>
+                  )}
+
+                  <hr className="my-6 border-gold-light/40" />
+
+                  <h3 className="font-ui text-[16px] font-semibold text-[#28241f]">
+                    Upload payment proof
+                  </h3>
+                  <p className="mt-1 font-ui text-sm text-[#6b655c]">
+                    Take a screenshot showing the completed transfer (amount,
+                    recipient, and date).
+                  </p>
+
+                  <p className="mt-5 font-ui text-sm font-semibold text-[#28241f]">
+                    Transfer screenshot <span className="text-[#b4482f]">*</span>
+                  </p>
+
+                  <label
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setProofDragging(true);
+                    }}
+                    onDragLeave={() => setProofDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setProofDragging(false);
+                      void acceptProofFile(e.dataTransfer.files?.[0]);
+                    }}
+                    className={`mt-2 block cursor-pointer rounded-[8px] border border-dashed px-4 py-6 text-center transition-colors ${
+                      proofDragging
+                        ? "border-[#8a7a5c] bg-[#f2e9db]"
+                        : "border-gold-light/70 bg-[#faf6f0] hover:bg-[#f5efe5]"
+                    }`}
+                  >
+                    <span className="block font-ui text-sm font-semibold text-[#28241f]">
+                      Drop screenshot here
+                    </span>
+                    <span className="mt-1 block font-ui text-xs text-[#6b655c]">
+                      or click to upload / take photo
+                    </span>
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) =>
-                        setProofFile(e.target.files?.[0] || null)
-                      }
-                      className="block w-full font-ui text-sm"
+                      className="sr-only"
+                      onChange={(e) => void acceptProofFile(e.target.files?.[0])}
                     />
-                    <button
-                      type="button"
-                      disabled={!proofFile || proofUploading}
-                      onClick={handleUploadProof}
-                      className="border border-[#2b261f] px-6 py-3 font-ui text-sm tracking-wide hover:bg-[#2b261f] hover:text-white transition-colors disabled:opacity-50"
-                    >
-                      {proofUploading ? "UPLOADING..." : "UPLOAD PROOF"}
-                    </button>
-                    {proofError && (
-                      <p
-                        role="alert"
-                        className="border border-red-300 bg-red-50 px-4 py-3 font-ui text-sm text-red-700"
-                      >
-                        {proofError}
-                      </p>
-                    )}
-                  </div>
-                )}
+                  </label>
 
-              {proofUploaded && (
-                <p className="font-ui text-sm text-black/70">
-                  Thank you — your payment proof was submitted and is pending
-                  review.
-                </p>
+                  {proofPreview && (
+                    <div className="mt-4 flex items-start gap-4">
+                      {/* Plain <img>, not next/image: this is a local
+                          object: URL for a file that never leaves the
+                          browser until submit, which the image optimizer
+                          can't fetch. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={proofPreview}
+                        alt="Payment screenshot preview"
+                        className="h-[150px] w-[150px] rounded-[8px] border border-gold-light/45 bg-[#faf6f0] object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProofFile(null);
+                          setProofPreview((prev) => {
+                            if (prev) URL.revokeObjectURL(prev);
+                            return null;
+                          });
+                        }}
+                        className="font-ui text-xs underline underline-offset-4 hover:text-gold"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+
+                  <label
+                    htmlFor="proof-reference"
+                    className="mt-5 block font-ui text-sm text-[#28241f]"
+                  >
+                    Reference / transaction ID (optional)
+                  </label>
+                  <input
+                    id="proof-reference"
+                    value={proofReference}
+                    onChange={(e) => setProofReference(e.target.value)}
+                    maxLength={120}
+                    placeholder="e.g. last 4 digits or confirmation #"
+                    className="mt-2 w-full rounded-[8px] border border-gold-light/60 bg-white px-4 py-3 font-ui text-sm text-[#28241f] outline-none placeholder:text-[#a9a196] focus:border-[#8a7a5c]"
+                  />
+
+                  <button
+                    type="button"
+                    disabled={!proofFile || proofUploading}
+                    onClick={handleUploadProof}
+                    className="mt-6 w-full rounded-full border border-[#28241f] py-4 font-ui text-sm uppercase tracking-[0.08em] text-[#28241f] transition-colors hover:bg-[#28241f] hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#28241f]"
+                  >
+                    {proofUploading ? "SUBMITTING..." : "SUBMIT PAYMENT PROOF"}
+                  </button>
+
+                  {proofError && (
+                    <p
+                      role="alert"
+                      className="mt-4 border border-red-300 bg-red-50 px-4 py-3 font-ui text-sm text-red-700"
+                    >
+                      {proofError}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <h1 className="font-ui text-[26px] uppercase tracking-[0.08em] text-[#28241f]">
+                    Thank you
+                  </h1>
+                  <p className="mt-2 font-ui text-sm text-[#4a443c]">
+                    Order <strong>{order.order_code}</strong> has been placed.
+                  </p>
+
+                  {proofUploaded && (
+                    <p className="mt-5 rounded-[4px] bg-[#f5f1ec] px-5 py-4 font-ui text-sm text-[#4a443c]">
+                      Your payment proof is being reviewed.
+                      {order.email ? (
+                        <>
+                          {" "}
+                          We will email you at <strong>{order.email}</strong>{" "}
+                          once confirmed.
+                        </>
+                      ) : null}
+                    </p>
+                  )}
+
+                  {order.email && (
+                    <p className="mt-5 font-ui text-sm text-[#4a443c]">
+                      We emailed your order details to{" "}
+                      <strong>{order.email}</strong>.
+                    </p>
+                  )}
+                  <p className="mt-3 font-ui text-sm font-semibold text-[#28241f]">
+                    Total (display currency at checkout): USD{" "}
+                    {Number(order.total).toFixed(2)}
+                  </p>
+                  <p className="mt-3 font-ui text-xs text-black/50">
+                    Save your order code — you can check its status any time at{" "}
+                    <Link
+                      href="/pages/track-order"
+                      className="text-[#2b261f] underline hover:text-gold"
+                    >
+                      Track Your Order
+                    </Link>
+                    .
+                  </p>
+
+                  {order.items && order.items.length > 0 && (
+                    <>
+                      <h2 className="mt-8 font-ui text-[15px] uppercase tracking-[0.08em] text-[#28241f]">
+                        Your items
+                      </h2>
+                      <ul className="mt-3 divide-y divide-gold-light/45 border-y border-gold-light/45">
+                        {order.items.map((it) => (
+                          <li
+                            key={it.id}
+                            className="flex flex-wrap items-center justify-between gap-3 py-4"
+                          >
+                            <div>
+                              <p className="font-ui text-sm text-[#28241f]">
+                                {it.name}
+                                {it.variant_label ? ` — ${it.variant_label}` : ""}
+                              </p>
+                              <p className="font-ui text-sm text-black/60">
+                                × {it.qty} — ${Number(it.price).toFixed(2)} USD
+                              </p>
+                            </div>
+                            {it.product_slug && (
+                              <Link
+                                href={`/review?order=${encodeURIComponent(
+                                  order.order_code
+                                )}&product=${encodeURIComponent(it.product_slug)}`}
+                                className="shrink-0 font-ui text-sm underline underline-offset-4 hover:text-gold"
+                              >
+                                Write a review
+                              </Link>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+
+                  <Link
+                    href="/catalog"
+                    className="mt-8 flex w-full items-center justify-center bg-[#111] py-4 font-ui text-sm font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-black"
+                  >
+                    Continue shopping →
+                  </Link>
+                </div>
               )}
             </div>
           )}
@@ -1029,6 +1342,7 @@ export default function CheckoutClient() {
         {/* Right column: order summary — reference's tinted aside panel
             (#f5f5f5, 38px/36px/60px padding), with the voucher field inside
             the same card below the totals, matching the reference. */}
+        {!order && (
         <div>
           {/* fixed bottom-0 on mobile, not sticky — bug report: with
               position:sticky, this card only ever appears once the page
@@ -1219,6 +1533,7 @@ export default function CheckoutClient() {
             </div>
           </div>
         </div>
+        )}
       </main>
     </div>
   );

@@ -11,6 +11,14 @@ export type ProductReview = {
   comment: string;
   created_at: string;
   photo_url?: string | null;
+  /** Optional headline, only ever set by the post-purchase review screen. */
+  title?: string | null;
+  /** All photos on the review (max 5). photo_url stays photo_urls[0] for
+   *  older rows and older callers — see migration 023. */
+  photo_urls?: string[] | null;
+  /** Non-null when the review was written from a real order, which is what
+   *  the "Verified purchase" label means. */
+  order_id?: number | null;
 };
 
 type SortKey = "recent" | "highest" | "lowest";
@@ -261,16 +269,42 @@ export default function ReviewsClient({
                 </time>
               </p>
             </div>
+            {/* Only reviews written from a real order carry order_id (see
+                migration 023), so this label can never appear on a review
+                left by someone who didn't buy the product. */}
+            {r.order_id != null && (
+              <p className="mt-[6px] font-ui text-[10px] uppercase tracking-[0.14em] text-[#a98545]">
+                Verified purchase
+              </p>
+            )}
+            {r.title && (
+              <p className="mt-[9.6px] font-ui text-[13px] font-semibold text-[#2f2a24]">
+                {r.title}
+              </p>
+            )}
             <p className="mt-[9.6px] font-ui text-xs font-light leading-[18.6px] tracking-[0.06px] text-[#4f4a44]">
               {r.comment}
             </p>
-            {r.photo_url && (
-              // eslint-disable-next-line @next/next/no-img-element -- admin-set/customer-submitted photo, an arbitrary URL next/image would reject without remotePatterns.
-              <img
-                src={r.photo_url}
-                alt={`Photo submitted by ${r.customer_name}`}
-                className="mt-[9.6px] h-16 w-16 rounded-lg border border-gold-light/35 object-cover"
-              />
+            {(r.photo_urls && r.photo_urls.length > 0
+              ? r.photo_urls
+              : r.photo_url
+                ? [r.photo_url]
+                : []
+            ).length > 0 && (
+              <div className="mt-[9.6px] flex flex-wrap gap-2">
+                {(r.photo_urls && r.photo_urls.length > 0
+                  ? r.photo_urls
+                  : [r.photo_url as string]
+                ).map((url, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element -- admin-set/customer-submitted photo, an arbitrary URL next/image would reject without remotePatterns.
+                  <img
+                    key={url + i}
+                    src={url}
+                    alt={`Photo submitted by ${r.customer_name}`}
+                    className="h-16 w-16 rounded-lg border border-gold-light/35 object-cover"
+                  />
+                ))}
+              </div>
             )}
           </div>
         ))}

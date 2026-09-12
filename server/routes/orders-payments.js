@@ -46,6 +46,18 @@ function resolveEnum(value, aliases, allowed) {
   return mapped || null;
 }
 
+// order_items snapshots a product's name/price at purchase time and has no
+// slug of its own, but the order-confirmation screen links each line to its
+// product page ("Write a review"), so the current slug is joined in here.
+// LEFT JOIN, not JOIN: a product deleted after the order was placed must
+// still show its snapshotted line, just without a link.
+const ORDER_ITEMS_SQL = `
+  SELECT oi.*, p.slug AS product_slug
+    FROM order_items oi
+    LEFT JOIN products p ON p.id = oi.product_id
+   WHERE oi.order_id = $1
+   ORDER BY oi.id`;
+
 function isNonEmptyString(v) {
   return typeof v === 'string' && v.trim().length > 0;
 }
@@ -255,7 +267,7 @@ router.post('/orders', async (req, res) => {
 
     await client.query('COMMIT');
 
-    const itemsRes = await query(`SELECT * FROM order_items WHERE order_id = $1`, [order.id]);
+    const itemsRes = await query(ORDER_ITEMS_SQL, [order.id]);
     const fullOrder = { ...order, items: itemsRes.rows };
 
     // Fire-and-forget: the order is already committed, so a slow or failing
@@ -299,11 +311,51 @@ router.post('/orders/lookup', async (req, res) => {
     if (!order) {
       return res.status(404).json({ error: 'No order found for that order code and email.' });
     }
-    const itemsRes = await query(`SELECT * FROM order_items WHERE order_id = $1 ORDER BY id`, [order.id]);
+    const itemsRes = await query(ORDER_ITEMS_SQL, [order.id]);
     return res.json({ data: { ...order, items: itemsRes.rows } });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Failed to look up order' });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// GET /orders/:code/purchase?product=<slug> — minimal, public context for
+// the post-purchase review screen: was this product actually bought on this
+// order, and when. Deliberately returns NO personal data (no name, email,
+// phone or address), unlike GET /orders/:id below — order codes are short
+// and sequential, so anything richer would be enumerable. Knowing that some
+// order contains some product on some date is not worth protecting; the
+// customer's identity is.
+// ----------------------------------------------------------------------------
+router.get('/orders/:code/purchase', async (req, res) => {
+  const { code } = req.params;
+  const productSlug = req.query.product;
+  if (!isNonEmptyString(productSlug)) {
+    return res.status(400).json({ error: 'product (slug) query parameter is required' });
+  }
+  try {
+    const result = await query(
+      `SELECT o.order_code, o.created_at
+         FROM orders o
+         JOIN order_items oi ON oi.order_id = o.id
+         JOIN products p ON p.id = oi.product_id
+        WHERE o.order_code = $1 AND lower(p.slug) = lower($2)
+        LIMIT 1`,
+      [code, productSlug]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No such purchase' });
+    }
+    return res.json({
+      data: {
+        order_code: result.rows[0].order_code,
+        purchased_at: result.rows[0].created_at,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to verify purchase' });
   }
 });
 
@@ -321,7 +373,7 @@ router.get('/orders/:id', async (req, res) => {
     const order = orderRes.rows[0];
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    const itemsRes = await query(`SELECT * FROM order_items WHERE order_id = $1 ORDER BY id`, [order.id]);
+    const itemsRes = await query(ORDER_ITEMS_SQL, [order.id]);
     return res.json({ data: { ...order, items: itemsRes.rows } });
   } catch (err) {
     console.error(err);
@@ -615,11 +667,18 @@ router.post('/orders/:id/payment-proof', upload.single('proof'), async (req, res
     }
 
     const proofUrl = `/uploads/${path.basename(req.file.path)}`;
+    // Optional free-text reference the customer copies out of their banking
+    // app ("last 4 digits or confirmation #") — see migration 022. Trimmed
+    // to the column's own width rather than rejected, since a too-long
+    // paste shouldn't fail an otherwise valid proof upload.
+    const rawReference = req.body && req.body.reference_code;
+    const referenceCode = isNonEmptyString(rawReference) ? rawReference.trim().slice(0, 120) : null;
+
     const txRes = await query(
-      `INSERT INTO payment_transactions (order_id, method, amount, status, proof_image_url)
-       VALUES ($1,$2,$3,'Chờ xử lý',$4)
+      `INSERT INTO payment_transactions (order_id, method, amount, status, proof_image_url, reference_code)
+       VALUES ($1,$2,$3,'Chờ xử lý',$4,$5)
        RETURNING *`,
-      [order.id, method, order.total, proofUrl]
+      [order.id, method, order.total, proofUrl, referenceCode]
     );
 
     return res.status(201).json({ data: txRes.rows[0] });

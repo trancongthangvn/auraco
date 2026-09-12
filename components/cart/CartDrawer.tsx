@@ -6,6 +6,8 @@ import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useCart } from "./CartProvider";
 import { cartItemKey } from "@/lib/cart";
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { formatPrice } from "@/lib/currency";
 import { apiFetch } from "@/lib/api";
 import { CloseIcon, MinusIcon, PlusIcon } from "@/components/icons";
 
@@ -110,9 +112,13 @@ export default function CartDrawer() {
     closeDrawerRef.current();
   }, [pathname]);
 
+  // Read before the early return below — a hook can't run conditionally.
+  const { currency, rates } = useCurrency();
+
   if (!drawerOpen) return null;
 
-  const money = (v: number) => `$${v.toFixed(2)}`;
+  // Same conversion as the cart page and checkout — see CartClient.
+  const money = (v: number) => formatPrice(v, currency, rates[currency]);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">

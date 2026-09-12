@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/components/cart/CartProvider";
 import { cartItemKey } from "@/lib/cart";
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { formatPrice } from "@/lib/currency";
 import { apiFetch } from "@/lib/api";
 import ProductCarousel from "@/components/ProductCarousel";
 import type { Product as CarouselProduct } from "@/data/site";
@@ -55,7 +57,17 @@ export default function CartClient({
   const taxAmount = (subtotal * taxPercent) / 100;
   const total = subtotal + taxAmount;
 
-  const money = (v: number) => `$${v.toFixed(2)} USD`;
+  const { currency, rates } = useCurrency();
+
+  // Prices are stored and charged in USD; the picker in the header only
+  // changes what the customer is shown. Cart/checkout used to opt out of
+  // that conversion entirely and print a hard-coded "$… USD", so switching
+  // to GBP changed the flag in the header and nothing else — reported as a
+  // bug ("đổi giá tiền tệ nhưng giá trị k thay đổi"). They convert now like
+  // every other surface; formatPrice keeps the currency code next to the
+  // number, and the checkout still states the USD amount where money
+  // actually moves (the QR transfer instruction).
+  const money = (v: number) => formatPrice(v, currency, rates[currency]);
 
   // The reference's `.cart-page__trust` row sits right above "Best sellers"
   // in both the empty and populated states — same content either way.

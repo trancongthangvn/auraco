@@ -7,6 +7,8 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { useCart } from "@/components/cart/CartProvider";
 import { cartItemKey } from "@/lib/cart";
 import CurrencyPicker from "@/components/currency/CurrencyPicker";
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { formatPrice } from "@/lib/currency";
 import {
   ChevronLeftIcon,
   ChevronDownIcon,
@@ -248,6 +250,15 @@ export default function CheckoutClient() {
     });
   }, [refreshStock]);
 
+  // The header's currency picker used to change nothing on this page: every
+  // figure here was hard-coded as "$" + the USD number, so switching to GBP
+  // swapped the flag and left the prices alone (bug report: "đổi giá tiền
+  // tệ nhưng giá trị k thay đổi"). Prices are still stored and charged in
+  // USD — only the display converts, and formatPrice prints the currency
+  // code alongside the number so it is never ambiguous which one is shown.
+  const { currency, rates } = useCurrency();
+  const money = (v: number) => formatPrice(v, currency, rates[currency]);
+
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
   const [paymentMethodsError, setPaymentMethodsError] = useState("");
 
@@ -418,7 +429,7 @@ export default function CheckoutClient() {
       );
       setDiscountAmount(data.discountAmount);
       setAppliedCode(code);
-      setVoucherMessage(`Code applied: -$${data.discountAmount.toFixed(2)}`);
+      setVoucherMessage(`Code applied: -${money(data.discountAmount)}`);
     } catch (err) {
       setDiscountAmount(0);
       setAppliedCode("");
@@ -648,7 +659,7 @@ export default function CheckoutClient() {
                 </>
               ) : (
                 <>
-                  Add ${freeShippingRemaining.toFixed(2)} more for{" "}
+                  Add {money(freeShippingRemaining)} more for{" "}
                   <strong>FREE</strong> delivery.
                 </>
               )}
@@ -1092,7 +1103,7 @@ export default function CheckoutClient() {
                   Order <strong>{order.order_code}</strong>
                 </span>
                 <span>
-                  Total: <strong>USD {Number(order.total).toFixed(2)}</strong>
+                  Total: <strong>{money(Number(order.total))}</strong>
                 </span>
               </div>
 
@@ -1108,7 +1119,11 @@ export default function CheckoutClient() {
                     </li>
                     <li>
                       Send exactly{" "}
-                      <strong>USD {Number(order.total).toFixed(2)}</strong>.
+                      <strong>USD {Number(order.total).toFixed(2)}</strong>
+                      {currency !== "USD" && (
+                        <> ({money(Number(order.total))} at today&apos;s display rate)</>
+                      )}
+                      .
                     </li>
                     <li>Upload a screenshot of the completed payment below.</li>
                   </ul>
@@ -1277,8 +1292,8 @@ export default function CheckoutClient() {
                     </p>
                   )}
                   <p className="mt-3 font-ui text-sm font-semibold text-[#28241f]">
-                    Total (display currency at checkout): USD{" "}
-                    {Number(order.total).toFixed(2)}
+                    Total (display currency at checkout):{" "}
+                    {money(Number(order.total))}
                   </p>
                   <p className="mt-3 font-ui text-xs text-black/50">
                     Save your order code — you can check its status any time at{" "}
@@ -1308,7 +1323,7 @@ export default function CheckoutClient() {
                                 {it.variant_label ? ` — ${it.variant_label}` : ""}
                               </p>
                               <p className="font-ui text-sm text-black/60">
-                                × {it.qty} — ${Number(it.price).toFixed(2)} USD
+                                × {it.qty} — {money(Number(it.price))}
                               </p>
                             </div>
                             {it.product_slug && (
@@ -1394,7 +1409,7 @@ export default function CheckoutClient() {
               </span>
               {!orderSummaryOpen && (
                 <strong className="font-ui text-sm text-[#171717] lg:hidden">
-                  ${total.toFixed(2)}
+                  {money(total)}
                 </strong>
               )}
             </button>
@@ -1455,7 +1470,7 @@ export default function CheckoutClient() {
                       </Link>
                       <p className="mt-1 flex items-center gap-2 font-ui text-xs text-black/50">
                         <span>× {item.qty}</span>
-                        <span>${(item.price * item.qty).toFixed(2)}</span>
+                        <span>{money(item.price * item.qty)}</span>
                       </p>
                       {!order && isOutOfStock(item.slug, item.variantId) && (
                         <p className="mt-1 flex items-center gap-2 font-ui text-xs font-medium text-red-700">
@@ -1478,12 +1493,12 @@ export default function CheckoutClient() {
             <div className="space-y-2 border-t border-black/10 pt-4 font-ui text-sm">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <strong>${subtotal.toFixed(2)}</strong>
+                <strong>{money(subtotal)}</strong>
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between">
                   <span>Discount</span>
-                  <strong>-${discountAmount.toFixed(2)}</strong>
+                  <strong>-{money(discountAmount)}</strong>
                 </div>
               )}
               <div className="flex justify-between">
@@ -1492,11 +1507,11 @@ export default function CheckoutClient() {
               </div>
               <div className="flex justify-between pt-2 text-base">
                 <span>Total</span>
-                <strong>${total.toFixed(2)}</strong>
+                <strong>{money(total)}</strong>
               </div>
               {taxAmount > 0 && (
                 <p className="text-xs text-black/50">
-                  Including ${taxAmount.toFixed(2)} in taxes
+                  Including {money(taxAmount)} in taxes
                 </p>
               )}
             </div>

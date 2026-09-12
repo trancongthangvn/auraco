@@ -35,14 +35,22 @@ export const defaultCurrencyActive: Record<Currency, boolean> = {
 };
 
 /**
- * Every price in this codebase is stored and charged in USD. Explicit
- * request: browsing surfaces (product cards, catalog, "frequently bought
- * together") now convert the displayed number using an admin-set rate
+ * Every price in this codebase is stored and charged in USD. The displayed
+ * number is converted with an admin-set rate
  * (site_settings.extra.currency_rates, edited at Admin → Cài đặt website).
- * Cart, checkout and admin order views deliberately still call this with
- * rate=1 (or skip it) — those are the pages where money actually changes
- * hands, and showing a EUR/GBP figure that doesn't match the real USD
- * charge would be misleading right where a customer is about to pay.
+ *
+ * Cart and checkout used to be excluded from that conversion on the
+ * reasoning that a EUR/GBP figure could be mistaken for the real USD
+ * charge. In practice that read as a broken currency picker — switching to
+ * GBP changed the flag in the header and not a single price (bug report:
+ * "đổi giá tiền tệ nhưng giá trị k thay đổi") — so they convert too now.
+ * What keeps it honest instead: this function always prints the currency
+ * code next to the number, and the one place real money actually moves —
+ * the Cash App / Zelle transfer instruction on the payment screen — still
+ * states the amount in USD explicitly, whatever the display currency is.
+ *
+ * Admin order views stay in USD on purpose: that is the amount the store
+ * was actually paid, not a browsing preference.
  */
 export function formatPrice(value: number, currency: Currency, rate: number = 1): string {
   const { symbol } = currencyMeta[currency];

@@ -52,6 +52,14 @@ function PaymentMethodBadge({ methodKey }: { methodKey: string }) {
           <span className="font-serif text-sm italic text-white">Z</span>
         </span>
       );
+    case "airwallex":
+      return (
+        <span className={`${base} w-14`}>
+          <span className="text-[8px] font-semibold uppercase tracking-wide text-black/60">
+            Card/PayPal/Klarna
+          </span>
+        </span>
+      );
     default:
       return (
         <span className={base}>
@@ -142,7 +150,46 @@ const countries = [
 // Payment methods accepted by the orders API (server/routes/orders-payments.js
 // PAYMENT_METHODS). The settings table may also carry 'applePay', which isn't
 // a valid order payment_method, so it's filtered out below.
-const ORDER_PAYMENT_KEYS = ["card", "paypal", "cashapp", "zelle"];
+const ORDER_PAYMENT_KEYS = ["card", "paypal", "cashapp", "zelle", "airwallex"];
+
+// Airwallex's hosted-checkout redirect helper, loaded from their CDN only
+// when the shopper actually picks that payment method (see
+// loadAirwallexScript/redirectToAirwallexCheckout below) — no reason to ship
+// it to every visitor. Typed minimally (only the two calls this file makes)
+// rather than pulling in Airwallex's own SDK types.
+type AirwallexGlobal = {
+  init: (options: { env: string }) => void;
+  redirectToCheckout: (options: {
+    intent_id: string;
+    client_secret: string;
+    currency: string;
+    mode: "payment";
+    successUrl: string;
+    failUrl: string;
+  }) => void;
+};
+declare global {
+  interface Window {
+    Airwallex?: AirwallexGlobal;
+  }
+}
+
+const AIRWALLEX_SCRIPT_SRC = "https://checkout.airwallex.com/assets/elements.bundle.min.js";
+let airwallexScriptPromise: Promise<void> | null = null;
+function loadAirwallexScript(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.Airwallex) return Promise.resolve();
+  if (!airwallexScriptPromise) {
+    airwallexScriptPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = AIRWALLEX_SCRIPT_SRC;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Failed to load Airwallex checkout"));
+      document.head.appendChild(script);
+    });
+  }
+  return airwallexScriptPromise;
+}
 
 // Same threshold TrustBadges/cart advertise ("Free US Shipping over $120").
 const FREE_SHIPPING_THRESHOLD = 120;
@@ -250,6 +297,30 @@ export default function CheckoutClient() {
   );
   const freeShippingRemaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
 
+  // Returning from Airwallex's hosted checkout (see handlePayNow's
+  // redirectToCheckout successUrl/failUrl below) — the cart was already
+  // cleared before that redirect, so re-fetch the order by id from the URL
+  // to show the same confirmation view a manual-method order gets, instead
+  // of an empty checkout form. Reads the query string via window.location
+  // directly rather than next/navigation's useSearchParams — this
+  // codebase's standing rule (see DEPLOYMENT.md) is to never use that hook,
+  // since it forces a <Suspense> boundary that has shipped blank pages to
+  // production before.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const returningOrderId = params.get("airwallex_order");
+    if (!returningOrderId) return;
+    (async () => {
+      try {
+        const data = await apiFetch<CreatedOrder>(`/api/orders/${returningOrderId}`);
+        setOrder(data);
+      } catch {
+        // Order lookup page remains available if this fails for any reason.
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
@@ -327,6 +398,11 @@ export default function CheckoutClient() {
       );
 
     setSubmitting(true);
+    // Tracked outside the try's own scope (not the `order` state, which
+    // wouldn't have committed yet inside this same closure) so the catch
+    // block below can tell "order created, Airwallex redirect failed" apart
+    // from "order creation itself failed".
+    let createdOrder: CreatedOrder | null = null;
     try {
       // Most cart lines already carry the numeric product id from the page
       // that added them; any that don't (added via a product-card mapper
@@ -366,11 +442,44 @@ export default function CheckoutClient() {
           items: orderItems,
         }),
       });
+      createdOrder = data;
       setOrder(data);
       clear();
+
+      // Airwallex is a real gateway redirect, unlike the other methods
+      // (card/paypal/cashapp/zelle here are all manual-confirmation today,
+      // see orders-payments.js) — the order already exists at this point,
+      // so a failure past here is surfaced as an inline error rather than
+      // losing the order or double-submitting it.
+      if (payment === "airwallex") {
+        const intent = await apiFetch<{
+          intent_id: string;
+          client_secret: string;
+          currency: string;
+        }>(`/api/orders/${data.id}/airwallex-intent`, { method: "POST" });
+        await loadAirwallexScript();
+        const Airwallex = window.Airwallex;
+        if (!Airwallex) throw new Error("Airwallex checkout failed to load");
+        Airwallex.init({
+          env: process.env.NEXT_PUBLIC_AIRWALLEX_ENV || "demo",
+        });
+        Airwallex.redirectToCheckout({
+          intent_id: intent.intent_id,
+          client_secret: intent.client_secret,
+          currency: intent.currency,
+          mode: "payment",
+          successUrl: `${window.location.origin}/checkout?airwallex_order=${data.id}&airwallex_status=success`,
+          failUrl: `${window.location.origin}/checkout?airwallex_order=${data.id}&airwallex_status=failed`,
+        });
+        return; // navigating away to Airwallex's hosted page
+      }
     } catch (err) {
       setSubmitError(
-        err instanceof ApiError ? err.message : "Failed to place order"
+        err instanceof ApiError
+          ? err.message
+          : createdOrder
+            ? "Đơn hàng đã được tạo, nhưng không thể mở trang thanh toán Airwallex. Vui lòng liên hệ hỗ trợ với mã đơn hàng của bạn."
+            : "Failed to place order"
       );
       // Stock ran out between opening checkout and paying: re-read it so the
       // sold-out line is labelled below, not just named in the error.

@@ -4,8 +4,18 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const { UPLOAD_DIR } = require('./lib/upload');
+const { handleAirwallexWebhook } = require('./routes/webhooks-airwallex');
 
 const app = express();
+
+// ----------------------------------------------------------------------------
+// Airwallex webhook — mounted with express.raw() and BEFORE the app-wide
+// express.json() below, because its signature check needs the exact bytes
+// Airwallex sent (see lib/airwallex.js#verifyWebhookSignature). Handling it
+// here as a terminal route (no next()) means express.json() never runs for
+// this path — Express stops once the response is sent.
+// ----------------------------------------------------------------------------
+app.post('/api/webhooks/airwallex', express.raw({ type: '*/*' }), handleAirwallexWebhook);
 
 // ----------------------------------------------------------------------------
 // CORS — allowed origins configurable via CORS_ORIGINS (comma-separated)

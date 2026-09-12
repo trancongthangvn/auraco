@@ -4,6 +4,8 @@ const express = require('express');
 const { pool, query } = require('../db');
 const { authMiddleware, requireAdmin, requireStaffOrAdmin } = require('../middleware/auth');
 const { upload, verifyMagicBytes } = require('../lib/upload');
+const { sendOrderConfirmationEmail } = require('../lib/email');
+const airwallex = require('../lib/airwallex');
 
 const router = express.Router();
 
@@ -11,9 +13,9 @@ const router = express.Router();
 // Constants mirrored from schema.sql CHECK constraints
 // ----------------------------------------------------------------------------
 const ORDER_STATUSES = ['Đang xử lý', 'Đã giao', 'Đã hủy'];
-const PAYMENT_METHODS = ['card', 'paypal', 'cashapp', 'zelle'];
+const PAYMENT_METHODS = ['card', 'paypal', 'cashapp', 'zelle', 'airwallex'];
 const TRANSACTION_STATUSES = ['Chờ xử lý', 'Đã thanh toán', 'Thất bại', 'Đã hủy'];
-const PAYMENT_METHOD_KEYS = ['card', 'paypal', 'applePay', 'cashapp', 'zelle'];
+const PAYMENT_METHOD_KEYS = ['card', 'paypal', 'applePay', 'cashapp', 'zelle', 'airwallex'];
 
 // Convenience English aliases accepted from admin clients, mapped onto the
 // exact Vietnamese enum values the schema's CHECK constraints require.
@@ -249,7 +251,13 @@ router.post('/orders', async (req, res) => {
     await client.query('COMMIT');
 
     const itemsRes = await query(`SELECT * FROM order_items WHERE order_id = $1`, [order.id]);
-    return res.status(201).json({ data: { ...order, items: itemsRes.rows } });
+    const fullOrder = { ...order, items: itemsRes.rows };
+
+    // Fire-and-forget: the order is already committed, so a slow or failing
+    // email must never delay or fail this response (see lib/email.js).
+    sendOrderConfirmationEmail(fullOrder).catch(() => {});
+
+    return res.status(201).json({ data: fullOrder });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error(err);
@@ -614,6 +622,52 @@ router.post('/orders/:id/payment-proof', upload.single('proof'), async (req, res
     fs.unlink(req.file.path, () => {});
     console.error(err);
     return res.status(500).json({ error: 'Failed to record payment proof' });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// POST /orders/:id/airwallex-intent — creates an Airwallex Payment Intent
+// for an existing order and records a pending payment_transactions row for
+// it. The frontend uses the returned intent_id + client_secret to redirect
+// the shopper to Airwallex's hosted checkout (see CheckoutClient.tsx); the
+// actual "is this paid" answer comes later from the signature-verified
+// webhook in routes/webhooks-airwallex.js, never from this response alone.
+// ----------------------------------------------------------------------------
+router.post('/orders/:id/airwallex-intent', async (req, res) => {
+  const { id } = req.params;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'Invalid order id' });
+
+  if (!airwallex.isConfigured()) {
+    return res.status(503).json({
+      error: 'Airwallex chưa được cấu hình trên máy chủ (thiếu AIRWALLEX_CLIENT_ID/AIRWALLEX_API_KEY).',
+    });
+  }
+
+  try {
+    const orderRes = await query(`SELECT * FROM orders WHERE id = $1`, [Number(id)]);
+    const order = orderRes.rows[0];
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    const currency = process.env.AIRWALLEX_CURRENCY || 'USD';
+    const intent = await airwallex.createPaymentIntent({
+      orderId: order.id,
+      orderCode: order.order_code,
+      amount: parseFloat(order.total),
+      currency,
+    });
+
+    await query(
+      `INSERT INTO payment_transactions (order_id, method, amount, status, gateway_intent_id, gateway_raw_status)
+       VALUES ($1,'airwallex',$2,'Chờ xử lý',$3,$4)`,
+      [order.id, order.total, intent.id, intent.status || null]
+    );
+
+    return res.status(201).json({
+      data: { intent_id: intent.id, client_secret: intent.client_secret, currency },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(502).json({ error: 'Failed to create Airwallex payment intent' });
   }
 });
 

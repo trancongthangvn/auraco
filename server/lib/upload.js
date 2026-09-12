@@ -46,7 +46,34 @@ const MIME_WHITELIST = {
     magic: [[0x66, 0x74, 0x79, 0x70]],
     magicOffset: 4,
   },
+  // QuickTime .mov — the default container for anything filmed on an iPhone
+  // or a Mac, and the single most likely video an admin actually has to
+  // hand. Added per bug report ("chưa thêm được video"): mp4 alone meant a
+  // .mov could not even be picked in the file dialog. Same ISO-BMFF 'ftyp'
+  // box at offset 4 as mp4. Codec is a separate question from container —
+  // an HEVC .mov won't play in Chrome — so VideoField.tsx decodes the file
+  // in the browser before uploading and refuses one this browser can't
+  // play, rather than letting an unplayable clip reach the storefront.
+  'video/quicktime': {
+    ext: '.mov',
+    maxSize: 50 * 1024 * 1024,
+    magic: [[0x66, 0x74, 0x79, 0x70]],
+    magicOffset: 4,
+  },
+  // WebM — what a screen recorder or an export tool most often produces.
+  // EBML header magic at offset 0.
+  'video/webm': {
+    ext: '.webm',
+    maxSize: 50 * 1024 * 1024,
+    magic: [[0x1a, 0x45, 0xdf, 0xa3]],
+  },
 };
+
+/** Whether a MIME type in the whitelist above is a video, used only to pick
+ *  which accepted-formats list the rejection message should show. */
+function isVideoMime(mime) {
+  return typeof mime === 'string' && mime.startsWith('video/');
+}
 
 const MAX_SIZE = Math.max(...Object.values(MIME_WHITELIST).map((m) => m.maxSize));
 
@@ -76,8 +103,13 @@ function fileFilter(req, file, cb) {
     // verbatim; a bare "Unsupported file type: image/heic" left an admin
     // with no idea what to do next, which read as "drag-drop is broken"
     // rather than "this specific file needs converting first".
+    // The accepted list is picked to match what was actually offered: a
+    // rejected video used to be told "Accepted: JPG, PNG, WEBP, GIF, AVIF",
+    // which reads as "videos aren't supported at all" rather than "this
+    // video's format isn't".
     const err = new Error(
-      `Unsupported file type: ${file.mimetype}. Accepted: JPG, PNG, WEBP, GIF, AVIF` +
+      `Unsupported file type: ${file.mimetype}. Accepted: ` +
+        (isVideoMime(file.mimetype) ? 'MP4, MOV, WEBM' : 'JPG, PNG, WEBP, GIF, AVIF') +
         (file.mimetype === 'image/heic' || file.mimetype === 'image/heif'
           ? '. iPhone photos in HEIC format aren\'t supported by web browsers — open the photo in an editor (or Photos > Share > choose JPEG) and re-export as JPEG first.'
           : '.')

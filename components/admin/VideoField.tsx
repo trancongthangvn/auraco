@@ -25,6 +25,50 @@ export type VideoFieldProps = {
   disabled?: boolean;
 };
 
+/** Server-side cap (server/lib/upload.js). Checked here too so an oversized
+ *  file is refused instantly instead of after a long upload that ends in a
+ *  multer error. */
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+
+/** Containers the API accepts. `accept` used to be "video/mp4" alone, which
+ *  greyed out every .mov in the OS file dialog — an iPhone or Mac clip
+ *  literally could not be selected, and nothing ever reached the server
+ *  (bug report: "chưa thêm được video"). */
+const ACCEPTED_VIDEO = "video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm";
+
+/**
+ * Rejects a clip this browser can't decode BEFORE uploading it. The
+ * container being accepted (.mov) says nothing about the codec inside it:
+ * an iPhone filming in "High Efficiency" produces HEVC, which Safari plays
+ * and Chrome does not. Uploading one would put a video on the storefront
+ * that most visitors see as a black box, so it is caught here instead —
+ * the check runs in the admin's own browser, which is a fair proxy for a
+ * visitor's.
+ *
+ * Resolves true on a decode timeout rather than blocking the upload: a slow
+ * machine shouldn't turn into a false "unsupported" verdict.
+ */
+function canBrowserPlay(file: File): Promise<boolean> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const probe = document.createElement("video");
+    let settled = false;
+    const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      URL.revokeObjectURL(url);
+      resolve(ok);
+    };
+    const timer = setTimeout(() => done(true), 5000);
+    probe.preload = "metadata";
+    probe.muted = true;
+    probe.onloadedmetadata = () => done(probe.videoWidth > 0);
+    probe.onerror = () => done(false);
+    probe.src = url;
+  });
+}
+
 /**
  * Upload-or-paste-URL widget for a product's looping homepage video — the
  * video sibling of components/admin/ImageField.tsx, built on the shared admin
@@ -45,30 +89,43 @@ export default function VideoField({
 
   const busy = disabled || uploading;
 
-  const upload = (file: File) => {
+  const upload = async (file: File) => {
     setError(null);
+
+    if (file.size > MAX_VIDEO_BYTES) {
+      setError(
+        `Video nặng ${(file.size / 1024 / 1024).toFixed(0)}MB, vượt giới hạn 50MB. ` +
+          "Hãy nén hoặc cắt ngắn video rồi tải lại."
+      );
+      return;
+    }
+
     setUploading(true);
-    const body = new FormData();
-    body.append("video", file);
-    apiFetch<UploadResult>(UPLOAD_ENDPOINT, { method: "POST", body })
-      .then((res) => {
-        if (res?.url) onChange(res.url);
-        else setError("Máy chủ không trả về đường dẫn video");
-      })
-      .catch((err: unknown) => {
+    try {
+      if (!(await canBrowserPlay(file))) {
         setError(
-          err instanceof ApiError ? err.message : "Không thể tải video lên"
+          "Trình duyệt không đọc được video này (thường là video iPhone quay ở chế độ " +
+            "High Efficiency/HEVC). Hãy xuất lại sang MP4 H.264 — trên iPhone: Cài đặt > " +
+            "Máy ảnh > Định dạng > Tương thích nhất — rồi tải lại."
         );
-      })
-      .finally(() => {
-        setUploading(false);
-      });
+        return;
+      }
+      const body = new FormData();
+      body.append("video", file);
+      const res = await apiFetch<UploadResult>(UPLOAD_ENDPOINT, { method: "POST", body });
+      if (res?.url) onChange(res.url);
+      else setError("Máy chủ không trả về đường dẫn video");
+    } catch (err: unknown) {
+      setError(err instanceof ApiError ? err.message : "Không thể tải video lên");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (file) upload(file);
+    if (file) void upload(file);
   };
 
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -76,7 +133,7 @@ export default function VideoField({
     setDragging(false);
     if (busy) return;
     const file = e.dataTransfer.files?.[0];
-    if (file) upload(file);
+    if (file) void upload(file);
   };
 
   return (
@@ -129,13 +186,13 @@ export default function VideoField({
           </span>
           {!uploading && (
             <span className="text-xs text-black/40">
-              hoặc bấm để chọn video MP4 (tối đa 50MB)
+              hoặc bấm để chọn video MP4, MOV, WEBM (tối đa 50MB)
             </span>
           )}
           <input
             ref={inputRef}
             type="file"
-            accept="video/mp4"
+            accept={ACCEPTED_VIDEO}
             className="hidden"
             disabled={busy}
             onChange={onPick}

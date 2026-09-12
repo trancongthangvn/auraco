@@ -257,32 +257,42 @@ function DescriptionSectionsField({
 /** Replaces the old single VideoField, which only ever let a product carry
  *  one video. Explicit request: allow several — each row is still the same
  *  upload-or-paste-URL widget, just repeated, so uploading/pasting/removing
- *  a video works exactly as it always did per row. */
+ *  a video works exactly as it always did per row. There is no cap on how
+ *  many rows a product can have (nor anywhere below it: the API stores the
+ *  whole list as jsonb and the product page renders one thumbnail per
+ *  video), so rows are numbered and reorderable like the image list — with
+ *  more than a couple of clips it is otherwise impossible to tell which
+ *  one is which, and the first is the one the homepage video band uses. */
 function VideoUrlsField({
   videos,
   onAdd,
   onUpdate,
   onRemove,
+  onMove,
   disabled,
 }: {
   videos: EditVideo[];
   onAdd: () => void;
   onUpdate: (index: number, url: string | null) => void;
   onRemove: (index: number) => void;
+  onMove: (index: number, direction: -1 | 1) => void;
   disabled?: boolean;
 }) {
   return (
     <div className="mb-6">
       <div className="mb-2 flex items-center justify-between">
-        <Label className="mb-0">Video sản phẩm</Label>
+        <Label className="mb-0">
+          Video sản phẩm{videos.length > 0 ? ` (${videos.length})` : ""}
+        </Label>
         <Button type="button" size="sm" variant="ghost" onClick={onAdd} disabled={disabled}>
           + Thêm video
         </Button>
       </div>
       <p className="mb-3 text-xs text-black/40">
-        Video MP4 ngắn, lặp — video đầu tiên hiển thị ở băng video trên trang
-        chủ, tất cả hiển thị lần lượt ở mục &quot;See It IRL&quot; trên trang
-        sản phẩm. Để trống nếu sản phẩm không có video.
+        Video MP4 ngắn, lặp — thêm bao nhiêu video cũng được, không giới hạn
+        số lượng. Mỗi video hiện thành một ô riêng ở mục &quot;See It
+        IRL&quot; trên trang sản phẩm; riêng video số 1 còn được dùng cho
+        băng video ở trang chủ. Để trống nếu sản phẩm không có video.
       </p>
       <div className="space-y-3">
         {videos.length === 0 && (
@@ -290,6 +300,33 @@ function VideoUrlsField({
         )}
         {videos.map((video, i) => (
           <div key={video._key} className="flex items-start gap-2">
+            <div className="flex shrink-0 flex-col">
+              <span className="mb-1 text-[10px] font-semibold text-black/40">
+                #{i + 1}
+              </span>
+              <IconButton
+                type="button"
+                tone="default"
+                aria-label="Di chuyển lên"
+                disabled={disabled || i === 0}
+                onClick={() => onMove(i, -1)}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="5 15.5 12 8.5 19 15.5" />
+                </svg>
+              </IconButton>
+              <IconButton
+                type="button"
+                tone="default"
+                aria-label="Di chuyển xuống"
+                disabled={disabled || i === videos.length - 1}
+                onClick={() => onMove(i, 1)}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="5 8.5 12 15.5 19 8.5" />
+                </svg>
+              </IconButton>
+            </div>
             <div className="min-w-0 flex-1">
               <VideoField
                 value={video.url || null}
@@ -451,6 +488,10 @@ export default function AdminProductsPage() {
 
   const removeVideo = (index: number) => {
     setEditVideos((list) => list.filter((_, i) => i !== index));
+  };
+
+  const moveVideo = (index: number, direction: -1 | 1) => {
+    setEditVideos((list) => moveItem(list, index, direction));
   };
 
   function moveItem<T>(list: T[], index: number, direction: -1 | 1): T[] {
@@ -1511,6 +1552,7 @@ export default function AdminProductsPage() {
                 }
                 onUpdate={updateVideo}
                 onRemove={removeVideo}
+                onMove={moveVideo}
                 disabled={saving}
               />
 

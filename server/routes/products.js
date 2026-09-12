@@ -4,6 +4,7 @@ const fs = require('fs');
 const { query, pool } = require('../db');
 const { authMiddleware, requireStaffOrAdmin } = require('../middleware/auth');
 const { upload, verifyMagicBytes } = require('../lib/upload');
+const { applyCardDiscount, discountedUnitPrice } = require('../lib/pricing');
 
 const router = express.Router();
 
@@ -246,7 +247,11 @@ router.get('/', async (req, res) => {
     // meta_title/meta_description are for generateMetadata on the product
     // detail page only — omitted here so the (larger, more cacheable) list
     // response doesn't carry per-product SEO text nobody reads on a listing.
-    const publicProducts = products.map(({ meta_title, meta_description, ...rest }) => rest);
+    const publicProducts = products
+      .map(({ meta_title, meta_description, ...rest }) => rest)
+      // Card discount applied here, not in the storefront's mappers — see
+      // lib/pricing.js for why this has to happen once, server-side.
+      .map(applyCardDiscount);
 
     res.json({ data: publicProducts });
   } catch (err) {
@@ -265,7 +270,7 @@ router.get('/:slug', async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
     const [product] = await attachRelations(result.rows);
-    res.json({ data: product });
+    res.json({ data: applyCardDiscount(product) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch product' });
@@ -288,7 +293,7 @@ router.get('/:slug/bundle', async (req, res) => {
     const product = productResult.rows[0];
 
     const companionsResult = await query(
-      `SELECT c.slug, c.name, c.price, c.compare_at_price, c.images, c.stock
+      `SELECT c.slug, c.name, c.price, c.compare_at_price, c.discount_percent, c.images, c.stock
          FROM product_bundles pb
          JOIN products c ON c.id = pb.companion_id
         WHERE pb.product_id = $1 AND c.active = TRUE
@@ -299,11 +304,21 @@ router.get('/:slug/bundle', async (req, res) => {
     res.json({
       data: {
         discountPercent: Number(product.bundle_discount_percent),
+        // Companions carry their own card discount too (discount_percent
+        // is now selected above for exactly this) — a companion shown here
+        // at a different price than on its own card would be a visible
+        // contradiction, and the bundle's own discount stacks on top of
+        // the already-discounted price, same as it does on the card.
         companions: companionsResult.rows.map((c) => ({
           slug: c.slug,
           name: c.name,
-          price: Number(c.price),
-          compareAtPrice: c.compare_at_price != null ? Number(c.compare_at_price) : null,
+          price: discountedUnitPrice(c),
+          compareAtPrice:
+            c.compare_at_price != null
+              ? Number(c.compare_at_price)
+              : Number(c.discount_percent) > 0
+                ? Number(c.price)
+                : null,
           image: Array.isArray(c.images) ? c.images[0] : undefined,
           // Lets the product page render a sold-out companion as unavailable
           // from its very first paint, before any client-side stock lookup.

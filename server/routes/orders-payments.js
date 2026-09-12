@@ -5,6 +5,7 @@ const { pool, query } = require('../db');
 const { authMiddleware, requireAdmin, requireStaffOrAdmin } = require('../middleware/auth');
 const { upload, verifyMagicBytes } = require('../lib/upload');
 const { sendOrderConfirmationEmail } = require('../lib/email');
+const { discountedUnitPrice } = require('../lib/pricing');
 const airwallex = require('../lib/airwallex');
 
 const router = express.Router();
@@ -114,7 +115,7 @@ router.post('/orders', async (req, res) => {
     // Resolve product snapshots
     const productIds = items.map((it) => it.product_id);
     const prodRes = await client.query(
-      `SELECT id, name, material, price, images, stock FROM products WHERE id = ANY($1::int[])`,
+      `SELECT id, name, material, price, discount_percent, images, stock FROM products WHERE id = ANY($1::int[])`,
       [productIds]
     );
     const productMap = new Map(prodRes.rows.map((p) => [p.id, p]));
@@ -160,7 +161,11 @@ router.post('/orders', async (req, res) => {
         return res.status(409).json({ error: `${product.name} is out of stock`, code: 'OUT_OF_STOCK', product_id: product.id });
       }
       const qty = Math.trunc(toNumber(it.qty));
-      const unitPrice = parseFloat(product.price);
+      // Charge the same price the storefront showed: products.price less
+      // the product's own card discount (products.discount_percent). Taking
+      // the raw column here would bill the full price for a product
+      // advertised at a discount — see server/lib/pricing.js.
+      const unitPrice = discountedUnitPrice(product);
       subtotal += unitPrice * qty;
       const images = Array.isArray(product.images) ? product.images : [];
       lineItems.push({

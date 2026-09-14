@@ -414,8 +414,8 @@ function OrdersView({ orders }: { orders: AccountOrder[] | null }) {
             <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2 text-xs text-black/55">
               <span>
                 {dict.placedOn} {new Date(o.created_at).toLocaleDateString()} ·{" "}
-                {PAYMENT_LABEL[o.payment_method] ?? o.payment_method} · {o.items.reduce((n, i) => n + i.qty, 0)}{" "}
-                {dict.qty.toLowerCase()}
+                {PAYMENT_LABEL[o.payment_method] ?? o.payment_method} · {dict.qty}{" "}
+                {o.items.reduce((n, i) => n + i.qty, 0)}
               </span>
               <span className="text-sm font-semibold text-[#2b261f]">
                 {dict.total} {money(o.total)}

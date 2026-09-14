@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, isValidElement, useEffect, useMemo, useRef, useState } from "react";
+import { Children, forwardRef, isValidElement, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 const FIELD_BASE =
@@ -54,7 +54,14 @@ export const Select = forwardRef<
     () =>
       Array.from(
         (function* () {
-          for (const child of Array.isArray(children) ? children : [children]) {
+          // Children.toArray flattens nested arrays. Iterating `children`
+          // directly only saw the top level, so a static option next to a
+          // mapped list — <option value="">Tất cả</option>{list.map(...)} —
+          // arrives as [element, [elements]] and every mapped option was
+          // silently dropped: the admin order filters showed "Tất cả" and
+          // nothing else (bug report). A lone element or a lone mapped
+          // array, the only shapes used before, flatten to the same list.
+          for (const child of Children.toArray(children)) {
             if (isValidElement<React.OptionHTMLAttributes<HTMLOptionElement>>(child) && child.type === "option") {
               yield {
                 value: String(child.props.value ?? ""),

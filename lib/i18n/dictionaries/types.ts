@@ -10,6 +10,7 @@ export interface Dictionary {
     news: string;
     about: string;
     contact: string;
+    trackOrder: string;
     account: string;
     cart: string;
     search: string;

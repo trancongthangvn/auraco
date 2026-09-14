@@ -32,6 +32,10 @@ export const ourStoryLinks = [
   { key: "news" as const, label: "News", href: "/news" },
   { key: "about" as const, label: "About", href: "/pages/about" },
   { key: "contact" as const, label: "Contact", href: "/pages/contact" },
+  // The order-lookup page had no way in except the links on the thank-you
+  // screen (request: add an entry point under "Our Story", since the site has
+  // no working customer account page to put it in).
+  { key: "trackOrder" as const, label: "Track Order", href: "/pages/track-order" },
 ];
 
 export const collections = [

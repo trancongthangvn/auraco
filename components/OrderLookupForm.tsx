@@ -39,6 +39,16 @@ const money = (v: string | number) => `$${Number(v).toFixed(2)}`;
  * alone ('AC-1042') is short and sequential, so a code-only public lookup
  * would let anyone page through every customer's order history.
  */
+// orders.status stores the admin's Vietnamese labels (the schema's CHECK
+// constraint), which were shown verbatim to customers on this English page —
+// "Đang xử lý" (bug report). Mapped for display only; the stored values and
+// the admin side are unchanged.
+const STATUS_LABEL: Record<string, string> = {
+  "Đang xử lý": "Processing",
+  "Đã giao": "Delivered",
+  "Đã hủy": "Cancelled",
+};
+
 export default function OrderLookupForm() {
   const [orderCode, setOrderCode] = useState("");
   const [email, setEmail] = useState("");
@@ -136,7 +146,7 @@ export default function OrderLookupForm() {
               Order <strong>{order.order_code}</strong>
             </p>
             <span className="inline-flex items-center rounded-full border border-black/15 px-3 py-1 text-xs font-medium text-[#2b261f]">
-              {order.status}
+              {STATUS_LABEL[order.status] ?? order.status}
             </span>
           </div>
           <p className="text-xs text-black/50">

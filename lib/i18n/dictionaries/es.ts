@@ -12,6 +12,7 @@ const dictionary = {
     news: "Noticias",
     about: "Sobre nosotros",
     contact: "Contacto",
+    trackOrder: "Seguir mi pedido",
     account: "Cuenta",
     cart: "Carrito",
     search: "Buscar",

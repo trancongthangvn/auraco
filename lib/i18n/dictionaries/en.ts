@@ -16,6 +16,7 @@ const dictionary: Dictionary = {
     news: "News",
     about: "About",
     contact: "Contact",
+    trackOrder: "Track Order",
     account: "Account",
     cart: "Cart",
     search: "Search",

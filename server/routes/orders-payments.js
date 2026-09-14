@@ -528,6 +528,62 @@ router.put('/admin/orders/:id', authMiddleware, requireStaffOrAdmin, async (req,
   }
 });
 
+// ----------------------------------------------------------------------------
+// PUT /admin/orders/:id/charges — admin sets this order's shipping fee and tax
+// by hand. Body: { shipping_fee: number >= 0, tax_percent: number 0-100 }
+//
+// The checkout applies one flat fee and one tax rate to every order (Admin →
+// Cài đặt website). Request: let the admin override both per order — e.g. a
+// parcel to another country that costs more to ship, or a customer who is
+// tax-exempt. Rates by country/weight/carrier stay out of scope (contract
+// Điều 2.2); this is the manual alternative.
+//
+// Tax is entered as a percentage and the amount is computed here on the same
+// base the checkout uses (goods after discount, shipping untaxed), then the
+// total is rebuilt from subtotal − discount + shipping + tax, so the three
+// can never disagree. Admin-only: this changes what the customer owes.
+// Payment proofs already submitted keep the amount they were sent for.
+// ----------------------------------------------------------------------------
+router.put('/admin/orders/:id/charges', authMiddleware, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'Invalid order id' });
+
+  const shippingFee = toNumber(req.body && req.body.shipping_fee);
+  const taxPercent = toNumber(req.body && req.body.tax_percent);
+  if (shippingFee === null || shippingFee < 0) {
+    return res.status(400).json({ error: 'Phí vận chuyển phải là số không âm' });
+  }
+  if (taxPercent === null || taxPercent < 0 || taxPercent > 100) {
+    return res.status(400).json({ error: 'Thuế (%) phải là số từ 0 đến 100' });
+  }
+
+  try {
+    const current = await query(`SELECT subtotal, discount_amount FROM orders WHERE id = $1`, [Number(id)]);
+    if (current.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+
+    const preTaxGoods = Math.max(
+      0,
+      parseFloat(current.rows[0].subtotal) - parseFloat(current.rows[0].discount_amount)
+    );
+    const fee = Math.round(shippingFee * 100) / 100;
+    const taxAmount = Math.round(preTaxGoods * taxPercent) / 100;
+    const total = preTaxGoods + fee + taxAmount;
+
+    const result = await query(
+      `UPDATE orders
+          SET shipping_fee = $1, tax_amount = $2, total = $3, updated_at = now()
+        WHERE id = $4
+        RETURNING *`,
+      [fee.toFixed(2), taxAmount.toFixed(2), total.toFixed(2), Number(id)]
+    );
+    const itemsRes = await query(ORDER_ITEMS_SQL, [Number(id)]);
+    return res.json({ data: { ...result.rows[0], items: itemsRes.rows } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to update order charges' });
+  }
+});
+
 // ============================================================================
 // Payments
 // ============================================================================

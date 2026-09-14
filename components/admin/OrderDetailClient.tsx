@@ -9,7 +9,8 @@ import { useImageZoom } from "@/components/admin/ImageZoomProvider";
 import { apiFetch, ApiError } from "@/lib/api";
 import type { OrderStatus } from "@/data/admin";
 import { ChevronLeftIcon } from "@/components/icons";
-import { Select } from "@/components/admin/ui/Field";
+import { Input, Label, Select } from "@/components/admin/ui/Field";
+import Button from "@/components/admin/ui/Button";
 import Badge from "@/components/admin/ui/Badge";
 
 const STATUSES: OrderStatus[] = ["Đang xử lý", "Đã giao", "Đã hủy"];
@@ -123,6 +124,38 @@ export default function OrderDetailClient({ id }: { id: string }) {
       cancelled = true;
     };
   }, [order]);
+
+  // Manual per-order shipping + tax (request: "admin có thể nhập tính phí bằng
+  // tay để tự đặt tiền ship và tính thuế"). Opens prefilled with the order's
+  // current values; the preview below recomputes live with the same rule the
+  // server applies on save (PUT /admin/orders/:id/charges).
+  const [editingCharges, setEditingCharges] = useState(false);
+  const [shipInput, setShipInput] = useState("");
+  const [taxPctInput, setTaxPctInput] = useState("");
+  const [savingCharges, setSavingCharges] = useState(false);
+  const [chargesError, setChargesError] = useState<string | null>(null);
+
+  const saveCharges = async () => {
+    if (!order) return;
+    const ship = Number(shipInput || "0");
+    const pct = Number(taxPctInput || "0");
+    if (!Number.isFinite(ship) || ship < 0) return setChargesError("Phí vận chuyển phải là số không âm");
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) return setChargesError("Thuế (%) phải là số từ 0 đến 100");
+    setSavingCharges(true);
+    setChargesError(null);
+    try {
+      const updated = await apiFetch<OrderDetail>(`/api/admin/orders/${order.id}/charges`, {
+        method: "PUT",
+        body: JSON.stringify({ shipping_fee: ship, tax_percent: pct }),
+      });
+      setOrder(updated);
+      setEditingCharges(false);
+    } catch (err) {
+      setChargesError(err instanceof ApiError ? err.message : "Không thể lưu phí");
+    } finally {
+      setSavingCharges(false);
+    }
+  };
 
   const updateStatus = async (status: OrderStatus) => {
     if (!order) return;
@@ -253,6 +286,87 @@ export default function OrderDetailClient({ id }: { id: string }) {
                 <span>Tổng cộng</span>
                 <span>${total.toFixed(2)}</span>
               </div>
+
+              {!editingCharges ? (
+                <div className="flex justify-end pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      const preTax = Math.max(0, subtotal - discountAmount);
+                      setShipInput(shippingFee ? String(shippingFee) : "0");
+                      setTaxPctInput(
+                        preTax > 0 ? String(Math.round((taxAmount / preTax) * 10000) / 100) : "0"
+                      );
+                      setChargesError(null);
+                      setEditingCharges(true);
+                    }}
+                  >
+                    Sửa phí ship &amp; thuế
+                  </Button>
+                </div>
+              ) : (
+                (() => {
+                  const preTax = Math.max(0, subtotal - discountAmount);
+                  const ship = Math.max(0, Number(shipInput) || 0);
+                  const pct = Math.min(100, Math.max(0, Number(taxPctInput) || 0));
+                  const tax = Math.round(preTax * pct) / 100;
+                  return (
+                    <div className="mt-2 space-y-3 rounded-xl border border-black/10 bg-black/[0.02] p-3">
+                      <div>
+                        <Label>Phí vận chuyển (USD)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={shipInput}
+                          onChange={(e) => setShipInput(e.target.value)}
+                          disabled={savingCharges}
+                        />
+                      </div>
+                      <div>
+                        <Label>Thuế (%)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="0.01"
+                          value={taxPctInput}
+                          onChange={(e) => setTaxPctInput(e.target.value)}
+                          disabled={savingCharges}
+                        />
+                        <p className="mt-1 text-xs text-black/45">
+                          Tính trên tiền hàng sau giảm giá (${preTax.toFixed(2)}) = ${tax.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="flex justify-between border-t border-black/10 pt-2 text-sm">
+                        <span>Tổng mới</span>
+                        <strong>${(preTax + ship + tax).toFixed(2)}</strong>
+                      </div>
+                      <p className="text-xs text-black/45">
+                        Không tự báo cho khách. Nếu khách đã chuyển khoản theo tổng cũ, cần
+                        liên hệ khách để thu thêm hoặc hoàn lại phần chênh lệch.
+                      </p>
+                      {chargesError && <p className="text-xs text-red-600">{chargesError}</p>}
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setEditingCharges(false)}
+                          disabled={savingCharges}
+                        >
+                          Hủy
+                        </Button>
+                        <Button type="button" size="sm" onClick={saveCharges} disabled={savingCharges}>
+                          {savingCharges ? "Đang lưu..." : "Lưu"}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
             </div>
           </div>
         </div>

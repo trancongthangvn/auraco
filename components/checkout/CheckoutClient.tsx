@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useCart } from "@/components/cart/CartProvider";
 import { cartItemKey } from "@/lib/cart";
 import CurrencyPicker from "@/components/currency/CurrencyPicker";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { formatPrice } from "@/lib/currency";
+import { saveLastOrder, type CreatedOrder } from "@/components/checkout/lastOrder";
 import {
   ChevronLeftIcon,
   ChevronDownIcon,
@@ -203,29 +205,7 @@ type ApiPaymentMethod = {
   qr_image_url: string | null;
 };
 
-type CreatedOrderItem = {
-  id: number;
-  name: string;
-  material: string | null;
-  price: string | number;
-  qty: number;
-  image_url: string | null;
-  variant_label?: string | null;
-  /** Joined from products (see ORDER_ITEMS_SQL server-side) so the
-   *  confirmation screen can link each line to its own product page for a
-   *  review. Null for a product deleted after the order was placed. */
-  product_slug?: string | null;
-};
-
-type CreatedOrder = {
-  id: number;
-  order_code: string;
-  email?: string;
-  total: string | number;
-  payment_method: string;
-  created_at?: string;
-  items?: CreatedOrderItem[];
-};
+// CreatedOrder / CreatedOrderItem live in ./lastOrder.ts, shared with /thankyou.
 
 export default function CheckoutClient() {
   const {
@@ -258,6 +238,15 @@ export default function CheckoutClient() {
   // code alongside the number so it is never ambiguous which one is shown.
   const { currency, rates } = useCurrency();
   const money = (v: number) => formatPrice(v, currency, rates[currency]);
+  const router = useRouter();
+
+  // The thank-you screen has its own /thankyou URL now (explicit request —
+  // the address bar used to still read /checkout after paying). The order is
+  // handed over through sessionStorage; see lastOrder.ts for why not the URL.
+  const goToThankYou = (placed: CreatedOrder, proofUploaded: boolean) => {
+    saveLastOrder({ order: placed, proofUploaded });
+    router.push("/thankyou");
+  };
 
   const [paymentMethods, setPaymentMethods] = useState<ApiPaymentMethod[]>([]);
   const [paymentMethodsError, setPaymentMethodsError] = useState("");
@@ -345,15 +334,18 @@ export default function CheckoutClient() {
     const params = new URLSearchParams(window.location.search);
     const returningOrderId = params.get("airwallex_order");
     if (!returningOrderId) return;
-    (async () => {
-      try {
-        const data = await apiFetch<CreatedOrder>(`/api/orders/${returningOrderId}`);
-        setOrder(data);
-      } catch {
-        // Order lookup page remains available if this fails for any reason.
-      }
-    })();
-  }, []);
+    // Only a failed/cancelled payment comes back here now — a successful one
+    // returns straight to /thankyou (see successUrl below).
+    if (params.get("airwallex_status") !== "failed") {
+      router.replace(`/thankyou?airwallex_order=${encodeURIComponent(returningOrderId)}`);
+      return;
+    }
+    queueMicrotask(() =>
+      setSubmitError(
+        "Your card payment was not completed. You can try again, or choose another payment method."
+      )
+    );
+  }, [router]);
 
   useEffect(() => {
     (async () => {
@@ -504,8 +496,16 @@ export default function CheckoutClient() {
         }),
       });
       createdOrder = data;
-      setOrder(data);
       clear();
+
+      // Nothing more is asked of the customer for these methods, so they go
+      // straight to the thank-you page. Cash App / Zelle stay on this page
+      // for the QR + proof screen first; Airwallex redirects out below.
+      if (payment !== "airwallex" && payment !== "cashapp" && payment !== "zelle") {
+        goToThankYou(data, false);
+        return;
+      }
+      setOrder(data);
 
       // Airwallex is a real gateway redirect, unlike the other methods
       // (card/paypal/cashapp/zelle here are all manual-confirmation today,
@@ -529,7 +529,7 @@ export default function CheckoutClient() {
           client_secret: intent.client_secret,
           currency: intent.currency,
           mode: "payment",
-          successUrl: `${window.location.origin}/checkout?airwallex_order=${data.id}&airwallex_status=success`,
+          successUrl: `${window.location.origin}/thankyou?airwallex_order=${data.id}`,
           failUrl: `${window.location.origin}/checkout?airwallex_order=${data.id}&airwallex_status=failed`,
         });
         return; // navigating away to Airwallex's hosted page
@@ -608,6 +608,7 @@ export default function CheckoutClient() {
         body: formData,
       });
       setProofUploaded(true);
+      goToThankYou(order, true);
     } catch (err) {
       setProofError(
         err instanceof ApiError ? err.message : "Failed to upload proof"
@@ -1263,92 +1264,17 @@ export default function CheckoutClient() {
                     </p>
                   )}
                 </div>
+              ) : submitError ? (
+                <p
+                  role="alert"
+                  className="border border-red-300 bg-red-50 px-4 py-3 font-ui text-sm text-red-700"
+                >
+                  {submitError}
+                </p>
               ) : (
-                <div>
-                  <h1 className="font-ui text-[26px] uppercase tracking-[0.08em] text-[#28241f]">
-                    Thank you
-                  </h1>
-                  <p className="mt-2 font-ui text-sm text-[#4a443c]">
-                    Order <strong>{order.order_code}</strong> has been placed.
-                  </p>
-
-                  {proofUploaded && (
-                    <p className="mt-5 rounded-[4px] bg-[#f5f1ec] px-5 py-4 font-ui text-sm text-[#4a443c]">
-                      Your payment proof is being reviewed.
-                      {order.email ? (
-                        <>
-                          {" "}
-                          We will email you at <strong>{order.email}</strong>{" "}
-                          once confirmed.
-                        </>
-                      ) : null}
-                    </p>
-                  )}
-
-                  {order.email && (
-                    <p className="mt-5 font-ui text-sm text-[#4a443c]">
-                      We emailed your order details to{" "}
-                      <strong>{order.email}</strong>.
-                    </p>
-                  )}
-                  <p className="mt-3 font-ui text-sm font-semibold text-[#28241f]">
-                    Total (display currency at checkout):{" "}
-                    {money(Number(order.total))}
-                  </p>
-                  <p className="mt-3 font-ui text-xs text-black/50">
-                    Save your order code — you can check its status any time at{" "}
-                    <Link
-                      href="/pages/track-order"
-                      className="text-[#2b261f] underline hover:text-gold"
-                    >
-                      Track Your Order
-                    </Link>
-                    .
-                  </p>
-
-                  {order.items && order.items.length > 0 && (
-                    <>
-                      <h2 className="mt-8 font-ui text-[15px] uppercase tracking-[0.08em] text-[#28241f]">
-                        Your items
-                      </h2>
-                      <ul className="mt-3 divide-y divide-gold-light/45 border-y border-gold-light/45">
-                        {order.items.map((it) => (
-                          <li
-                            key={it.id}
-                            className="flex flex-wrap items-center justify-between gap-3 py-4"
-                          >
-                            <div>
-                              <p className="font-ui text-sm text-[#28241f]">
-                                {it.name}
-                                {it.variant_label ? ` — ${it.variant_label}` : ""}
-                              </p>
-                              <p className="font-ui text-sm text-black/60">
-                                × {it.qty} — {money(Number(it.price))}
-                              </p>
-                            </div>
-                            {it.product_slug && (
-                              <Link
-                                href={`/review?order=${encodeURIComponent(
-                                  order.order_code
-                                )}&product=${encodeURIComponent(it.product_slug)}`}
-                                className="shrink-0 font-ui text-sm underline underline-offset-4 hover:text-gold"
-                              >
-                                Write a review
-                              </Link>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-
-                  <Link
-                    href="/catalog"
-                    className="mt-8 flex w-full items-center justify-center bg-[#111] py-4 font-ui text-sm font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-black"
-                  >
-                    Continue shopping →
-                  </Link>
-                </div>
+                // Momentary: the thank-you page lives at /thankyou, and the
+                // navigation there is already under way.
+                <p className="font-ui text-sm text-black/50">Loading your confirmation…</p>
               )}
             </div>
           )}

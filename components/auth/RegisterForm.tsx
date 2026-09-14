@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ApiError } from "@/lib/api";
+import { accountFetch, setCustomerToken, type Customer } from "@/lib/customerAuth";
 import { GoogleIcon } from "@/components/icons";
 import { useDictionary } from "@/components/i18n/LanguageProvider";
 
@@ -13,18 +16,38 @@ export default function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
 
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         setMessage("");
+        setSubmitError("");
         if (password !== confirmPassword) {
           setError(dict.passwordMismatch);
           return;
         }
         setError("");
-        setMessage(dict.demoMessage);
+        setSubmitting(true);
+        try {
+          const data = await accountFetch<{ token: string; customer: Customer }>(
+            "/api/account/register",
+            {
+              method: "POST",
+              body: JSON.stringify({ full_name: fullName.trim(), email: email.trim(), password }),
+            }
+          );
+          setCustomerToken(data.token);
+          router.push("/account");
+        } catch (err) {
+          setSubmitError(
+            err instanceof ApiError ? err.message : "Could not create your account. Please try again."
+          );
+          setSubmitting(false);
+        }
       }}
       className="mx-auto max-w-[620px] px-6 pb-16 space-y-6"
     >
@@ -52,6 +75,7 @@ export default function RegisterForm() {
         <input
           required
           type="password"
+          minLength={8}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full border-0 border-b border-[#d4d4d4] pb-2 text-[13px] font-light bg-transparent focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f]"
@@ -75,9 +99,16 @@ export default function RegisterForm() {
         )}
       </label>
 
+      {submitError && (
+        <p role="alert" className="text-xs text-center text-red-700">
+          {submitError}
+        </p>
+      )}
+
       <button
         type="submit"
-        className="w-full rounded-none border border-black bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:border-[#2b261f] transition-colors"
+        disabled={submitting}
+        className="w-full rounded-none border border-black bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:border-[#2b261f] transition-colors disabled:opacity-60"
       >
         {dict.createAccount}
       </button>
@@ -110,7 +141,6 @@ export default function RegisterForm() {
         </Link>
       </p>
 
-      <p className="text-xs text-black/40 text-center pt-4">{dict.demoNotice}</p>
     </form>
   );
 }

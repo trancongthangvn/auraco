@@ -7,6 +7,7 @@ const { upload, verifyMagicBytes } = require('../lib/upload');
 const { sendOrderConfirmationEmail } = require('../lib/email');
 const { discountedUnitPrice } = require('../lib/pricing');
 const airwallex = require('../lib/airwallex');
+const { verifyCustomerToken } = require('../lib/customerAuth');
 
 const router = express.Router();
 
@@ -255,8 +256,8 @@ router.post('/orders', async (req, res) => {
       `INSERT INTO orders
         (id, order_code, customer_name, email, phone, address, city, country,
          subtotal, shipping_fee, discount_amount, total, discount_code_id, status, payment_method,
-         company, postal_code, tax_amount)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8,'Vietnam'),$9,$10,$11,$12,$13,'Đang xử lý',$14,$15,$16,$17)
+         company, postal_code, tax_amount, customer_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8,'Vietnam'),$9,$10,$11,$12,$13,'Đang xử lý',$14,$15,$16,$17,$18)
        RETURNING *`,
       [
         newId,
@@ -276,6 +277,11 @@ router.post('/orders', async (req, res) => {
         isNonEmptyString(company) ? company.trim().slice(0, 160) : null,
         isNonEmptyString(postal_code) ? postal_code.trim().slice(0, 40) : null,
         taxAmount.toFixed(2),
+        // Signed-in shoppers send their account token in X-Customer-Token
+        // (not Authorization, which apiFetch fills with an admin token when
+        // one exists in the same browser). Guests and invalid tokens get NULL
+        // — checkout never fails over it.
+        verifyCustomerToken(req.headers['x-customer-token']),
       ]
     );
     const order = orderRes.rows[0];

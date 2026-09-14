@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ApiError } from "@/lib/api";
+import { accountFetch, setCustomerToken, type Customer } from "@/lib/customerAuth";
 import { GoogleIcon } from "@/components/icons";
 import { useDictionary } from "@/components/i18n/LanguageProvider";
 
@@ -11,12 +14,28 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
 
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        setMessage(dict.demoMessage);
+        setMessage("");
+        setError("");
+        setSubmitting(true);
+        try {
+          const data = await accountFetch<{ token: string; customer: Customer }>(
+            "/api/account/login",
+            { method: "POST", body: JSON.stringify({ email: email.trim(), password }) }
+          );
+          setCustomerToken(data.token);
+          router.push("/account");
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Could not sign you in. Please try again.");
+          setSubmitting(false);
+        }
       }}
       className="mx-auto max-w-[468px] px-6 pb-16 space-y-6"
     >
@@ -68,9 +87,16 @@ export default function LoginForm() {
           button rendered ~2px shorter (no border box to add to the padding),
           a mismatch easy to miss reading the classes but visible side by
           side. */}
+      {error && (
+        <p role="alert" className="text-xs text-center text-red-700">
+          {error}
+        </p>
+      )}
+
       <button
         type="submit"
-        className="w-full rounded-none border border-black bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:border-[#2b261f] transition-colors"
+        disabled={submitting}
+        className="w-full rounded-none border border-black bg-black text-white py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:border-[#2b261f] transition-colors disabled:opacity-60"
       >
         {dict.signIn}
       </button>
@@ -103,7 +129,6 @@ export default function LoginForm() {
         </Link>
       </p>
 
-      <p className="text-xs text-black/40 text-center pt-4">{dict.demoNotice}</p>
     </form>
   );
 }

@@ -78,6 +78,34 @@ setInterval(() => {
 
 app.post('/api/admin/login', loginRateLimiter);
 
+// Customer sign-in / sign-up get their own counter, so shoppers mistyping a
+// password never lock the admin panel out from the same IP (the admin
+// limiter above counts every attempt, successful or not).
+const ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS = 20;
+const accountAttempts = new Map();
+function accountRateLimiter(req, res, next) {
+  const ip = req.ip;
+  const now = Date.now();
+  const entry = accountAttempts.get(ip);
+  if (!entry || now - entry.windowStart > LOGIN_RATE_LIMIT_WINDOW_MS) {
+    accountAttempts.set(ip, { count: 1, windowStart: now });
+    return next();
+  }
+  if (entry.count >= ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS) {
+    return res.status(429).json({ error: 'Too many attempts. Please try again in a few minutes.' });
+  }
+  entry.count += 1;
+  next();
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of accountAttempts.entries()) {
+    if (now - entry.windowStart > LOGIN_RATE_LIMIT_WINDOW_MS) accountAttempts.delete(ip);
+  }
+}, LOGIN_RATE_LIMIT_WINDOW_MS).unref();
+app.post('/api/account/login', accountRateLimiter);
+app.post('/api/account/register', accountRateLimiter);
+
 // ----------------------------------------------------------------------------
 // Same per-IP limiter shape as login's, kept as its own Map rather than a
 // shared factory so nothing about the login limiter's existing behavior is
@@ -190,6 +218,7 @@ app.get('/api/health', (req, res) => {
 // ----------------------------------------------------------------------------
 // Routes — mounted from ./routes/*.js (created in the next phase)
 // ----------------------------------------------------------------------------
+app.use('/api/account', require('./routes/account'));
 app.use('/api', require('./routes/orders-payments'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/products', require('./routes/products'));

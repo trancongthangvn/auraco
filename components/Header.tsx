@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
@@ -12,6 +12,7 @@ import FlagIcon, { type FlagKind } from "@/components/i18n/FlagIcon";
 import { currencies, currencyMeta } from "@/lib/currency";
 import { useCart } from "@/components/cart/CartProvider";
 import { apiFetch } from "@/lib/api";
+import { clearCustomerToken, getCustomerToken, subscribeCustomerToken } from "@/lib/customerAuth";
 import { toFullProduct, type ApiProduct } from "@/lib/catalog-mappers";
 import type { FullProduct } from "@/data/products";
 import {
@@ -77,6 +78,19 @@ export default function Header({
   const [mobileStoryOpen, setMobileStoryOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  // Customer sign-in state (localStorage token). Server snapshot is
+  // "signed out", so SSR and first paint match the old markup.
+  const signedIn = useSyncExternalStore(
+    subscribeCustomerToken,
+    () => !!getCustomerToken(),
+    () => false
+  );
+  const signOutCustomer = () => {
+    clearCustomerToken();
+    setAccountMenuOpen(false);
+    setMobileOpen(false);
+    router.push("/login");
+  };
   const router = useRouter();
   const pathname = usePathname();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -559,7 +573,7 @@ export default function Header({
             onMouseLeave={scheduleCloseAccountMenu}
           >
             <Link
-              href="/login"
+              href={signedIn ? "/account" : "/login"}
               aria-label={dict.nav.account}
               className="inline-flex h-10 w-10 items-center justify-center transition-colors hover:text-gold"
             >
@@ -568,18 +582,38 @@ export default function Header({
             {accountMenuOpen && (
               <div className="absolute top-full right-0 pt-3 w-40 z-50">
                 <div className="bg-white border border-black/10 shadow-[0_14px_40px_rgba(32,27,22,0.08)] py-2">
-                  <Link
-                    href="/login"
-                    className="block px-4 py-2 text-xs normal-case hover:text-gold"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="block px-4 py-2 text-xs normal-case hover:text-gold"
-                  >
-                    Register
-                  </Link>
+                  {signedIn ? (
+                    <>
+                      <Link
+                        href="/account"
+                        className="block px-4 py-2 text-xs normal-case hover:text-gold"
+                      >
+                        {dict.account.myAccount}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={signOutCustomer}
+                        className="block w-full px-4 py-2 text-left text-xs normal-case hover:text-gold"
+                      >
+                        {dict.account.signOut}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/login"
+                        className="block px-4 py-2 text-xs normal-case hover:text-gold"
+                      >
+                        Sign in
+                      </Link>
+                      <Link
+                        href="/register"
+                        className="block px-4 py-2 text-xs normal-case hover:text-gold"
+                      >
+                        Register
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -911,24 +945,34 @@ export default function Header({
             <div className="mt-3 flex items-center gap-x-3 border-t border-b border-black/10 pt-[6px] pb-[13px]">
               <UserIcon size={18} className="shrink-0 text-gold" />
               <Link
-                href="/login"
+                href={signedIn ? "/account" : "/login"}
                 onClick={() => setMobileOpen(false)}
                 // Explicit request: smaller (16px -> 14px) and black instead
                 // of gold, overriding the reference-matched styling above.
                 className="text-sm font-semibold tracking-normal text-black hover:underline"
               >
-                Sign in
+                {signedIn ? dict.account.myAccount : "Sign in"}
               </Link>
               <span className="h-4 w-px bg-black/15" aria-hidden="true" />
-              <Link
-                href="/register"
-                onClick={() => setMobileOpen(false)}
-                // Explicit request: smaller (16px -> 14px) and black instead
-                // of gold, overriding the reference-matched styling above.
-                className="text-sm font-semibold tracking-normal text-black hover:underline"
-              >
-                Register
-              </Link>
+              {signedIn ? (
+                <button
+                  type="button"
+                  onClick={signOutCustomer}
+                  className="text-sm font-semibold tracking-normal text-black hover:underline"
+                >
+                  {dict.account.signOut}
+                </button>
+              ) : (
+                <Link
+                  href="/register"
+                  onClick={() => setMobileOpen(false)}
+                  // Explicit request: smaller (16px -> 14px) and black instead
+                  // of gold, overriding the reference-matched styling above.
+                  className="text-sm font-semibold tracking-normal text-black hover:underline"
+                >
+                  Register
+                </Link>
+              )}
             </div>
             {/* Currency row: same `.currency-form` divider treatment as the
                 reference (gold-light hairline at 35% opacity, not the

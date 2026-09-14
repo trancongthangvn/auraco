@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
+import { accountFetch, getCustomerToken, type Customer } from "@/lib/customerAuth";
 import { useCart } from "@/components/cart/CartProvider";
 import { cartItemKey } from "@/lib/cart";
 import CurrencyPicker from "@/components/currency/CurrencyPicker";
@@ -314,6 +315,28 @@ export default function CheckoutClient() {
     DEFAULT_FREE_SHIPPING_THRESHOLD
   );
 
+  // Signed-in customers: fill in only the contact fields they haven't typed
+  // yet. Guests see no change.
+  useEffect(() => {
+    if (!getCustomerToken()) return;
+    let cancelled = false;
+    accountFetch<Customer>("/api/account/me")
+      .then((me) => {
+        if (cancelled) return;
+        setEmail((v) => v || me.email);
+        setPhone((v) => v || me.phone || "");
+        const parts = me.full_name.trim().split(/\s+/);
+        setFirstName((v) => v || parts[0] || "");
+        setLastName((v) => v || parts.slice(1).join(" "));
+      })
+      .catch(() => {
+        // Expired session: checkout carries on as a guest.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const shippingReady = city.trim().length > 0 && postalCode.trim().length > 0;
   const preTaxTotal = Math.max(0, subtotal - discountAmount);
   const taxAmount = (preTaxTotal * taxPercent) / 100;
@@ -489,8 +512,13 @@ export default function CheckoutClient() {
         })
       );
 
+      // Links the order to the signed-in account so it shows in its order
+      // history. A separate header from Authorization, which apiFetch uses
+      // for the admin token.
+      const customerToken = getCustomerToken();
       const data = await apiFetch<CreatedOrder>("/api/orders", {
         method: "POST",
+        headers: customerToken ? { "X-Customer-Token": customerToken } : undefined,
         body: JSON.stringify({
           customer_name: `${firstName.trim()} ${lastName.trim()}`,
           email: email.trim(),

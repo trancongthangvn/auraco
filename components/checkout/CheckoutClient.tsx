@@ -10,6 +10,7 @@ import { cartItemKey } from "@/lib/cart";
 import CurrencyPicker from "@/components/currency/CurrencyPicker";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { formatPrice } from "@/lib/currency";
+import { shippingFeeFor, type ShippingSettings } from "@/lib/shipping";
 import { saveLastOrder, type CreatedOrder } from "@/components/checkout/lastOrder";
 import {
   ChevronLeftIcon,
@@ -195,8 +196,9 @@ function loadAirwallexScript(): Promise<void> {
   return airwallexScriptPromise;
 }
 
-// Same threshold TrustBadges/cart advertise ("Free US Shipping over $120").
-const FREE_SHIPPING_THRESHOLD = 120;
+// Fallback until the admin's own threshold loads from site settings (the
+// schema default, and what the storefront advertises).
+const DEFAULT_FREE_SHIPPING_THRESHOLD = 120;
 
 type ApiPaymentMethod = {
   key: string;
@@ -307,18 +309,22 @@ export default function CheckoutClient() {
   const [proofUploaded, setProofUploaded] = useState(false);
 
   const [taxPercent, setTaxPercent] = useState(0);
+  const [flatShippingFee, setFlatShippingFee] = useState(0);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(
+    DEFAULT_FREE_SHIPPING_THRESHOLD
+  );
 
   const shippingReady = city.trim().length > 0 && postalCode.trim().length > 0;
   const preTaxTotal = Math.max(0, subtotal - discountAmount);
   const taxAmount = (preTaxTotal * taxPercent) / 100;
-  const total = preTaxTotal + taxAmount;
+  // Same rule the server applies when recording the order (lib/shipping.ts).
+  const shippingFee = shippingFeeFor(subtotal, flatShippingFee, freeShippingThreshold);
+  const total = preTaxTotal + taxAmount + shippingFee;
 
-  const freeShippingQualified = subtotal >= FREE_SHIPPING_THRESHOLD;
-  const freeShippingProgress = Math.min(
-    100,
-    (subtotal / FREE_SHIPPING_THRESHOLD) * 100
-  );
-  const freeShippingRemaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+  const freeShippingQualified = subtotal >= freeShippingThreshold;
+  const freeShippingProgress =
+    freeShippingThreshold > 0 ? Math.min(100, (subtotal / freeShippingThreshold) * 100) : 100;
+  const freeShippingRemaining = Math.max(0, freeShippingThreshold - subtotal);
 
   // Returning from Airwallex's hosted checkout (see handlePayNow's
   // redirectToCheckout successUrl/failUrl below) — the cart was already
@@ -367,8 +373,13 @@ export default function CheckoutClient() {
     // "Free" today) — orders has no tax_amount column, so this isn't
     // persisted server-side, only shown in the summary the customer sees
     // before placing the order.
-    apiFetch<{ taxPercent: number | null }>("/api/content/site-settings")
-      .then((s) => setTaxPercent(s.taxPercent ?? 0))
+    apiFetch<ShippingSettings>("/api/content/site-settings")
+      .then((s) => {
+        setTaxPercent(s.taxPercent ?? 0);
+        setFlatShippingFee(Number(s.shippingFee) || 0);
+        const t = Number(s.freeShippingThreshold);
+        if (Number.isFinite(t) && t >= 0) setFreeShippingThreshold(t);
+      })
       .catch(() => {});
   }, []);
 
@@ -490,6 +501,10 @@ export default function CheckoutClient() {
           city: city.trim(),
           country,
           payment_method: payment,
+          // Both were collected by the form but never sent, so they were
+          // lost; the order now stores them (migration 024).
+          company: company.trim() || undefined,
+          postal_code: postalCode.trim() || undefined,
           shipping_fee: 0,
           discount_code: appliedCode || undefined,
           items: orderItems,
@@ -937,7 +952,9 @@ export default function CheckoutClient() {
                   <input type="radio" name="shipping" checked readOnly />
                   Standard Shipping
                 </span>
-                <span className="font-semibold uppercase">Free</span>
+                <span className="font-semibold uppercase">
+                  {shippingFee > 0 ? money(shippingFee) : "Free"}
+                </span>
               </label>
             )}
           </section>
@@ -1429,7 +1446,9 @@ export default function CheckoutClient() {
               )}
               <div className="flex justify-between">
                 <span>Shipping</span>
-                <strong className="uppercase">Free</strong>
+                <strong className="uppercase">
+                  {shippingFee > 0 ? money(shippingFee) : "Free"}
+                </strong>
               </div>
               <div className="flex justify-between pt-2 text-base">
                 <span>Total</span>

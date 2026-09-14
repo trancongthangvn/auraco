@@ -46,6 +46,10 @@ type OrderDetail = {
   subtotal: string;
   shipping_fee: string;
   discount_amount: string;
+  /** Added in migration 024 — older orders have 0 / null. */
+  tax_amount?: string;
+  company?: string | null;
+  postal_code?: string | null;
   total: string;
   status: OrderStatus;
   payment_method: string;
@@ -159,6 +163,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const subtotal = parseFloat(order.subtotal);
   const shippingFee = parseFloat(order.shipping_fee);
   const total = parseFloat(order.total);
+  const discountAmount = parseFloat(order.discount_amount || "0");
+  const taxAmount = parseFloat(order.tax_amount || "0");
 
   return (
     <AdminShell>
@@ -224,11 +230,24 @@ export default function OrderDetailClient({ id }: { id: string }) {
                 <span>Tạm tính</span>
                 <span>${subtotal.toFixed(2)}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-black/60">
+                  <span>Giảm giá</span>
+                  <span>-${discountAmount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-black/60">
                 <span>Vận chuyển</span>
                 <span>
                   {shippingFee === 0 ? "Miễn phí" : `$${shippingFee.toFixed(2)}`}
                 </span>
+              </div>
+              {/* Tax was shown to the customer at checkout but never stored,
+                  so this breakdown couldn't add up to what they saw — see
+                  migration 024. Orders placed before it record 0. */}
+              <div className="flex justify-between text-black/60">
+                <span>Thuế</span>
+                <span>${taxAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-base pt-2 border-t border-black/10">
                 <span>Tổng cộng</span>
@@ -244,6 +263,9 @@ export default function OrderDetailClient({ id }: { id: string }) {
               Khách hàng
             </h2>
             <p className="text-sm">{order.customer_name}</p>
+            {order.company && (
+              <p className="text-sm text-black/60">Công ty: {order.company}</p>
+            )}
             <p className="text-sm text-black/60">{order.email}</p>
             <p className="text-sm text-black/60">{order.phone}</p>
           </div>
@@ -254,6 +276,9 @@ export default function OrderDetailClient({ id }: { id: string }) {
             </h2>
             <p className="text-sm text-black/70">{order.address}</p>
             <p className="text-sm text-black/70">{order.city}</p>
+            {order.postal_code && (
+              <p className="text-sm text-black/70">Mã bưu chính: {order.postal_code}</p>
+            )}
             <p className="text-sm text-black/70">{order.country}</p>
           </div>
 

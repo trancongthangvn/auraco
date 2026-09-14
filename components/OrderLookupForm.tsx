@@ -22,6 +22,7 @@ type LookedUpOrder = {
   subtotal: string | number;
   shipping_fee: string | number;
   discount_amount: string | number;
+  tax_amount?: string | number;
   total: string | number;
   customer_name: string;
   city: string;
@@ -181,6 +182,12 @@ export default function OrderLookupForm() {
               <div className="flex justify-between text-black/60">
                 <span>Discount</span>
                 <span>-{money(order.discount_amount)}</span>
+              </div>
+            )}
+            {Number(order.tax_amount ?? 0) > 0 && (
+              <div className="flex justify-between text-black/60">
+                <span>Tax</span>
+                <span>{money(order.tax_amount ?? 0)}</span>
               </div>
             )}
             <div className="flex justify-between border-t border-black/10 pt-1.5 text-base font-semibold text-[#2b261f]">

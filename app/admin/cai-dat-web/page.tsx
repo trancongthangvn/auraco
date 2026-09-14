@@ -30,6 +30,7 @@ type SiteSettings = {
     why_love_it_label?: string | null;
     og_image_url?: string | null;
     tax_percent?: number | null;
+    shipping_fee?: number | null;
     it_girl_edit_image_url?: string | null;
     it_girl_edit_heading?: string | null;
     it_girl_edit_description?: string | null;
@@ -84,6 +85,7 @@ export default function AdminSiteSettingsPage() {
   const [contactPhone, setContactPhone] = useState("");
   const [freeShippingThreshold, setFreeShippingThreshold] = useState("");
   const [taxPercent, setTaxPercent] = useState("");
+  const [shippingFee, setShippingFee] = useState("");
   const [itGirlEditImage, setItGirlEditImage] = useState<string | null>(null);
   const [itGirlEditHeading, setItGirlEditHeading] = useState("");
   const [itGirlEditDescription, setItGirlEditDescription] = useState("");
@@ -120,6 +122,7 @@ export default function AdminSiteSettingsPage() {
           data.freeShippingThreshold != null ? String(data.freeShippingThreshold) : ""
         );
         setTaxPercent(extra.tax_percent != null ? String(extra.tax_percent) : "");
+        setShippingFee(extra.shipping_fee != null ? String(extra.shipping_fee) : "");
         setDeliveryReturnsItems(
           extra.delivery_returns_items && extra.delivery_returns_items.length > 0
             ? extra.delivery_returns_items
@@ -183,6 +186,12 @@ export default function AdminSiteSettingsPage() {
       setSaving(false);
       return;
     }
+    const parsedShippingFee = shippingFee.trim() ? Number(shippingFee) : 0;
+    if (!Number.isFinite(parsedShippingFee) || parsedShippingFee < 0) {
+      setError("Phí vận chuyển phải là số không âm");
+      setSaving(false);
+      return;
+    }
     const parsedTaxPercent = taxPercent.trim() ? Number(taxPercent) : null;
     if (
       parsedTaxPercent !== null &&
@@ -228,6 +237,7 @@ export default function AdminSiteSettingsPage() {
           contactPhone: contactPhone.trim() || null,
           ...(parsedThreshold !== null ? { freeShippingThreshold: parsedThreshold } : {}),
           taxPercent: parsedTaxPercent ?? 0,
+          shippingFee: parsedShippingFee,
         }),
       });
       setDeliveryReturnsItems(items);
@@ -309,6 +319,24 @@ export default function AdminSiteSettingsPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* The API always accepted shippingFee, but there was no field
+                for it here, so the storefront had no fee to charge and every
+                order shipped free (bug report: "< 120$ nhưng vẫn freeship"). */}
+            <div>
+              <Label>Phí vận chuyển (USD)</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={shippingFee}
+                onChange={(e) => setShippingFee(e.target.value)}
+                placeholder="VD: 10"
+              />
+              <p className="mt-1 text-xs text-black/40">
+                Phí cố định cho mỗi đơn hàng. Đơn đạt ngưỡng bên cạnh được miễn
+                phí. Để trống hoặc 0 để luôn miễn phí vận chuyển.
+              </p>
+            </div>
             <div>
               <Label>Ngưỡng miễn phí vận chuyển (USD)</Label>
               <Input

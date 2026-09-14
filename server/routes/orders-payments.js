@@ -96,6 +96,8 @@ router.post('/orders', async (req, res) => {
     shipping_fee,
     discount_code,
     items,
+    company,
+    postal_code,
   } = req.body || {};
 
   if (!isNonEmptyString(customer_name)) return res.status(400).json({ error: 'customer_name is required' });
@@ -218,7 +220,30 @@ router.post('/orders', async (req, res) => {
       discountCodeId = dc.id;
     }
 
-    const total = Math.max(0, subtotal + shippingFeeNum - discountAmount);
+    // Tax is computed here from the admin setting, never taken from the
+    // client — same base the checkout displays it on (goods after discount,
+    // shipping untaxed), and added on top, which is how the checkout has
+    // always shown it. It used to be display-only: the customer saw the
+    // taxed total while the order stored the untaxed one (migration 024).
+    const settingsRes = await client.query(
+      `SELECT extra, free_shipping_threshold FROM site_settings WHERE id = 1`
+    );
+    const taxPercentRaw = Number(settingsRes.rows[0]?.extra?.tax_percent);
+    const taxPercent = Number.isFinite(taxPercentRaw) && taxPercentRaw > 0 ? taxPercentRaw : 0;
+    const preTaxGoods = Math.max(0, subtotal - discountAmount);
+    const taxAmount = Math.round(preTaxGoods * taxPercent) / 100;
+    // Shipping: one flat admin-set fee (site_settings.extra.shipping_fee),
+    // waived once the goods subtotal reaches free_shipping_threshold — same
+    // rule as lib/shipping.ts on the storefront. Computed here rather than
+    // trusted from the request: the checkout used to send a hard-coded 0,
+    // so every order shipped free whatever its size.
+    const flatFee = Number(settingsRes.rows[0]?.extra?.shipping_fee);
+    const threshold = Number(settingsRes.rows[0]?.free_shipping_threshold);
+    const shippingCharged =
+      !Number.isFinite(flatFee) || flatFee <= 0 || (Number.isFinite(threshold) && subtotal >= threshold)
+        ? 0
+        : flatFee;
+    const total = preTaxGoods + shippingCharged + taxAmount;
 
     // Generate order_code from the id sequence so it's assigned atomically
     // and matches the row's id (e.g. id 1042 -> 'AC-1042').
@@ -229,8 +254,9 @@ router.post('/orders', async (req, res) => {
     const orderRes = await client.query(
       `INSERT INTO orders
         (id, order_code, customer_name, email, phone, address, city, country,
-         subtotal, shipping_fee, discount_amount, total, discount_code_id, status, payment_method)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8,'Vietnam'),$9,$10,$11,$12,$13,'Đang xử lý',$14)
+         subtotal, shipping_fee, discount_amount, total, discount_code_id, status, payment_method,
+         company, postal_code, tax_amount)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8,'Vietnam'),$9,$10,$11,$12,$13,'Đang xử lý',$14,$15,$16,$17)
        RETURNING *`,
       [
         newId,
@@ -242,11 +268,14 @@ router.post('/orders', async (req, res) => {
         city.trim(),
         isNonEmptyString(country) ? country.trim() : null,
         subtotal.toFixed(2),
-        shippingFeeNum.toFixed(2),
+        shippingCharged.toFixed(2),
         discountAmount.toFixed(2),
         total.toFixed(2),
         discountCodeId,
         payment_method,
+        isNonEmptyString(company) ? company.trim().slice(0, 160) : null,
+        isNonEmptyString(postal_code) ? postal_code.trim().slice(0, 40) : null,
+        taxAmount.toFixed(2),
       ]
     );
     const order = orderRes.rows[0];
@@ -415,9 +444,37 @@ router.get('/admin/orders', authMiddleware, requireStaffOrAdmin, async (req, res
       clauses.push(`email ILIKE $${params.length}`);
     }
     if (q) {
-      params.push(`%${q}%`);
+      params.push(`%${String(q).trim()}%`);
       const idx = params.length;
-      clauses.push(`(order_code ILIKE $${idx} OR customer_name ILIKE $${idx})`);
+      // Email and phone joined the search box (request: "tìm kiếm theo mã
+      // đơn hàng, tên, email, sdt"). Phone is also matched with its spaces,
+      // dots and dashes stripped on both sides, so "0912 345 678" finds
+      // "+84912345678"-style entries typed differently at checkout.
+      const digits = String(q).replace(/[^0-9]/g, '');
+      let phoneDigitsClause = '';
+      // Only bound when used: an unreferenced bind parameter is a Postgres
+      // error, not a no-op.
+      if (digits.length >= 3) {
+        params.push(`%${digits}%`);
+        phoneDigitsClause = ` OR regexp_replace(phone, '[^0-9]', '', 'g') LIKE $${params.length}`;
+      }
+      clauses.push(
+        `(order_code ILIKE $${idx} OR customer_name ILIKE $${idx} OR email ILIKE $${idx} OR phone ILIKE $${idx}${phoneDigitsClause})`
+      );
+    }
+    // Date range, inclusive, by the calendar day in Vietnam — the same day
+    // the admin list shows (toLocaleDateString('vi-VN')), so a filter for
+    // "14/09" never drops an order placed late that evening UTC-wise.
+    const isDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    if (req.query.date_from !== undefined && req.query.date_from !== '') {
+      if (!isDay(req.query.date_from)) return res.status(400).json({ error: 'date_from must be YYYY-MM-DD' });
+      params.push(req.query.date_from);
+      clauses.push(`(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date >= $${params.length}::date`);
+    }
+    if (req.query.date_to !== undefined && req.query.date_to !== '') {
+      if (!isDay(req.query.date_to)) return res.status(400).json({ error: 'date_to must be YYYY-MM-DD' });
+      params.push(req.query.date_to);
+      clauses.push(`(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <= $${params.length}::date`);
     }
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';

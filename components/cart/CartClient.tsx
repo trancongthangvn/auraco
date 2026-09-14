@@ -7,6 +7,7 @@ import { useCart } from "@/components/cart/CartProvider";
 import { cartItemKey } from "@/lib/cart";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { formatPrice } from "@/lib/currency";
+import { shippingFeeFor, type ShippingSettings } from "@/lib/shipping";
 import { apiFetch } from "@/lib/api";
 import ProductCarousel from "@/components/ProductCarousel";
 import type { Product as CarouselProduct } from "@/data/site";
@@ -49,13 +50,22 @@ export default function CartClient({
   // reference shows it on the cart page too, and orders have no
   // tax_amount column to persist it against, so this stays purely visual.
   const [taxPercent, setTaxPercent] = useState(0);
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   useEffect(() => {
-    apiFetch<{ taxPercent: number | null }>("/api/content/site-settings")
-      .then((s) => setTaxPercent(s.taxPercent ?? 0))
+    apiFetch<ShippingSettings>("/api/content/site-settings")
+      .then((s) => {
+        setTaxPercent(s.taxPercent ?? 0);
+        setShippingSettings(s);
+      })
       .catch(() => {});
   }, []);
   const taxAmount = (subtotal * taxPercent) / 100;
-  const total = subtotal + taxAmount;
+  // Same flat-fee rule as checkout and the server (lib/shipping.ts); until
+  // settings load it reads as free, which is what it always showed.
+  const shippingFee = shippingSettings
+    ? shippingFeeFor(subtotal, shippingSettings.shippingFee, shippingSettings.freeShippingThreshold)
+    : 0;
+  const total = subtotal + taxAmount + shippingFee;
 
   const { currency, rates } = useCurrency();
 
@@ -251,7 +261,7 @@ export default function CartClient({
           </div>
           <div className="mt-3 flex items-center justify-between text-sm">
             <span>Shipping</span>
-            <span className="font-semibold">FREE</span>
+            <span className="font-semibold">{shippingFee > 0 ? money(shippingFee) : "FREE"}</span>
           </div>
           <div className="mt-5 flex items-center justify-between border-t border-black/10 pt-5 text-base">
             <span>Total</span>

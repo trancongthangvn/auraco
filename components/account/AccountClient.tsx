@@ -61,7 +61,7 @@ const label = "block text-xs font-semibold tracking-wide uppercase mb-2 text-[#2
 const primaryButton =
   "inline-flex w-full items-center justify-center rounded-full border border-[#2b261f] py-3.5 text-xs font-semibold tracking-[0.12em] text-[#2b261f] transition-colors hover:bg-[#2b261f] hover:text-white disabled:opacity-60";
 
-export default function AccountClient() {
+export default function AccountClient({ title, subtitle }: { title: string; subtitle: string }) {
   const dict = useDictionary().account;
   const router = useRouter();
 
@@ -102,9 +102,17 @@ export default function AccountClient() {
     router.push("/login");
   };
 
+  const heading = (
+    <div className="pt-12 pb-6">
+      <h1 className="font-serif-display text-[38px] font-normal tracking-[0.02em] mb-2">{title}</h1>
+      <p className="text-sm text-black/60 leading-relaxed">{subtitle}</p>
+    </div>
+  );
+
   if (loadError) {
     return (
       <div className="mx-auto max-w-[760px] px-6 pb-16">
+        {heading}
         <p role="alert" className="border border-red-700/30 bg-red-50 px-4 py-2.5 text-sm text-red-700">
           {loadError}
         </p>
@@ -116,7 +124,12 @@ export default function AccountClient() {
   }
 
   if (!customer) {
-    return <p className="mx-auto max-w-[760px] px-6 pb-16 text-sm text-black/50">{dict.loading}</p>;
+    return (
+      <div className="mx-auto max-w-[760px] px-6 pb-16">
+        {heading}
+        <p className="text-sm text-black/50">{dict.loading}</p>
+      </div>
+    );
   }
 
   const tabs: { key: Tab; label: string }[] = [
@@ -127,8 +140,20 @@ export default function AccountClient() {
 
   return (
     <div className="mx-auto max-w-[760px] px-6 pb-16">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-black/10">
-        <div role="tablist" className="-mb-px flex flex-wrap gap-x-6">
+      <div className="flex items-end justify-between gap-4">
+        {heading}
+        <button
+          type="button"
+          onClick={signOut}
+          className="mb-7 shrink-0 text-xs text-black/55 underline hover:text-[#2b261f]"
+        >
+          {dict.signOut}
+        </button>
+      </div>
+      <div className="mb-6 border-b border-black/10">
+        {/* Three equal columns on phones (labels may wrap to two lines),
+            a normal row of tabs from sm up. */}
+        <div role="tablist" className="-mb-px grid grid-cols-3 gap-x-3 sm:flex sm:gap-x-6">
           {tabs.map((t) => (
             <button
               key={t.key}
@@ -136,7 +161,7 @@ export default function AccountClient() {
               role="tab"
               aria-selected={tab === t.key}
               onClick={() => setTab(t.key)}
-              className={`border-b-2 pb-3 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${
+              className={`border-b-2 pb-3 text-[11px] leading-snug sm:text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${
                 tab === t.key
                   ? "border-[#2b261f] text-[#2b261f]"
                   : "border-transparent text-black/45 hover:text-[#2b261f]"
@@ -147,13 +172,6 @@ export default function AccountClient() {
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={signOut}
-          className="pb-3 text-xs text-black/55 underline hover:text-[#2b261f]"
-        >
-          {dict.signOut}
-        </button>
       </div>
 
       {tab === "profile" && <ProfileView customer={customer} onEdit={() => setTab("edit")} />}

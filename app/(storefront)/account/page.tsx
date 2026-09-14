@@ -1,7 +1,6 @@
 import Announcement from "@/components/Announcement";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import PageHero from "@/components/PageHero";
 import AccountClient from "@/components/account/AccountClient";
 import { getServerDictionary } from "@/lib/i18n/server";
 
@@ -18,8 +17,9 @@ export default async function AccountPage() {
       <Announcement />
       <Header />
       <main>
-        <PageHero title={dict.account.title} subtitle={dict.account.subtitle} />
-        <AccountClient />
+        {/* Heading rendered by AccountClient (not the shared PageHero, which
+            is narrower) so it lines up with the wider account content. */}
+        <AccountClient title={dict.account.title} subtitle={dict.account.subtitle} />
       </main>
       <Footer />
     </>

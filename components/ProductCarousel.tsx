@@ -249,6 +249,7 @@ export default function ProductCarousel({
             slug: slugFromHref(p.href),
             name: p.name,
             price: p.priceValue ?? (Number(p.price.replace(/[^0-9.]/g, "")) || 0),
+            compareAtPrice: p.compareAtPriceValue,
             image: p.img ?? null,
             material: p.material,
           }}

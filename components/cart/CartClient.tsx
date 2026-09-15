@@ -43,6 +43,7 @@ export default function CartClient({
     isOutOfStock,
     outOfStockItems,
     effectivePrice,
+    compareAtFor,
   } = useCart();
   // Explicit request: out-of-stock items can't be paid for in any case.
   const checkoutBlocked = outOfStockItems.length > 0;
@@ -203,6 +204,11 @@ export default function CartClient({
                             price cell. */}
                         <p className="mt-1.5 text-[15px] text-[#2b261f]">
                           {money(effectivePrice(item) * item.qty)}
+                          {compareAtFor(item) && (
+                            <span className="ml-2 text-[13px] text-black/40 line-through">
+                              {money(compareAtFor(item)! * item.qty)}
+                            </span>
+                          )}
                         </p>
                       </div>
                       <button

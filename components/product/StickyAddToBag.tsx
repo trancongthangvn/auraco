@@ -37,6 +37,9 @@ export default function StickyAddToBag({
   const barRef = useRef<HTMLDivElement>(null);
 
   const displayPrice = hasVariants && selectedVariant ? selectedVariant.price : product.price;
+  const displayCompareAt = hasVariants
+    ? selectedVariant?.compareAtPrice
+    : product.compareAtPrice;
   const maxQty = hasVariants ? (selectedVariant?.stock ?? 0) : product.stock;
   const outOfStock = hasVariants ? maxQty <= 0 : product.stock <= 0;
   const image =
@@ -55,6 +58,7 @@ export default function StickyAddToBag({
       name: product.name,
       material: hasVariants ? undefined : product.material,
       price: displayPrice,
+      compareAtPrice: displayCompareAt,
       image,
       qty,
       variantId: hasVariants ? selectedVariant?.id : undefined,

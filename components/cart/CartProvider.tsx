@@ -67,6 +67,13 @@ type CartContextValue = {
    *  this instead of `item.price` directly, or the display would keep
    *  showing/charging the bundle price after its key left the cart. */
   effectivePrice: (item: CartItem) => number;
+  /** The price to show struck through next to `effectivePrice`, or undefined
+   *  when this line isn't discounted. While a bundle price is in effect that
+   *  is the companion's normal price (what Frequently Bought Together itself
+   *  strikes through); otherwise it's the product's own sitewide "was"
+   *  price. Kept here rather than in each view so the bag, cart page and
+   *  checkout can't drift apart on which number to strike. */
+  compareAtFor: (item: CartItem) => number | undefined;
   /** Re-reads stock, e.g. when checkout opens, so it judges current numbers. */
   refreshStock: () => Promise<void>;
 };
@@ -256,6 +263,14 @@ export default function CartProvider({
       ? item.bundlePrice
       : item.price;
 
+  const compareAtFor = (item: CartItem) => {
+    const effective = effectivePrice(item);
+    if (effective < item.price) return item.price;
+    return item.compareAtPrice && item.compareAtPrice > effective
+      ? item.compareAtPrice
+      : undefined;
+  };
+
   const totalQty = items.reduce((sum, it) => sum + it.qty, 0);
   const subtotal = items.reduce((sum, it) => sum + effectivePrice(it) * it.qty, 0);
 
@@ -282,6 +297,7 @@ export default function CartProvider({
         isOutOfStock,
         outOfStockItems,
         effectivePrice,
+        compareAtFor,
         refreshStock,
       }}
     >

@@ -23,7 +23,14 @@ export default function FrequentlyBoughtTogether({
   companions,
   discountPercent = 0,
 }: {
-  mainProduct: { slug: string; name: string; price: number; image?: string; stock?: number };
+  mainProduct: {
+    slug: string;
+    name: string;
+    price: number;
+    compareAtPrice?: number;
+    image?: string;
+    stock?: number;
+  };
   companions: BundleItem[];
   /** Admin-set discount (server/routes/products.js's product_bundles /
    *  bundle_discount_percent) — a flat per-companion discount off each
@@ -172,6 +179,7 @@ export default function FrequentlyBoughtTogether({
             slug: mainProduct.slug,
             name: mainProduct.name,
             price: mainProduct.price,
+            compareAtPrice: mainProduct.compareAtPrice,
             image: mainProduct.image ?? null,
           });
           for (const c of selectedCompanions) {
@@ -184,6 +192,7 @@ export default function FrequentlyBoughtTogether({
               // while it's still in the cart alongside it (CartProvider's
               // effectivePrice).
               price: c.price,
+              compareAtPrice: c.compareAtPrice,
               bundleKeySlug: mainProduct.slug,
               bundlePrice: Math.round(displayOf(c).price * 100) / 100,
               image: c.image ?? null,

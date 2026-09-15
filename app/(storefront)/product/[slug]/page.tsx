@@ -335,6 +335,7 @@ export default async function ProductPage({
                 slug: product.slug,
                 name: product.name,
                 price: product.price,
+                compareAtPrice: product.compareAtPrice,
                 image: product.images[0],
                 stock: product.stock,
               }}

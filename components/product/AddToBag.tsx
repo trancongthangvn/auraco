@@ -67,6 +67,7 @@ export default function AddToBag({ product }: { product: FullProduct }) {
       name: product.name,
       material: hasVariants ? undefined : product.material,
       price: displayPrice,
+      compareAtPrice: displayCompareAt,
       image:
         (hasVariants ? selectedVariant?.frontImage : undefined) ??
         product.images[0] ??

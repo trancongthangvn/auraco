@@ -79,6 +79,7 @@ export default function CartDrawer() {
     isOutOfStock,
     outOfStockItems,
     effectivePrice,
+    compareAtFor,
   } = useCart();
   // Explicit request: an out-of-stock item can't be added or paid for in any
   // case. Suggestions below can't be added, sold-out lines already in the
@@ -171,6 +172,7 @@ export default function CartDrawer() {
                         slug: s.slug,
                         name: s.name,
                         price: s.price,
+                        compareAtPrice: s.compareAtPrice ?? undefined,
                         image: s.image ?? null,
                       })
                     }
@@ -218,7 +220,14 @@ export default function CartDrawer() {
                   <p className="truncate text-[13px] font-medium text-[#2b261f]">
                     {previewItem.name}
                   </p>
-                  <p className="mt-1 text-[13px] text-[#2b261f]">{money(previewItem.price)}</p>
+                  <p className="mt-1 text-[13px] text-[#2b261f]">
+                    {money(previewItem.price)}
+                    {previewItem.compareAtPrice && (
+                      <span className="ml-2 text-black/40 line-through">
+                        {money(previewItem.compareAtPrice)}
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
               <button
@@ -272,7 +281,14 @@ export default function CartDrawer() {
                       {item.variantLabel && (
                         <p className="mt-0.5 text-xs text-black/50">{item.variantLabel}</p>
                       )}
-                      <p className="mt-1 text-[13px] text-[#2b261f]">{money(effectivePrice(item))}</p>
+                      <p className="mt-1 text-[13px] text-[#2b261f]">
+                        {money(effectivePrice(item))}
+                        {compareAtFor(item) && (
+                          <span className="ml-2 text-black/40 line-through">
+                            {money(compareAtFor(item)!)}
+                          </span>
+                        )}
+                      </p>
                       {isOutOfStock(item.slug, item.variantId) && (
                         <p className="mt-0.5 text-[11px] font-medium text-red-700">
                           Out of stock — please remove to check out
@@ -354,6 +370,7 @@ export default function CartDrawer() {
                           slug: s.slug,
                           name: s.name,
                           price: s.price,
+                          compareAtPrice: s.compareAtPrice ?? undefined,
                           image: s.image ?? null,
                         })
                       }

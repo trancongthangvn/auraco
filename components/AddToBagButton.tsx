@@ -7,6 +7,9 @@ type CartLineInput = {
   slug: string;
   name: string;
   price: number;
+  /** Carried through so the bag shows the same struck-through "was" price
+   *  this card does — see CartItem.compareAtPrice. */
+  compareAtPrice?: number;
   image: string | null;
   material?: string;
 };

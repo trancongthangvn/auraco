@@ -221,6 +221,7 @@ export default function CheckoutClient() {
     outOfStockItems,
     refreshStock,
     effectivePrice,
+    compareAtFor,
   } = useCart();
   const itemsLoading = !hydrated;
   // Explicit request: an out-of-stock item can't be paid for in any case.
@@ -1443,6 +1444,11 @@ export default function CheckoutClient() {
                       <p className="mt-1 flex items-center gap-2 font-ui text-xs text-black/50">
                         <span>× {item.qty}</span>
                         <span>{money(effectivePrice(item) * item.qty)}</span>
+                        {compareAtFor(item) && (
+                          <span className="text-black/35 line-through">
+                            {money(compareAtFor(item)! * item.qty)}
+                          </span>
+                        )}
                       </p>
                       {!order && isOutOfStock(item.slug, item.variantId) && (
                         <p className="mt-1 flex items-center gap-2 font-ui text-xs font-medium text-red-700">

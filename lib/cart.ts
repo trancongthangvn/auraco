@@ -11,6 +11,12 @@ export type CartItem = {
    *  has it handy. */
   material?: string;
   price: number;
+  /** The struck-through "was" price this product advertises everywhere else
+   *  (products.compare_at_price, or the variant's own) — carried into the
+   *  cart so the bag, cart page and checkout show the same discount the
+   *  product card and product page did, instead of a bare reduced price
+   *  with no sign it was a discount. Undefined for a product not on sale. */
+  compareAtPrice?: number;
   image: string | null;
   qty: number;
   /** Set once the product-variants API lands; a line without one is a

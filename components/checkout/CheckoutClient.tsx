@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -157,6 +157,9 @@ const countries = [
 // PAYMENT_METHODS). The settings table may also carry 'applePay', which isn't
 // a valid order payment_method, so it's filtered out below.
 const ORDER_PAYMENT_KEYS = ["card", "paypal", "cashapp", "zelle", "airwallex"];
+
+/** How many order-summary rows stay visible before the list scrolls. */
+const VISIBLE_SUMMARY_ROWS = 5;
 
 // Airwallex's hosted-checkout redirect helper, loaded from their CDN only
 // when the shopper actually picks that payment method (see
@@ -377,6 +380,36 @@ export default function CheckoutClient() {
       )
     );
   }, [router]);
+
+  // Cap the order summary at five rows — measured, not assumed. Rows are not
+  // a fixed height (a long product name wraps to two lines, a sold-out line
+  // adds another), so any fixed pixel max-height means five rows on one
+  // screen and three or six on the next. This reads where the fifth row
+  // actually ends and cuts there. Null = five or fewer rows, no cap at all.
+  const summaryListRef = useRef<HTMLUListElement>(null);
+  const [summaryMaxHeight, setSummaryMaxHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const ul = summaryListRef.current;
+    if (!ul) return;
+    const measure = () => {
+      const rows = Array.from(ul.children) as HTMLElement[];
+      const last = rows[VISIBLE_SUMMARY_ROWS - 1];
+      const next =
+        rows.length > VISIBLE_SUMMARY_ROWS && last
+          ? last.offsetTop + last.offsetHeight - rows[0].offsetTop
+          : null;
+      // Same value means no state change — without this the ResizeObserver
+      // below and the resize its own cap causes would loop each other.
+      setSummaryMaxHeight((prev) => (prev === next ? prev : next));
+    };
+    queueMicrotask(measure);
+    // Re-measures when the column is resized or a font finishes loading and
+    // reflows a name onto a second line.
+    const observer = new ResizeObserver(measure);
+    observer.observe(ul);
+    return () => observer.disconnect();
+  }, [items]);
 
   // Whether the server actually has PayPal credentials. Decides between the
   // real redirect flow and the manual-confirmation fallback below; false
@@ -1495,14 +1528,14 @@ export default function CheckoutClient() {
                 Your bag is empty.
               </p>
             ) : (
-              /* Caps the list at five rows and scrolls past that: a big bag
-                 otherwise pushed the totals and the pay button far below the
-                 fold, with no way to reach them without scrolling past every
-                 line. 384px = 5 × 64px rows (h-16 thumbnail) + 4 × 16px
-                 gaps, so exactly five fit and the sixth peeks in as the cue
-                 that there's more. A bag of five or fewer is shorter than
-                 the cap and renders exactly as before. */
-              <ul className="order-summary-scroller mb-6 max-h-[384px] space-y-4 overflow-y-auto pr-2">
+              /* Scrolls past five rows (height measured above) so a big bag
+                 stops pushing the totals and the pay button below the fold.
+                 A bag of five or fewer gets no cap and renders as before. */
+              <ul
+                ref={summaryListRef}
+                style={summaryMaxHeight ? { maxHeight: summaryMaxHeight } : undefined}
+                className="order-summary-scroller mb-6 space-y-4 overflow-y-auto pr-2"
+              >
                 {items.map((item) => (
                   <li key={cartItemKey(item)} className="flex items-start gap-4">
                     <Link

@@ -19,36 +19,65 @@ type BundleCompanion = {
   image?: string;
 };
 
+type BundleSuggestion = BundleCompanion & {
+  /** The cart product whose bundle suggested this one — its "key" product,
+   *  the same role mainProduct plays in FrequentlyBoughtTogether. */
+  keySlug: string;
+  /** What this costs while bought alongside keySlug, and the price to strike
+   *  through next to it. Equal to `price` / undefined when the key product's
+   *  bundle has no discount configured. */
+  bundlePrice: number;
+  bundleCompareAt?: number;
+};
+
 /**
  * "Why not add" — bundle companions (admin-curated in Mua cùng nhau, see
  * app/admin/products/page.tsx) for whatever's currently in the cart, minus
  * whatever's already in the cart. Deliberately does NOT show the reference
  * site's single big featured-product box above the bag list — the project
  * owner asked to drop that, keep only this suggestions rail.
+ *
+ * Every suggestion here is by definition a companion of something already in
+ * the bag, so the bundle discount applies to it — priced the same way
+ * FrequentlyBoughtTogether's displayOf() prices its own rows, off the same
+ * discountPercent from the same endpoint. This panel used to ignore that
+ * field and quote the plain price, so the identical product was advertised
+ * at two different prices depending on which panel the shopper looked at.
  */
 function useWhyNotAdd(cartSlugs: string[]) {
-  const [suggestions, setSuggestions] = useState<BundleCompanion[]>([]);
+  const [suggestions, setSuggestions] = useState<BundleSuggestion[]>([]);
 
   useEffect(() => {
     let cancelled = false;
+    type BundleResponse = { companions: BundleCompanion[]; discountPercent?: number };
     // Promise.all([]) resolves to [] immediately, so an empty cart naturally
     // clears suggestions through the same path below — no separate branch
     // (and no synchronous setState in the effect body) needed.
     Promise.all(
       cartSlugs.map((slug) =>
-        apiFetch<{ companions: BundleCompanion[] }>(
-          `/api/products/${encodeURIComponent(slug)}/bundle`
-        ).catch(() => ({ companions: [] as BundleCompanion[] }))
+        apiFetch<BundleResponse>(`/api/products/${encodeURIComponent(slug)}/bundle`)
+          .then((data) => ({ ...data, keySlug: slug }))
+          .catch(() => ({
+            companions: [] as BundleCompanion[],
+            discountPercent: 0,
+            keySlug: slug,
+          }))
       )
     ).then((results) => {
       if (cancelled) return;
       const seen = new Set(cartSlugs);
-      const merged: BundleCompanion[] = [];
-      for (const { companions } of results) {
+      const merged: BundleSuggestion[] = [];
+      for (const { companions, discountPercent, keySlug } of results) {
+        const pct = Number(discountPercent) || 0;
         for (const c of companions) {
           if (seen.has(c.slug)) continue;
           seen.add(c.slug);
-          merged.push(c);
+          merged.push({
+            ...c,
+            keySlug,
+            bundlePrice: pct > 0 ? Math.round(c.price * (1 - pct / 100) * 100) / 100 : c.price,
+            bundleCompareAt: pct > 0 ? c.price : (c.compareAtPrice ?? undefined),
+          });
         }
       }
       setSuggestions(merged.slice(0, 4));
@@ -62,6 +91,26 @@ function useWhyNotAdd(cartSlugs: string[]) {
   }, [cartSlugs.join(",")]);
 
   return suggestions;
+}
+
+/**
+ * What adding a suggestion puts in the bag — the same shape
+ * FrequentlyBoughtTogether builds for its companions, so a product added
+ * from here obeys the identical rules: `price` is the normal price it falls
+ * back to if its key product leaves the bag, `bundlePrice` is what it's
+ * charged while the key is still there (CartProvider's effectivePrice), and
+ * the discount covers one unit only.
+ */
+function addInputFor(s: BundleSuggestion) {
+  const discounted = s.bundlePrice < s.price;
+  return {
+    slug: s.slug,
+    name: s.name,
+    price: s.price,
+    compareAtPrice: s.compareAtPrice ?? undefined,
+    image: s.image ?? null,
+    ...(discounted ? { bundleKeySlug: s.keySlug, bundlePrice: s.bundlePrice } : {}),
+  };
 }
 
 export default function CartDrawer() {
@@ -157,25 +206,17 @@ export default function CartDrawer() {
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] text-[#2b261f]">{s.name}</p>
                   <p className="mt-1 text-[13px] text-[#2b261f]">
-                    {money(s.price)}
-                    {s.compareAtPrice && (
+                    {money(s.bundlePrice)}
+                    {s.bundleCompareAt && (
                       <span className="ml-2 text-black/40 line-through">
-                        {money(s.compareAtPrice)}
+                        {money(s.bundleCompareAt)}
                       </span>
                     )}
                   </p>
                   <button
                     type="button"
                     disabled={isOutOfStock(s.slug)}
-                    onClick={() =>
-                      addItem({
-                        slug: s.slug,
-                        name: s.name,
-                        price: s.price,
-                        compareAtPrice: s.compareAtPrice ?? undefined,
-                        image: s.image ?? null,
-                      })
-                    }
+                    onClick={() => addItem(addInputFor(s))}
                     className="mt-2 border border-[#28241f] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#28241f] hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                   >
                     {isOutOfStock(s.slug) ? "Out of Stock" : "Add to Bag"}
@@ -356,24 +397,16 @@ export default function CartDrawer() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs text-[#2b261f]">{s.name}</p>
                       <p className="text-xs text-black/50">
-                        {money(s.price)}
-                        {s.compareAtPrice && (
-                          <span className="ml-1.5 line-through">{money(s.compareAtPrice)}</span>
+                        {money(s.bundlePrice)}
+                        {s.bundleCompareAt && (
+                          <span className="ml-1.5 line-through">{money(s.bundleCompareAt)}</span>
                         )}
                       </p>
                     </div>
                     <button
                       type="button"
                       disabled={isOutOfStock(s.slug)}
-                      onClick={() =>
-                        addItem({
-                          slug: s.slug,
-                          name: s.name,
-                          price: s.price,
-                          compareAtPrice: s.compareAtPrice ?? undefined,
-                          image: s.image ?? null,
-                        })
-                      }
+                      onClick={() => addItem(addInputFor(s))}
                       className="shrink-0 rounded-full border border-[#28241f] px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-[#28241f] hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                     >
                       {isOutOfStock(s.slug) ? "Out of Stock" : "Add to Bag"}

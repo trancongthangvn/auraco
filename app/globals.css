@@ -186,6 +186,10 @@ footer .font-ui {
 .order-summary-scroller {
   scrollbar-width: thin;
   scrollbar-color: #b9b1a5 #ece7df;
+  /* Reserve the track's width whether or not the list currently scrolls:
+     otherwise applying the cap narrows the content, a name rewraps, the
+     measured height changes, and the measurement above chases itself. */
+  scrollbar-gutter: stable;
 }
 .order-summary-scroller::-webkit-scrollbar {
   width: 8px;

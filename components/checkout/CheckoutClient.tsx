@@ -1424,7 +1424,7 @@ export default function CheckoutClient() {
                  gaps, so exactly five fit and the sixth peeks in as the cue
                  that there's more. A bag of five or fewer is shorter than
                  the cap and renders exactly as before. */
-              <ul className="mb-6 max-h-[384px] space-y-4 overflow-y-auto pr-1">
+              <ul className="order-summary-scroller mb-6 max-h-[384px] space-y-4 overflow-y-auto pr-2">
                 {items.map((item) => (
                   <li key={cartItemKey(item)} className="flex items-start gap-4">
                     <Link

@@ -86,6 +86,12 @@ export type Product = {
    *  present, falling back to the pre-formatted `price` string otherwise
    *  (the static demo entries below have no live currency to react to). */
   priceValue?: number;
+  /** Raw USD "was" amount behind a discount (products.compare_at_price),
+   *  when set — ProductCarousel renders it as a strikethrough next to
+   *  `price`, mirroring CatalogClient's product card. Undefined (the static
+   *  demo entries below, and any caller that never set it) renders no
+   *  strikethrough, unchanged from before this field existed. */
+  compareAtPriceValue?: number;
   rating: number;
   img: string;
   /** Second gallery image, shown on hover as the on-model shot. */

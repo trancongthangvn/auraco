@@ -68,6 +68,7 @@ function toCarouselProducts(list: ApiProduct[]): CarouselProduct[] {
     material: p.material,
     price: `$${Number(p.price).toFixed(2)} USD`,
     priceValue: Number(p.price),
+    compareAtPriceValue: p.compare_at_price != null ? Number(p.compare_at_price) : undefined,
     rating: Math.round(Number(p.rating)),
     img: p.images[0],
     hoverImg: p.images[1],

@@ -275,6 +275,11 @@ export default function ProductCarousel({
           {p.priceValue !== undefined
             ? formatPrice(p.priceValue, currency, rates[currency])
             : p.price}
+          {p.compareAtPriceValue && (
+            <span className="line-through text-black/40 ml-2">
+              {formatPrice(p.compareAtPriceValue, currency, rates[currency])}
+            </span>
+          )}
         </p>
       </div>
     </Link>

@@ -31,9 +31,11 @@ export default function ThankYouClient() {
     // Query string via window.location, never useSearchParams — this
     // codebase's standing rule (DEPLOYMENT.md), since that hook forces a
     // Suspense boundary that has shipped blank pages before.
-    const returningOrderId = new URLSearchParams(window.location.search).get(
-      "airwallex_order"
-    );
+    // `order` is the gateway-neutral param (PayPal and anything added
+    // later); `airwallex_order` is kept so an Airwallex redirect already in
+    // flight still lands correctly.
+    const search = new URLSearchParams(window.location.search);
+    const returningOrderId = search.get("order") || search.get("airwallex_order");
     if (returningOrderId) {
       apiFetch<CreatedOrder>(`/api/orders/${encodeURIComponent(returningOrderId)}`)
         .then((order) => {

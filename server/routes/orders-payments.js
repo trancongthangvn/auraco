@@ -7,6 +7,7 @@ const { upload, verifyMagicBytes } = require('../lib/upload');
 const { sendOrderConfirmationEmail } = require('../lib/email');
 const { discountedUnitPrice } = require('../lib/pricing');
 const airwallex = require('../lib/airwallex');
+const paypal = require('../lib/paypal');
 const { verifyCustomerToken } = require('../lib/customerAuth');
 
 const router = express.Router();
@@ -899,6 +900,167 @@ router.post('/orders/:id/airwallex-intent', async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(502).json({ error: 'Failed to create Airwallex payment intent' });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// GET /paypal/config — public: whether the server can actually take PayPal
+// payments right now. The checkout uses this to choose between the real
+// redirect flow below and the manual-confirmation fallback, rather than
+// sending a shopper down a flow that would 503 halfway through. Returns no
+// secrets: the redirect flow never needs the client id in the browser.
+// ----------------------------------------------------------------------------
+router.get('/paypal/config', (req, res) => {
+  return res.json({
+    data: { configured: paypal.isConfigured(), env: process.env.PAYPAL_ENV || 'sandbox' },
+  });
+});
+
+/**
+ * The return/cancel URLs PayPal sends the shopper back to come from the
+ * browser, so they're checked against the same origin allowlist CORS uses
+ * before being handed to PayPal — otherwise this endpoint would happily
+ * mint PayPal approval pages that bounce the shopper to somebody else's
+ * site under our merchant name.
+ */
+function allowedReturnUrl(candidate) {
+  if (typeof candidate !== 'string' || candidate.length === 0) return null;
+  let parsed;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    return null;
+  }
+  const allowed = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return allowed.includes(parsed.origin) ? parsed.toString() : null;
+}
+
+// ----------------------------------------------------------------------------
+// POST /orders/:id/paypal-order — creates a PayPal order for an existing
+// order of ours and records a pending payment_transactions row for it. The
+// frontend sends the shopper to the returned approve_url; money only moves
+// at the capture step below.
+// Body: { returnUrl, cancelUrl } — both must be on an allowlisted origin.
+// ----------------------------------------------------------------------------
+router.post('/orders/:id/paypal-order', async (req, res) => {
+  const { id } = req.params;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'Invalid order id' });
+
+  if (!paypal.isConfigured()) {
+    return res.status(503).json({
+      error: 'PayPal chưa được cấu hình trên máy chủ (thiếu PAYPAL_CLIENT_ID/PAYPAL_CLIENT_SECRET).',
+    });
+  }
+
+  const returnUrl = allowedReturnUrl(req.body && req.body.returnUrl);
+  const cancelUrl = allowedReturnUrl(req.body && req.body.cancelUrl);
+  if (!returnUrl || !cancelUrl) {
+    return res.status(400).json({ error: 'returnUrl and cancelUrl must be on an allowed origin' });
+  }
+
+  try {
+    const orderRes = await query(`SELECT * FROM orders WHERE id = $1`, [Number(id)]);
+    const order = orderRes.rows[0];
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    const currency = process.env.PAYPAL_CURRENCY || 'USD';
+    const { order: ppOrder, approveUrl } = await paypal.createOrder({
+      orderId: order.id,
+      orderCode: order.order_code,
+      amount: parseFloat(order.total),
+      currency,
+      returnUrl,
+      cancelUrl,
+    });
+    if (!approveUrl) {
+      return res.status(502).json({ error: 'PayPal did not return an approval link' });
+    }
+
+    await query(
+      `INSERT INTO payment_transactions (order_id, method, amount, status, gateway_intent_id, gateway_raw_status)
+       VALUES ($1,'paypal',$2,'Chờ xử lý',$3,$4)`,
+      [order.id, order.total, ppOrder.id, ppOrder.status || null]
+    );
+
+    return res.status(201).json({
+      data: { paypal_order_id: ppOrder.id, approve_url: approveUrl, currency },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(502).json({ error: 'Failed to create PayPal order' });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// POST /orders/:id/paypal-capture — takes the payment for an order the
+// shopper has just approved on PayPal. This response, not the browser's
+// return from PayPal, is what marks the order paid.
+// Body: { paypalOrderId }
+// ----------------------------------------------------------------------------
+router.post('/orders/:id/paypal-capture', async (req, res) => {
+  const { id } = req.params;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'Invalid order id' });
+  if (!paypal.isConfigured()) {
+    return res.status(503).json({ error: 'PayPal chưa được cấu hình trên máy chủ.' });
+  }
+
+  const paypalOrderId = req.body && req.body.paypalOrderId;
+  if (!isNonEmptyString(paypalOrderId)) {
+    return res.status(400).json({ error: 'paypalOrderId is required' });
+  }
+
+  try {
+    const orderRes = await query(`SELECT * FROM orders WHERE id = $1`, [Number(id)]);
+    const order = orderRes.rows[0];
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    // Only a PayPal order this server itself created for THIS order can be
+    // captured: without this, anyone could post someone else's approved
+    // PayPal order id here and have it recorded as payment for their own.
+    const txRes = await query(
+      `SELECT * FROM payment_transactions
+       WHERE order_id = $1 AND method = 'paypal' AND gateway_intent_id = $2`,
+      [order.id, paypalOrderId.trim()]
+    );
+    const tx = txRes.rows[0];
+    if (!tx) return res.status(400).json({ error: 'Unknown PayPal order for this order' });
+    // Already settled — say so instead of calling PayPal again.
+    if (tx.status === 'Đã thanh toán') {
+      return res.json({ data: { status: 'Đã thanh toán', already: true } });
+    }
+
+    const { captured } = await paypal.captureOrder(paypalOrderId.trim());
+    const summary = paypal.captureSummary(captured);
+
+    // What PayPal says was paid has to match what we asked for, on our own
+    // order — a mismatch is recorded as failed and left for an admin rather
+    // than quietly accepted.
+    const expected = Number(parseFloat(order.total).toFixed(2));
+    const currency = process.env.PAYPAL_CURRENCY || 'USD';
+    const ok =
+      summary.status === 'COMPLETED' &&
+      summary.customId === String(order.id) &&
+      summary.value === expected &&
+      summary.currency === currency;
+
+    await query(
+      `UPDATE payment_transactions
+       SET status = $1, gateway_raw_status = $2, reference_code = $3, updated_at = now()
+       WHERE id = $4`,
+      [ok ? 'Đã thanh toán' : 'Thất bại', summary.status, summary.captureId, tx.id]
+    );
+
+    if (!ok) {
+      console.error('[paypal capture] mismatch', { orderId: order.id, expected, currency, summary });
+      return res.status(502).json({ error: 'PayPal payment could not be confirmed' });
+    }
+    return res.json({ data: { status: 'Đã thanh toán', capture_id: summary.captureId } });
+  } catch (err) {
+    console.error(err);
+    return res.status(502).json({ error: 'Failed to capture PayPal payment' });
   }
 });
 

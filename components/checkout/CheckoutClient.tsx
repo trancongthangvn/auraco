@@ -378,6 +378,60 @@ export default function CheckoutClient() {
     );
   }, [router]);
 
+  // Whether the server actually has PayPal credentials. Decides between the
+  // real redirect flow and the manual-confirmation fallback below; false
+  // until it answers, so a slow/failed check degrades to the old behaviour
+  // rather than sending anyone to a payment page that can't be captured.
+  const [paypalConfigured, setPaypalConfigured] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ configured: boolean }>("/api/paypal/config")
+      .then((cfg) => setPaypalConfigured(Boolean(cfg.configured)))
+      .catch(() => setPaypalConfigured(false));
+  }, []);
+
+  // Returning from PayPal's approval page: PayPal appends its own order id
+  // as `token`. The money is taken here, by the server, on this return —
+  // the redirect itself proves nothing.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const ourOrderId = params.get("paypal_order");
+    const paypalOrderId = params.get("token");
+    if (!ourOrderId) return;
+
+    if (params.get("paypal_status") === "cancelled" || !paypalOrderId) {
+      queueMicrotask(() =>
+        setSubmitError(
+          "Your PayPal payment was not completed. You can try again, or choose another payment method."
+        )
+      );
+      return;
+    }
+
+    let cancelled = false;
+    queueMicrotask(() => setSubmitting(true));
+    apiFetch(`/api/orders/${encodeURIComponent(ourOrderId)}/paypal-capture`, {
+      method: "POST",
+      body: JSON.stringify({ paypalOrderId }),
+    })
+      .then(() => {
+        if (!cancelled) router.replace(`/thankyou?order=${encodeURIComponent(ourOrderId)}`);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSubmitting(false);
+        setSubmitError(
+          err instanceof ApiError
+            ? err.message
+            : "We could not confirm your PayPal payment. Please contact support with your order code."
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -543,14 +597,38 @@ export default function CheckoutClient() {
       createdOrder = data;
       clear();
 
+      // PayPal, once the server has credentials for it, is a real gateway
+      // redirect like Airwallex; without them it stays on the old
+      // manual-confirmation path with the rest, so a half-configured server
+      // never strands a shopper on an approval page it can't capture.
+      const paypalLive = payment === "paypal" && paypalConfigured;
+
       // Nothing more is asked of the customer for these methods, so they go
       // straight to the thank-you page. Cash App / Zelle stay on this page
-      // for the QR + proof screen first; Airwallex redirects out below.
-      if (payment !== "airwallex" && payment !== "cashapp" && payment !== "zelle") {
+      // for the QR + proof screen first; Airwallex/PayPal redirect out below.
+      if (!paypalLive && payment !== "airwallex" && payment !== "cashapp" && payment !== "zelle") {
         goToThankYou(data, false);
         return;
       }
       setOrder(data);
+
+      if (paypalLive) {
+        const pp = await apiFetch<{ approve_url: string }>(
+          `/api/orders/${data.id}/paypal-order`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              // Back to checkout either way: the capture that actually takes
+              // the money happens here on return (see the effect above), and
+              // only then does the shopper reach the thank-you page.
+              returnUrl: `${window.location.origin}/checkout?paypal_order=${data.id}`,
+              cancelUrl: `${window.location.origin}/checkout?paypal_order=${data.id}&paypal_status=cancelled`,
+            }),
+          }
+        );
+        window.location.href = pp.approve_url;
+        return; // navigating away to PayPal
+      }
 
       // Airwallex is a real gateway redirect, unlike the other methods
       // (card/paypal/cashapp/zelle here are all manual-confirmation today,

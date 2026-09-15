@@ -8,7 +8,7 @@ import { useRequireAdmin } from "@/components/admin/useRequireAdmin";
 import Button from "@/components/admin/ui/Button";
 import Badge from "@/components/admin/ui/Badge";
 import { TableCard, Th, Td, TR_HOVER, EmptyState } from "@/components/admin/ui/Table";
-import { Input, Label } from "@/components/admin/ui/Field";
+import { Input, Label, Select } from "@/components/admin/ui/Field";
 import ImageField from "@/components/admin/ImageField";
 
 // Methods the customer pays by scanning a QR code and then uploading a
@@ -16,6 +16,19 @@ import ImageField from "@/components/admin/ImageField";
 // have anywhere to show a QR image, so only these get the QR uploader —
 // card/PayPal/Airwallex are processed by the gateway itself.
 const QR_METHOD_KEYS = ["cashapp", "zelle"];
+
+// Same 5-value enum the server enforces on payment_transactions.method
+// (server/routes/orders-payments.js: PAYMENT_METHODS) and the same
+// value/label pairs already used for the orders list filter
+// (app/admin/orders/page.tsx) — kept consistent so the two admin filters
+// show identical labels for the same underlying value.
+const PAYMENT_METHODS: { value: string; label: string }[] = [
+  { value: "card", label: "Thẻ tín dụng" },
+  { value: "paypal", label: "PayPal" },
+  { value: "cashapp", label: "Cash App" },
+  { value: "zelle", label: "Zelle" },
+  { value: "airwallex", label: "Airwallex" },
+];
 
 const TABS = ["Lịch sử giao dịch", "Cấu hình phương thức"] as const;
 type Tab = (typeof TABS)[number];
@@ -44,6 +57,7 @@ export default function AdminPaymentsPage() {
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
   const [txLoading, setTxLoading] = useState(true);
   const [txError, setTxError] = useState<string | null>(null);
+  const [methodFilter, setMethodFilter] = useState("");
 
   const [settings, setSettings] = useState<PaymentMethodSetting[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(true);
@@ -51,7 +65,12 @@ export default function AdminPaymentsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch<{ transactions: PaymentTransaction[] }>("/api/admin/payment-transactions")
+    setTxLoading(true);
+    const params = new URLSearchParams();
+    if (methodFilter) params.set("method", methodFilter);
+    apiFetch<{ transactions: PaymentTransaction[] }>(
+      `/api/admin/payment-transactions?${params.toString()}`
+    )
       .then((data) => {
         if (!cancelled) setTransactions(data.transactions);
       })
@@ -66,7 +85,7 @@ export default function AdminPaymentsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [methodFilter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,6 +202,17 @@ export default function AdminPaymentsPage() {
 
       {tab === "Lịch sử giao dịch" && (
         <>
+          <div className="mb-4 max-w-xs">
+            <Label>Thanh toán</Label>
+            <Select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)}>
+              <option value="">Tất cả</option>
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </Select>
+          </div>
           {txLoading ? (
             <p className="p-4 text-sm text-black/50">Đang tải...</p>
           ) : txError ? (
@@ -203,7 +233,7 @@ export default function AdminPaymentsPage() {
                   {transactions.map((t) => (
                     <tr key={t.id} className={TR_HOVER}>
                       <Td>AC-{t.order_id}</Td>
-                      <Td>{t.method}</Td>
+                      <Td>{PAYMENT_METHODS.find((m) => m.value === t.method)?.label ?? t.method}</Td>
                       <Td align="right">${t.amount}</Td>
                       <Td align="center">
                         <Badge

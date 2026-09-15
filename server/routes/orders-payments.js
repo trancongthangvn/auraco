@@ -912,8 +912,36 @@ router.post('/orders/:id/airwallex-intent', async (req, res) => {
 // ----------------------------------------------------------------------------
 router.get('/paypal/config', (req, res) => {
   return res.json({
-    data: { configured: paypal.isConfigured(), env: process.env.PAYPAL_ENV || 'sandbox' },
+    data: {
+      configured: paypal.isConfigured(),
+      env: process.env.PAYPAL_ENV || 'sandbox',
+      // The client id is not a secret — it's the same identifier the PayPal
+      // JS SDK's own <script src> query string requires, and is visible in
+      // every PayPal checkout page's page source anyway. Only the client
+      // *secret* (never sent anywhere near the browser) actually guards
+      // anything.
+      client_id: paypal.isConfigured() ? process.env.PAYPAL_CLIENT_ID : null,
+    },
   });
+});
+
+// ----------------------------------------------------------------------------
+// POST /paypal/client-token — a short-lived token the PayPal JS SDK needs to
+// render hosted Card Fields (direct card entry) client-side. See
+// lib/paypal.js's generateClientToken for what this can and can't do, and
+// the "Advanced Credit and Debit Card Payments" feature gate it depends on.
+// ----------------------------------------------------------------------------
+router.post('/paypal/client-token', async (req, res) => {
+  if (!paypal.isConfigured()) {
+    return res.status(503).json({ error: 'PayPal chưa được cấu hình trên máy chủ.' });
+  }
+  try {
+    const clientToken = await paypal.generateClientToken();
+    return res.json({ data: { client_token: clientToken } });
+  } catch (err) {
+    console.error(err);
+    return res.status(502).json({ error: 'Failed to generate PayPal client token' });
+  }
 });
 
 /**

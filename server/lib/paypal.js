@@ -134,6 +134,32 @@ function approveUrlOf(order) {
   return link ? link.href : null;
 }
 
+/**
+ * A short-lived, browser-safe token the PayPal JS SDK exchanges for the
+ * ability to render hosted Card Fields client-side. Distinct from
+ * getAccessToken()'s server-only access token: that one can create and
+ * capture orders and must never reach the browser; this one can only
+ * initialize the SDK's card-entry widgets.
+ *
+ * Requires the app to have "Advanced Credit and Debit Card Payments"
+ * enabled in the PayPal dashboard (Apps & Credentials > your app >
+ * Features) — a merchant capability PayPal grants per-account/per-country,
+ * not something this code can turn on. Without it, the SDK's card-fields
+ * component fails to render even with a valid token from this call.
+ */
+async function generateClientToken() {
+  const token = await getAccessToken();
+  const res = await fetch(`${apiBase()}/v1/identity/generate-token`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Accept-Language': 'en_US' },
+  });
+  if (!res.ok) {
+    throw new Error(`PayPal generate client token failed: ${res.status} ${await res.text()}`);
+  }
+  const data = await res.json();
+  return data.client_token;
+}
+
 async function getOrder(paypalOrderId) {
   const token = await getAccessToken();
   const res = await fetch(`${apiBase()}/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}`, {
@@ -198,6 +224,7 @@ function captureSummary(captured) {
 module.exports = {
   isConfigured,
   getAccessToken,
+  generateClientToken,
   createOrder,
   getOrder,
   captureOrder,

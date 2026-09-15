@@ -1457,7 +1457,12 @@ export default function CheckoutClient() {
               <ul
                 ref={summaryListRef}
                 style={summaryMaxHeight ? { maxHeight: summaryMaxHeight } : undefined}
-                className="order-summary-scroller mb-6 space-y-4 overflow-y-auto pr-2"
+                /* overflow-x-hidden, not just overflow-y-auto: in a narrow
+                   column the price line overflows sideways, and the
+                   horizontal scrollbar that appears eats ~11px off the
+                   bottom — enough to clip the last row the cap was measured
+                   to show in full. */
+                className="order-summary-scroller mb-6 space-y-4 overflow-y-auto overflow-x-hidden pr-2"
               >
                 {items.map((item) => (
                   <li key={cartItemKey(item)} className="flex items-start gap-4">

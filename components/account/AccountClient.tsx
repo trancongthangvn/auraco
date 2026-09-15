@@ -12,6 +12,8 @@ import {
   type Customer,
 } from "@/lib/customerAuth";
 import { useDictionary } from "@/components/i18n/LanguageProvider";
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { formatPrice } from "@/lib/currency";
 
 type AccountOrderItem = {
   id: number;
@@ -43,7 +45,15 @@ type AccountOrder = {
 
 type Tab = "profile" | "edit" | "orders";
 
-const money = (v: string | number | null | undefined) => `$${Number(v ?? 0).toFixed(2)}`;
+// Orders are stored and charged in USD; what's shown follows the currency
+// the shopper picked in the header, like every other price on the site.
+// This page used to hard-code a "$" and ignore that entirely, so switching
+// currency changed every page except this one.
+function useMoney() {
+  const { currency, rates } = useCurrency();
+  return (v: string | number | null | undefined) =>
+    formatPrice(Number(v ?? 0), currency, rates[currency]);
+}
 
 const PAYMENT_LABEL: Record<string, string> = {
   card: "Credit card",
@@ -369,6 +379,7 @@ function EditView({ customer, onSaved }: { customer: Customer; onSaved: (c: Cust
 
 function OrdersView({ orders }: { orders: AccountOrder[] | null }) {
   const dict = useDictionary().account;
+  const money = useMoney();
   const [openId, setOpenId] = useState<number | null>(null);
 
   const statusLabel: Record<string, string> = {

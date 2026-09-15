@@ -21,7 +21,16 @@ const CURRENCY_FLAG: Record<(typeof currencies)[number], FlagKind> = {
  * (flag, bold code + grey full name, grey symbol, gold check on the active
  * row, cream `#f4ece3`-tinted background on that row).
  */
-export default function CurrencyPicker() {
+export default function CurrencyPicker({
+  showOnMobile = false,
+}: {
+  /** The header hides this below md and offers its own copy inside the
+   *  mobile menu instead. Checkout has no such menu, so its picker was
+   *  simply absent on a phone — the one page where a shopper is most
+   *  likely to want to check the currency they're being charged in. Set
+   *  there so the trigger stays visible at every width. */
+  showOnMobile?: boolean;
+} = {}) {
   const { currency, setCurrency, activeCurrencies } = useCurrency();
   const visibleCurrencies = currencies.filter((c) => activeCurrencies[c]);
   const [open, setOpen] = useState(false);
@@ -53,7 +62,9 @@ export default function CurrencyPicker() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="hidden h-10 items-center gap-[7.68px] px-1 hover:text-gold md:inline-flex"
+        className={`h-10 items-center gap-[7.68px] px-1 hover:text-gold ${
+          showOnMobile ? "inline-flex" : "hidden md:inline-flex"
+        }`}
       >
         <FlagIcon locale={CURRENCY_FLAG[currency]} className="h-[17px] w-[25px] rounded-[3px]" />
         <span className="text-[11px] font-medium">{currency}</span>

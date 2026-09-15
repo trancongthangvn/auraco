@@ -885,9 +885,7 @@ export default function CheckoutClient() {
             AURA & CO
           </Link>
           <div className="flex items-center justify-end gap-[5px]">
-            <span className="hidden md:inline-flex">
-              <CurrencyPicker />
-            </span>
+            <CurrencyPicker showOnMobile />
             <Link
               href="/cart"
               className="inline-flex items-center gap-1.5 whitespace-nowrap font-ui text-sm tracking-wide hover:text-gold transition-colors"

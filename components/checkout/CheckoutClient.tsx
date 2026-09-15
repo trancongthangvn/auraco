@@ -158,8 +158,9 @@ const countries = [
 // a valid order payment_method, so it's filtered out below.
 const ORDER_PAYMENT_KEYS = ["card", "paypal", "cashapp", "zelle", "airwallex"];
 
-/** How many order-summary rows stay visible before the list scrolls. */
-const VISIBLE_SUMMARY_ROWS = 5;
+/** How many order-summary rows stay visible before the list scrolls.
+ *  Counts cart lines, not units — a line of "× 5" is still one row. */
+const VISIBLE_SUMMARY_ROWS = 3;
 
 // Airwallex's hosted-checkout redirect helper, loaded from their CDN only
 // when the shopper actually picks that payment method (see

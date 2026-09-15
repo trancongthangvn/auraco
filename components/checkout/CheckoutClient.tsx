@@ -1417,13 +1417,13 @@ export default function CheckoutClient() {
                 Your bag is empty.
               </p>
             ) : (
-              {/* Caps the list at five rows and scrolls past that: a big bag
-                  otherwise pushed the totals and the pay button far below
-                  the fold, with no way to see them without scrolling past
-                  every line. 384px = 5 × 64px rows (h-16 thumbnail) + 4 ×
-                  16px gaps, so exactly five fit and the sixth peeks in as
-                  the cue that there's more. A bag of five or fewer is
-                  shorter than the cap and renders exactly as before. */}
+              /* Caps the list at five rows and scrolls past that: a big bag
+                 otherwise pushed the totals and the pay button far below the
+                 fold, with no way to reach them without scrolling past every
+                 line. 384px = 5 × 64px rows (h-16 thumbnail) + 4 × 16px
+                 gaps, so exactly five fit and the sixth peeks in as the cue
+                 that there's more. A bag of five or fewer is shorter than
+                 the cap and renders exactly as before. */
               <ul className="mb-6 max-h-[384px] space-y-4 overflow-y-auto pr-1">
                 {items.map((item) => (
                   <li key={cartItemKey(item)} className="flex items-start gap-4">

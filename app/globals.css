@@ -178,6 +178,30 @@ footer .font-ui {
   background: #9c9384;
 }
 
+/* The checkout order summary caps its item list at five rows and scrolls
+   past that (CheckoutClient). macOS and iOS keep overlay scrollbars hidden
+   until something is actually scrolling, so a shopper with a big bag got no
+   hint the list continued below — same reasoning as the press strip above,
+   so the same visible track. */
+.order-summary-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: #b9b1a5 #ece7df;
+}
+.order-summary-scroller::-webkit-scrollbar {
+  width: 8px;
+}
+.order-summary-scroller::-webkit-scrollbar-track {
+  background: #ece7df;
+  border-radius: 999px;
+}
+.order-summary-scroller::-webkit-scrollbar-thumb {
+  background: #b9b1a5;
+  border-radius: 999px;
+}
+.order-summary-scroller::-webkit-scrollbar-thumb:hover {
+  background: #9c9384;
+}
+
 @keyframes home-certificates-scroll {
   from {
     transform: translateX(0);

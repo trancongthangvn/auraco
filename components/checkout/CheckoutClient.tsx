@@ -160,7 +160,13 @@ const ORDER_PAYMENT_KEYS = ["card", "paypal", "cashapp", "zelle", "airwallex"];
 
 /** How many order-summary rows stay visible before the list scrolls.
  *  Counts cart lines, not units — a line of "× 5" is still one row. */
-const VISIBLE_SUMMARY_ROWS = 3;
+const VISIBLE_SUMMARY_ROWS = 10;
+
+/** …but never taller than this much of the window, whatever that many rows
+ *  works out to. Ten rows is around 900px, which on a laptop would put the
+ *  totals and the pay button back below the fold — the thing capping this
+ *  list was for. */
+const MAX_SUMMARY_VIEWPORT_FRACTION = 0.6;
 
 // Airwallex's hosted-checkout redirect helper, loaded from their CDN only
 // when the shopper actually picks that payment method (see
@@ -395,11 +401,20 @@ export default function CheckoutClient() {
     if (!ul) return;
     const measure = () => {
       const rows = Array.from(ul.children) as HTMLElement[];
-      const last = rows[VISIBLE_SUMMARY_ROWS - 1];
-      const next =
-        rows.length > VISIBLE_SUMMARY_ROWS && last
-          ? last.offsetTop + last.offsetHeight - rows[0].offsetTop
-          : null;
+      if (rows.length === 0) {
+        setSummaryMaxHeight((prev) => (prev === null ? prev : null));
+        return;
+      }
+      const top = rows[0].offsetTop;
+      const heightThrough = (row: HTMLElement) => row.offsetTop + row.offsetHeight - top;
+      const fullHeight = heightThrough(rows[rows.length - 1]);
+      const rowsCap = rows[VISIBLE_SUMMARY_ROWS - 1]
+        ? heightThrough(rows[VISIBLE_SUMMARY_ROWS - 1])
+        : null;
+      const viewportCap = Math.round(window.innerHeight * MAX_SUMMARY_VIEWPORT_FRACTION);
+      const cap = rowsCap === null ? viewportCap : Math.min(rowsCap, viewportCap);
+      // Nothing to cap when every row already fits inside it.
+      const next = fullHeight <= cap ? null : cap;
       // Same value means no state change — without this the ResizeObserver
       // below and the resize its own cap causes would loop each other.
       setSummaryMaxHeight((prev) => (prev === next ? prev : next));
@@ -409,7 +424,13 @@ export default function CheckoutClient() {
     // reflows a name onto a second line.
     const observer = new ResizeObserver(measure);
     observer.observe(ul);
-    return () => observer.disconnect();
+    // A window resized shorter changes the viewport cap without necessarily
+    // resizing the list itself, so the observer alone would miss it.
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, [items]);
 
   useEffect(() => {

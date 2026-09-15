@@ -411,7 +411,18 @@ export default function CheckoutClient() {
       const rowsCap = rows[VISIBLE_SUMMARY_ROWS - 1]
         ? heightThrough(rows[VISIBLE_SUMMARY_ROWS - 1])
         : null;
-      const viewportCap = Math.round(window.innerHeight * MAX_SUMMARY_VIEWPORT_FRACTION);
+      // An embedded/measuring context can report innerHeight 0; taking that
+      // at face value would cap the list at 0 and collapse it to nothing, so
+      // an unusable reading means no viewport ceiling at all. The floor of
+      // one row is the same guard from the other side.
+      const viewportH = window.innerHeight;
+      const viewportCap =
+        viewportH > 0
+          ? Math.max(
+              heightThrough(rows[0]),
+              Math.round(viewportH * MAX_SUMMARY_VIEWPORT_FRACTION)
+            )
+          : Number.POSITIVE_INFINITY;
       const cap = rowsCap === null ? viewportCap : Math.min(rowsCap, viewportCap);
       // Nothing to cap when every row already fits inside it.
       const next = fullHeight <= cap ? null : cap;

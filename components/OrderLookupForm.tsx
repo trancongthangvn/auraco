@@ -4,6 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { formatPrice } from "@/lib/currency";
 
 type OrderItem = {
   id: number;
@@ -30,7 +32,9 @@ type LookedUpOrder = {
   items: OrderItem[];
 };
 
-const money = (v: string | number) => `$${Number(v).toFixed(2)}`;
+// Same rule as the rest of the storefront: charged in USD, shown in the
+// currency picked in the header. This page hard-coded a "$" and ignored
+// that, so it was the one place the picker had no effect.
 
 /**
  * Contract line item 16 ("tra cứu đơn hàng theo mã") — the storefront's own
@@ -50,6 +54,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function OrderLookupForm() {
+  const { currency, rates } = useCurrency();
+  const money = (v: string | number) => formatPrice(Number(v), currency, rates[currency]);
   const [orderCode, setOrderCode] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);

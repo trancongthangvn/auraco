@@ -59,7 +59,7 @@ export default function Header({
 } = {}) {
   const dict = useDictionary();
   const { totalQty } = useCart();
-  const { currency, setCurrency } = useCurrency();
+  const { currency, setCurrency, activeCurrencies } = useCurrency();
   const [mobileCurrencyOpen, setMobileCurrencyOpen] = useState(false);
   const [storyOpen, setStoryOpen] = useState(false);
   const [openMega, setOpenMega] = useState<string | null>(null);
@@ -1001,7 +1001,11 @@ export default function Header({
               </button>
               {mobileCurrencyOpen && (
                 <div className="w-[260px] max-w-full rounded-[14px] bg-white p-[7.2px] shadow-[0_16px_42px_rgba(31,26,20,0.16)]">
-                  {currencies.map((c) => {
+                  {/* Filtered by activeCurrencies, matching CurrencyPicker:
+                      this copy listed every currency, so one an admin had
+                      switched off still showed up — and could be picked —
+                      on a phone. */}
+                  {currencies.filter((c) => activeCurrencies[c]).map((c) => {
                     const active = c === currency;
                     const meta = currencyMeta[c];
                     return (

@@ -42,6 +42,7 @@ export default function CartClient({
     removeItem,
     isOutOfStock,
     outOfStockItems,
+    effectivePrice,
   } = useCart();
   // Explicit request: out-of-stock items can't be paid for in any case.
   const checkoutBlocked = outOfStockItems.length > 0;
@@ -201,7 +202,7 @@ export default function CartClient({
                             text column, not a separate right-aligned
                             price cell. */}
                         <p className="mt-1.5 text-[15px] text-[#2b261f]">
-                          {money(item.price * item.qty)}
+                          {money(effectivePrice(item) * item.qty)}
                         </p>
                       </div>
                       <button

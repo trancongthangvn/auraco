@@ -157,6 +157,31 @@ router.post('/orders', async (req, res) => {
       for (const v of varRes.rows) variantMap.set(v.id, v);
     }
 
+    // Frequently Bought Together companion discount (product_bundles +
+    // products.bundle_discount_percent) — only honored here when this SAME
+    // order also contains the bundle's "key" product (pb.product_id), never
+    // trusted from whatever price the storefront cart displayed. The
+    // storefront already mirrors this: FrequentlyBoughtTogether.tsx adds a
+    // companion with its bundle price conditional on the key product still
+    // being in the cart (CartProvider's effectivePrice), but that's display
+    // only — this is what actually gets charged, and it has to reach the
+    // same answer independently of the client, the same way tax/shipping
+    // below are computed here rather than trusted from the request.
+    const bundleRes = await client.query(
+      `SELECT pb.companion_id, p.bundle_discount_percent
+       FROM product_bundles pb
+       JOIN products p ON p.id = pb.product_id
+       WHERE pb.product_id = ANY($1::int[]) AND pb.companion_id = ANY($1::int[])`,
+      [productIds]
+    );
+    const bundleDiscountByCompanion = new Map();
+    for (const row of bundleRes.rows) {
+      const pct = Number(row.bundle_discount_percent);
+      if (!Number.isFinite(pct) || pct <= 0) continue;
+      const existing = bundleDiscountByCompanion.get(row.companion_id);
+      if (existing === undefined || pct > existing) bundleDiscountByCompanion.set(row.companion_id, pct);
+    }
+
     let subtotal = 0;
     const lineItems = [];
     for (const it of items) {
@@ -180,7 +205,11 @@ router.post('/orders', async (req, res) => {
       // the product's own card discount (products.discount_percent). Taking
       // the raw column here would bill the full price for a product
       // advertised at a discount — see server/lib/pricing.js.
-      const unitPrice = discountedUnitPrice(product);
+      const cardPrice = discountedUnitPrice(product);
+      const bundlePct = bundleDiscountByCompanion.get(product.id);
+      const unitPrice = bundlePct
+        ? Math.round(cardPrice * (1 - bundlePct / 100) * 100) / 100
+        : cardPrice;
       subtotal += unitPrice * qty;
       const images = Array.isArray(product.images) ? product.images : [];
       lineItems.push({

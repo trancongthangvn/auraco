@@ -17,6 +17,15 @@ export type CartItem = {
    *  variant-less product (today, every product). */
   variantId?: number;
   variantLabel?: string;
+  /** Set when this line was added as a Frequently Bought Together companion
+   *  (see FrequentlyBoughtTogether.tsx) — the slug of the "key" product this
+   *  companion's discount is conditional on. `price` above always stays this
+   *  companion's normal, un-bundled price; `bundlePrice` is what it's charged
+   *  instead while `bundleKeySlug` is still also in the cart. Removing the
+   *  key product (CartProvider.removeItem) makes the companion fall back to
+   *  `price` again on the very next render — see CartProvider.effectivePrice. */
+  bundleKeySlug?: string;
+  bundlePrice?: number;
 };
 
 export const CART_STORAGE_KEY = "aura-cart";

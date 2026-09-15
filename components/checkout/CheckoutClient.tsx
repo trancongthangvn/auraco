@@ -220,6 +220,7 @@ export default function CheckoutClient() {
     isOutOfStock,
     outOfStockItems,
     refreshStock,
+    effectivePrice,
   } = useCart();
   const itemsLoading = !hydrated;
   // Explicit request: an out-of-stock item can't be paid for in any case.
@@ -1441,7 +1442,7 @@ export default function CheckoutClient() {
                       </Link>
                       <p className="mt-1 flex items-center gap-2 font-ui text-xs text-black/50">
                         <span>× {item.qty}</span>
-                        <span>{money(item.price * item.qty)}</span>
+                        <span>{money(effectivePrice(item) * item.qty)}</span>
                       </p>
                       {!order && isOutOfStock(item.slug, item.variantId) && (
                         <p className="mt-1 flex items-center gap-2 font-ui text-xs font-medium text-red-700">

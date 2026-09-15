@@ -48,6 +48,16 @@ type CartContextValue = {
   isOutOfStock: (slug: string, variantId?: number) => boolean;
   /** Lines already in the bag that have since run out — checkout waits on these. */
   outOfStockItems: CartItem[];
+  /** A bundle companion's real per-unit price right now: `bundlePrice` while
+   *  its `bundleKeySlug` is still also in the cart, `price` otherwise (never
+   *  set, or the key was removed). Recomputed from `items` on every render —
+   *  same live-derivation shape as `isOutOfStock` — so removing the key
+   *  product reverts the companion's price on the very next render with no
+   *  extra event wiring. Everywhere a line's per-unit price is shown or
+   *  summed (subtotal below, the bag list, checkout's line items) must read
+   *  this instead of `item.price` directly, or the display would keep
+   *  showing/charging the bundle price after its key left the cart. */
+  effectivePrice: (item: CartItem) => number;
   /** Re-reads stock, e.g. when checkout opens, so it judges current numbers. */
   refreshStock: () => Promise<void>;
 };
@@ -197,7 +207,20 @@ export default function CartProvider({
       const existing = list.find((it) => cartItemKey(it) === key);
       if (existing) {
         return list.map((it) =>
-          cartItemKey(it) === key ? { ...it, qty: it.qty + qty } : it
+          cartItemKey(it) === key
+            ? {
+                ...it,
+                qty: it.qty + qty,
+                // A line already in the bag without bundle terms (e.g. added
+                // straight from the product card) picks them up if this same
+                // add happens to come from Frequently Bought Together —
+                // otherwise re-adding via FBT after adding it plainly would
+                // never actually apply its companion discount.
+                ...(input.bundleKeySlug && !it.bundleKeySlug
+                  ? { bundleKeySlug: input.bundleKeySlug, bundlePrice: input.bundlePrice }
+                  : {}),
+              }
+            : it
         );
       }
       return [...list, { ...input, qty }];
@@ -230,8 +253,15 @@ export default function CartProvider({
 
   const outOfStockItems = items.filter((it) => isOutOfStock(it.slug, it.variantId));
 
+  const effectivePrice = (item: CartItem) =>
+    item.bundleKeySlug &&
+    item.bundlePrice !== undefined &&
+    items.some((it) => it.slug === item.bundleKeySlug)
+      ? item.bundlePrice
+      : item.price;
+
   const totalQty = items.reduce((sum, it) => sum + it.qty, 0);
-  const subtotal = items.reduce((sum, it) => sum + it.price * it.qty, 0);
+  const subtotal = items.reduce((sum, it) => sum + effectivePrice(it) * it.qty, 0);
 
   return (
     <CartContext.Provider
@@ -255,6 +285,7 @@ export default function CartProvider({
         confirmPreview,
         isOutOfStock,
         outOfStockItems,
+        effectivePrice,
         refreshStock,
       }}
     >

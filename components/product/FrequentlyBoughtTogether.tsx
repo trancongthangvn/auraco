@@ -178,7 +178,14 @@ export default function FrequentlyBoughtTogether({
             addItem({
               slug: c.slug,
               name: c.name,
-              price: Math.round(displayOf(c).price * 100) / 100,
+              // `price` stays the companion's normal, un-bundled price so
+              // the cart can fall back to it correctly if `mainProduct` is
+              // later removed; `bundlePrice` is what's actually charged
+              // while it's still in the cart alongside it (CartProvider's
+              // effectivePrice).
+              price: c.price,
+              bundleKeySlug: mainProduct.slug,
+              bundlePrice: Math.round(displayOf(c).price * 100) / 100,
               image: c.image ?? null,
             });
           }

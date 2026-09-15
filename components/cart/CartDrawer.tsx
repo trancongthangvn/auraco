@@ -15,6 +15,7 @@ type BundleCompanion = {
   slug: string;
   name: string;
   price: number;
+  compareAtPrice?: number | null;
   image?: string;
 };
 
@@ -153,7 +154,14 @@ export default function CartDrawer() {
                 </Link>
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] text-[#2b261f]">{s.name}</p>
-                  <p className="mt-1 text-[13px] text-[#2b261f]">{money(s.price)}</p>
+                  <p className="mt-1 text-[13px] text-[#2b261f]">
+                    {money(s.price)}
+                    {s.compareAtPrice && (
+                      <span className="ml-2 text-black/40 line-through">
+                        {money(s.compareAtPrice)}
+                      </span>
+                    )}
+                  </p>
                   <button
                     type="button"
                     disabled={isOutOfStock(s.slug)}
@@ -318,7 +326,12 @@ export default function CartDrawer() {
                     </Link>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs text-[#2b261f]">{s.name}</p>
-                      <p className="text-xs text-black/50">{money(s.price)}</p>
+                      <p className="text-xs text-black/50">
+                        {money(s.price)}
+                        {s.compareAtPrice && (
+                          <span className="ml-1.5 line-through">{money(s.compareAtPrice)}</span>
+                        )}
+                      </p>
                     </div>
                     <button
                       type="button"

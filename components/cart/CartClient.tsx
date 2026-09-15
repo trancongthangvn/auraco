@@ -226,11 +226,18 @@ export default function CartClient({
                           <MinusIcon size={12} />
                         </button>
                         <span className="font-ui text-[16px] font-normal text-[#2b261f]">{item.qty}</span>
+                        {/* Capped at one unit for a bundle-discounted
+                            companion — same rule as the drawer's stepper,
+                            see CartProvider's BUNDLE_MAX_QTY. */}
                         <button
                           type="button"
                           aria-label="Increase quantity"
+                          disabled={!!item.bundleKeySlug}
+                          title={
+                            item.bundleKeySlug ? "Bundle price applies to 1 item" : undefined
+                          }
                           onClick={() => updateQty(key, item.qty + 1)}
-                          className="flex h-full items-center justify-center text-[#2b261f] hover:text-gold"
+                          className="flex h-full items-center justify-center text-[#2b261f] hover:text-gold disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-[#2b261f]"
                         >
                           <PlusIcon size={12} />
                         </button>

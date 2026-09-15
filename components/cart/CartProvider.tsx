@@ -13,6 +13,15 @@ type StockEntry = {
 
 type AddInput = Omit<CartItem, "qty"> & { qty?: number };
 
+/** The Frequently Bought Together discount buys one unit of a companion at
+ *  the bundle price, not an unlimited supply of them: a shopper wanting two
+ *  gets the second at its normal price, on its own separate cart line (see
+ *  cartItemKey, which keeps a bundle line distinct from a plain one). */
+const BUNDLE_MAX_QTY = 1;
+
+const capBundleQty = (item: Pick<CartItem, "bundleKeySlug">, qty: number) =>
+  item.bundleKeySlug ? Math.min(BUNDLE_MAX_QTY, qty) : qty;
+
 type CartContextValue = {
   items: CartItem[];
   /** False until the stored cart has been read from localStorage — lets
@@ -207,23 +216,10 @@ export default function CartProvider({
       const existing = list.find((it) => cartItemKey(it) === key);
       if (existing) {
         return list.map((it) =>
-          cartItemKey(it) === key
-            ? {
-                ...it,
-                qty: it.qty + qty,
-                // A line already in the bag without bundle terms (e.g. added
-                // straight from the product card) picks them up if this same
-                // add happens to come from Frequently Bought Together —
-                // otherwise re-adding via FBT after adding it plainly would
-                // never actually apply its companion discount.
-                ...(input.bundleKeySlug && !it.bundleKeySlug
-                  ? { bundleKeySlug: input.bundleKeySlug, bundlePrice: input.bundlePrice }
-                  : {}),
-              }
-            : it
+          cartItemKey(it) === key ? { ...it, qty: capBundleQty(it, it.qty + qty) } : it
         );
       }
-      return [...list, { ...input, qty }];
+      return [...list, { ...input, qty: capBundleQty(input, qty) }];
     });
     setDrawerOpen(true);
   };
@@ -245,7 +241,7 @@ export default function CartProvider({
   const updateQty = (key: string, qty: number) =>
     setItems((list) =>
       list.map((it) =>
-        cartItemKey(it) === key ? { ...it, qty: Math.max(1, qty) } : it
+        cartItemKey(it) === key ? { ...it, qty: capBundleQty(it, Math.max(1, qty)) } : it
       )
     );
 

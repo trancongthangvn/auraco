@@ -36,7 +36,14 @@ export const CART_STORAGE_KEY = "aura-cart";
  *  add-to-cart call site has a slug on hand, but none currently carries a
  *  numeric id (FullProduct/Product don't expose one anywhere) — keying on
  *  productId meant every item's key collapsed to the same "undefined"
- *  string, silently merging unrelated products into one cart line. */
-export function cartItemKey(item: Pick<CartItem, "slug" | "variantId">) {
-  return item.variantId != null ? `${item.slug}:${item.variantId}` : item.slug;
+ *  string, silently merging unrelated products into one cart line.
+ *
+ *  A bundle-discounted companion is its own line too, separate from any
+ *  plain line of the same product: the discount covers exactly one unit
+ *  (see CartProvider's BUNDLE_MAX_QTY), so buying more of that product
+ *  has to sit on its own full-price line rather than silently extending
+ *  the discount to every extra unit. */
+export function cartItemKey(item: Pick<CartItem, "slug" | "variantId" | "bundleKeySlug">) {
+  const base = item.variantId != null ? `${item.slug}:${item.variantId}` : item.slug;
+  return item.bundleKeySlug ? `${base}:bundle:${item.bundleKeySlug}` : base;
 }

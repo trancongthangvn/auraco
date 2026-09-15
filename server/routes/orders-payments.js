@@ -19,6 +19,10 @@ const PAYMENT_METHODS = ['card', 'paypal', 'cashapp', 'zelle', 'airwallex'];
 const TRANSACTION_STATUSES = ['Chờ xử lý', 'Đã thanh toán', 'Thất bại', 'Đã hủy'];
 const PAYMENT_METHOD_KEYS = ['card', 'paypal', 'applePay', 'cashapp', 'zelle', 'airwallex'];
 
+// How many units of a Frequently Bought Together companion the bundle price
+// covers per order. Mirrors CartProvider's BUNDLE_MAX_QTY on the storefront.
+const BUNDLE_DISCOUNT_MAX_UNITS = 1;
+
 // Convenience English aliases accepted from admin clients, mapped onto the
 // exact Vietnamese enum values the schema's CHECK constraints require.
 // (No literal "refunded" state exists in payment_transactions.status — the
@@ -181,6 +185,9 @@ router.post('/orders', async (req, res) => {
       const existing = bundleDiscountByCompanion.get(row.companion_id);
       if (existing === undefined || pct > existing) bundleDiscountByCompanion.set(row.companion_id, pct);
     }
+    const bundleUnitsLeft = new Map(
+      [...bundleDiscountByCompanion.keys()].map((id) => [id, BUNDLE_DISCOUNT_MAX_UNITS])
+    );
 
     let subtotal = 0;
     const lineItems = [];
@@ -207,19 +214,31 @@ router.post('/orders', async (req, res) => {
       // advertised at a discount — see server/lib/pricing.js.
       const cardPrice = discountedUnitPrice(product);
       const bundlePct = bundleDiscountByCompanion.get(product.id);
-      const unitPrice = bundlePct
-        ? Math.round(cardPrice * (1 - bundlePct / 100) * 100) / 100
-        : cardPrice;
-      subtotal += unitPrice * qty;
       const images = Array.isArray(product.images) ? product.images : [];
-      lineItems.push({
-        product_id: product.id,
-        name: product.name,
-        material: product.material,
-        price: unitPrice,
-        qty,
-        image_url: images.length > 0 ? images[0] : null,
-      });
+      const addLine = (price, lineQty) => {
+        if (lineQty <= 0) return;
+        subtotal += price * lineQty;
+        lineItems.push({
+          product_id: product.id,
+          name: product.name,
+          material: product.material,
+          price,
+          qty: lineQty,
+          image_url: images.length > 0 ? images[0] : null,
+        });
+      };
+      // The companion discount buys ONE unit at the bundle price, not every
+      // unit of that product in the order — the storefront caps its bundle
+      // line at qty 1 and sends extra units as their own full-price line
+      // (CartProvider's BUNDLE_MAX_QTY), and this counts the same allowance
+      // across the whole order so a request asking for 3 of a companion on a
+      // single line still only gets one of them discounted.
+      const bundleUnits = bundlePct ? Math.min(qty, bundleUnitsLeft.get(product.id) ?? 0) : 0;
+      if (bundleUnits > 0) {
+        bundleUnitsLeft.set(product.id, (bundleUnitsLeft.get(product.id) ?? 0) - bundleUnits);
+        addLine(Math.round(cardPrice * (1 - bundlePct / 100) * 100) / 100, bundleUnits);
+      }
+      addLine(cardPrice, qty - bundleUnits);
     }
 
     // Optional discount code

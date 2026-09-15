@@ -288,11 +288,23 @@ export default function CartDrawer() {
                           <MinusIcon size={10} />
                         </button>
                         <span className="text-xs">{item.qty}</span>
+                        {/* A bundle-discounted companion is capped at one
+                            unit (CartProvider's BUNDLE_MAX_QTY), so this
+                            would be a silent no-op — shown disabled rather
+                            than looking broken. More of that product is
+                            bought from its own page, arriving as a separate
+                            full-price line. */}
                         <button
                           type="button"
                           aria-label="Increase quantity"
+                          disabled={!!item.bundleKeySlug}
+                          title={
+                            item.bundleKeySlug
+                              ? "Bundle price applies to 1 item"
+                              : undefined
+                          }
                           onClick={() => updateQty(key, item.qty + 1)}
-                          className="flex h-full items-center justify-center text-[#2b261f] hover:text-gold"
+                          className="flex h-full items-center justify-center text-[#2b261f] hover:text-gold disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-[#2b261f]"
                         >
                           <PlusIcon size={10} />
                         </button>

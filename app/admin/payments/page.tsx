@@ -30,6 +30,25 @@ const PAYMENT_METHODS: { value: string; label: string }[] = [
   { value: "airwallex", label: "Airwallex" },
 ];
 
+// Same 4-value enum the server enforces on payment_transactions.status
+// (server/routes/orders-payments.js: TRANSACTION_STATUSES) — a different
+// set from orders.status (app/admin/orders/page.tsx's STATUSES), since a
+// transaction has its own manual-review lifecycle (Chờ xử lý / Đã thanh
+// toán / Thất bại / Đã hủy) separate from order fulfillment.
+const TRANSACTION_STATUSES: PaymentTransactionStatus[] = [
+  "Chờ xử lý",
+  "Đã thanh toán",
+  "Thất bại",
+  "Đã hủy",
+];
+
+const TRANSACTION_STATUS_TONE: Record<PaymentTransactionStatus, "success" | "warning" | "danger"> = {
+  "Chờ xử lý": "warning",
+  "Đã thanh toán": "success",
+  "Thất bại": "danger",
+  "Đã hủy": "danger",
+};
+
 const TABS = ["Lịch sử giao dịch", "Cấu hình phương thức"] as const;
 type Tab = (typeof TABS)[number];
 
@@ -41,12 +60,14 @@ type PaymentMethodSetting = {
   qr_image_url: string | null;
 };
 
+type PaymentTransactionStatus = "Chờ xử lý" | "Đã thanh toán" | "Thất bại" | "Đã hủy";
+
 type PaymentTransaction = {
   id: number;
   order_id: number;
   method: string;
   amount: string;
-  status: "Chờ xử lý" | "Đã thanh toán" | "Thất bại" | "Đã hủy";
+  status: PaymentTransactionStatus;
   created_at: string;
 };
 
@@ -58,6 +79,7 @@ export default function AdminPaymentsPage() {
   const [txLoading, setTxLoading] = useState(true);
   const [txError, setTxError] = useState<string | null>(null);
   const [methodFilter, setMethodFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const [settings, setSettings] = useState<PaymentMethodSetting[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(true);
@@ -68,6 +90,7 @@ export default function AdminPaymentsPage() {
     setTxLoading(true);
     const params = new URLSearchParams();
     if (methodFilter) params.set("method", methodFilter);
+    if (statusFilter) params.set("status", statusFilter);
     apiFetch<{ transactions: PaymentTransaction[] }>(
       `/api/admin/payment-transactions?${params.toString()}`
     )
@@ -85,7 +108,23 @@ export default function AdminPaymentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [methodFilter]);
+  }, [methodFilter, statusFilter]);
+
+  // Optimistic update, same pattern as app/admin/orders/page.tsx's
+  // updateStatus: flip the row immediately, revert if the PUT fails.
+  const updateTransactionStatus = async (id: number, status: PaymentTransactionStatus) => {
+    const previous = transactions;
+    setTransactions((list) => list.map((t) => (t.id === id ? { ...t, status } : t)));
+    try {
+      await apiFetch(`/api/admin/payment-transactions/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      });
+    } catch (err) {
+      setTransactions(previous);
+      setTxError(err instanceof ApiError ? err.message : "Không thể cập nhật trạng thái");
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -202,16 +241,29 @@ export default function AdminPaymentsPage() {
 
       {tab === "Lịch sử giao dịch" && (
         <>
-          <div className="mb-4 max-w-xs">
-            <Label>Thanh toán</Label>
-            <Select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)}>
-              <option value="">Tất cả</option>
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </Select>
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:max-w-md">
+            <div>
+              <Label>Trạng thái</Label>
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="">Tất cả</option>
+                {TRANSACTION_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label>Thanh toán</Label>
+              <Select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)}>
+                <option value="">Tất cả</option>
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
           {txLoading ? (
             <p className="p-4 text-sm text-black/50">Đang tải...</p>
@@ -236,17 +288,22 @@ export default function AdminPaymentsPage() {
                       <Td>{PAYMENT_METHODS.find((m) => m.value === t.method)?.label ?? t.method}</Td>
                       <Td align="right">${t.amount}</Td>
                       <Td align="center">
-                        <Badge
-                          tone={
-                            t.status === "Đã thanh toán"
-                              ? "success"
-                              : t.status === "Chờ xử lý"
-                              ? "warning"
-                              : "danger"
-                          }
-                        >
-                          {t.status}
-                        </Badge>
+                        <div className="flex items-center justify-center gap-2">
+                          <Badge tone={TRANSACTION_STATUS_TONE[t.status]}>{t.status}</Badge>
+                          <Select
+                            value={t.status}
+                            onChange={(e) =>
+                              updateTransactionStatus(t.id, e.target.value as PaymentTransactionStatus)
+                            }
+                            className="!w-auto !py-1.5 !px-2 text-xs"
+                          >
+                            {TRANSACTION_STATUSES.map((s) => (
+                              <option key={s} value={s}>
+                                {s}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
                       </Td>
                       <Td align="right" className="text-black/50 whitespace-nowrap">
                         {new Date(t.created_at).toLocaleString("vi-VN")}

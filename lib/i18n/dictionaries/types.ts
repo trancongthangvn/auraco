@@ -128,6 +128,8 @@ export interface Dictionary {
       demoMessage: string;
       noAccount: string;
       createOne: string;
+      accountNotePrefix: string;
+      myAccount: string;
       demoNotice: string;
     };
     register: {

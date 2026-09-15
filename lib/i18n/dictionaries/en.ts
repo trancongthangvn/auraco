@@ -143,6 +143,12 @@ const dictionary: Dictionary = {
       demoMessage: "This is a UI demo. No account system is connected yet.",
       noAccount: "No account yet?",
       createOne: "Create one",
+      // Deliberately says nothing about Google account linking: the Google
+      // button is still the demo one (googleDemoMessage), so promising
+      // automatic linking here would be telling customers something untrue.
+      // Add that sentence once real Google sign-in is configured.
+      accountNotePrefix: "Manage your profile and orders in",
+      myAccount: "My account",
       demoNotice: "UI demo — no real account system connected yet.",
     },
     register: {

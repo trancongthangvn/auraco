@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api";
 import { accountFetch, setCustomerToken, type Customer } from "@/lib/customerAuth";
-import { GoogleIcon } from "@/components/icons";
 import { useDictionary } from "@/components/i18n/LanguageProvider";
 
 export default function LoginForm() {
@@ -101,6 +100,17 @@ export default function LoginForm() {
         {dict.signIn}
       </button>
 
+      {/* Sits between Sign in and the OR divider, not below the Google
+          button: the two sign-in routes (password above, Google below) stay
+          together under the divider, and the way to get an account in the
+          first place reads right after the form it belongs to. */}
+      <p className="text-[13px]">
+        {dict.noAccount}{" "}
+        <Link href="/register" className="underline hover:text-black">
+          {dict.createOne}
+        </Link>
+      </p>
+
       <div className="flex items-center gap-4 text-xs text-black/40 uppercase tracking-wide">
         <div className="flex-1 h-px bg-black/10" />
         {dict.or}
@@ -112,7 +122,6 @@ export default function LoginForm() {
         onClick={() => setMessage(dict.googleDemoMessage)}
         className="w-full rounded-none border border-[#2b261f] px-6 py-[10.4px] text-[10px] font-semibold uppercase tracking-[0.35px] hover:bg-[#2b261f] hover:text-white transition-colors flex items-center justify-center gap-2"
       >
-        <GoogleIcon size={18} />
         {dict.continueWithGoogle}
       </button>
 
@@ -122,13 +131,13 @@ export default function LoginForm() {
         </p>
       )}
 
-      <p className="text-sm text-center">
-        {dict.noAccount}{" "}
-        <Link href="/register" className="underline hover:text-black">
-          {dict.createOne}
+      <p className="text-[13px] text-black/60">
+        {dict.accountNotePrefix}{" "}
+        <Link href="/account" className="underline hover:text-black">
+          {dict.myAccount}
         </Link>
+        .
       </p>
-
     </form>
   );
 }

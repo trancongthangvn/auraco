@@ -142,6 +142,8 @@ const dictionary = {
       demoMessage: "Questa è una demo dell'interfaccia. Nessun sistema di account è ancora collegato.",
       noAccount: "Non hai ancora un account?",
       createOne: "Creane uno",
+      accountNotePrefix: "Gestisci il tuo profilo e i tuoi ordini in",
+      myAccount: "Il mio account",
       demoNotice: "Demo dell'interfaccia — nessun sistema di account reale collegato.",
     },
     register: {

@@ -53,9 +53,24 @@ export default function ContactForm() {
       });
   };
 
-  const field =
-    "w-full rounded-[8px] border border-[rgba(43,38,31,0.15)] bg-[#faf6ec] px-4 py-3 text-sm text-[#2b261f] placeholder:text-black/35 focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f] disabled:bg-black/[0.03]";
-  const label = "block text-xs font-semibold tracking-wide uppercase mb-2 text-[#2b261f]";
+  // Same floating-label treatment as the checkout's FloatingField (see
+  // components/checkout/CheckoutClient.tsx): white field, hairline border, and
+  // the label sitting inside the box until the field is focused or filled.
+  //
+  // `placeholder=" "` on every control below is load-bearing, not a leftover:
+  // `:placeholder-shown` is what tells the label whether the field is still
+  // empty. A real placeholder would keep that selector permanently false and
+  // strand the label in its floated position.
+  const fieldInput =
+    "peer w-full rounded-[6px] border border-[#d5d5d5] bg-white px-4 pb-2 pt-5 font-ui text-[13px] text-[#171717] outline-none transition-colors focus:border-[#2b261f] disabled:bg-black/[0.03]";
+  const fieldLabel =
+    "pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-ui text-[12px] font-light text-[#6d6d6d] transition-all peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-[10px] peer-[&:not(:placeholder-shown)]:top-3 peer-[&:not(:placeholder-shown)]:translate-y-0 peer-[&:not(:placeholder-shown)]:text-[10px]";
+  // A textarea is too tall to centre its label vertically, so that one starts
+  // near the top edge and only shrinks in place.
+  const areaInput =
+    "peer w-full rounded-[6px] border border-[#d5d5d5] bg-white px-4 pb-2 pt-6 font-ui text-[13px] text-[#171717] outline-none transition-colors focus:border-[#2b261f] disabled:bg-black/[0.03]";
+  const areaLabel =
+    "pointer-events-none absolute left-4 top-4 font-ui text-[12px] font-light text-[#6d6d6d] transition-all peer-focus:top-2 peer-focus:text-[10px] peer-[&:not(:placeholder-shown)]:top-2 peer-[&:not(:placeholder-shown)]:text-[10px]";
 
   return (
     <div className="mx-auto max-w-[600px] px-6 pb-16">
@@ -66,87 +81,89 @@ export default function ContactForm() {
         <p className="mb-8 text-center text-sm text-black/60">{dict.subheading}</p>
 
         <form onSubmit={submit} className="space-y-5">
-          <div>
-            <label htmlFor="contact-name" className={label}>
-              {dict.fullName}
-            </label>
+          <div className="relative">
             <input
               id="contact-name"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={sending || sent}
-              className={field}
+              placeholder=" "
+              className={fieldInput}
             />
-          </div>
-          <div>
-            <label htmlFor="contact-phone" className={label}>
-              {dict.phone}
+            <label htmlFor="contact-name" className={fieldLabel}>
+              {dict.fullName}
             </label>
+          </div>
+          <div className="relative">
             <input
               id="contact-phone"
               type="tel"
-              placeholder={dict.phonePlaceholder}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               disabled={sending || sent}
-              className={field}
+              placeholder=" "
+              className={fieldInput}
             />
-          </div>
-          <div>
-            <label htmlFor="contact-email" className={label}>
-              {dict.email}
+            <label htmlFor="contact-phone" className={fieldLabel}>
+              {dict.phone}
             </label>
+          </div>
+          <div className="relative">
             <input
               id="contact-email"
               required
               type="email"
-              placeholder={dict.emailPlaceholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={sending || sent}
-              className={field}
+              placeholder=" "
+              className={fieldInput}
             />
-          </div>
-          <div>
-            <label htmlFor="contact-address" className={label}>
-              {dict.address}
+            <label htmlFor="contact-email" className={fieldLabel}>
+              {dict.email}
             </label>
+          </div>
+          <div className="relative">
             <textarea
               id="contact-address"
               rows={3}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               disabled={sending || sent}
-              className={field}
+              placeholder=" "
+              className={areaInput}
             />
-          </div>
-          <div>
-            <label htmlFor="contact-product" className={label}>
-              {dict.product}
+            <label htmlFor="contact-address" className={areaLabel}>
+              {dict.address}
             </label>
+          </div>
+          <div className="relative">
             <input
               id="contact-product"
-              placeholder={dict.productPlaceholder}
               value={product}
               onChange={(e) => setProduct(e.target.value)}
               disabled={sending || sent}
-              className={field}
+              placeholder=" "
+              className={fieldInput}
             />
-          </div>
-          <div>
-            <label htmlFor="contact-message" className={label}>
-              {dict.message}
+            <label htmlFor="contact-product" className={fieldLabel}>
+              {dict.product}
             </label>
+          </div>
+          <div className="relative">
             <textarea
               id="contact-message"
               rows={4}
-              placeholder={dict.messagePlaceholder}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               disabled={sending || sent}
-              className={field}
+              placeholder=" "
+              className={areaInput}
             />
+            <label htmlFor="contact-message" className={areaLabel}>
+              {dict.message}
+            </label>
           </div>
 
           {error && (

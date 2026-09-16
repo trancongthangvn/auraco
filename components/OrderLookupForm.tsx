@@ -83,9 +83,20 @@ export default function OrderLookupForm() {
       .finally(() => setLoading(false));
   };
 
-  const field =
-    "w-full rounded-[8px] border border-[rgba(43,38,31,0.15)] bg-[#faf6ec] px-4 py-3 text-sm text-[#2b261f] placeholder:text-black/35 focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f] disabled:bg-black/[0.03]";
-  const label = "block text-xs font-semibold tracking-wide uppercase mb-2 text-[#2b261f]";
+  // Same floating-label treatment as the checkout's FloatingField (see
+  // components/checkout/CheckoutClient.tsx): white field, hairline border, and
+  // the label sitting inside the box until the field is focused or filled.
+  //
+  // `placeholder=" "` on both inputs is load-bearing, not a leftover:
+  // `:placeholder-shown` is what tells the label whether the field is still
+  // empty. A real placeholder would keep that selector permanently false and
+  // strand the label in its floated position — which is why the order-code
+  // example moved to a caption under the field instead of staying a
+  // placeholder. It is the one hint here a customer cannot guess.
+  const fieldInput =
+    "peer w-full rounded-[6px] border border-[#d5d5d5] bg-white px-4 pb-2 pt-5 font-ui text-[13px] text-[#171717] outline-none transition-colors focus:border-[#2b261f] disabled:bg-black/[0.03]";
+  const fieldLabel =
+    "pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-ui text-[12px] font-light text-[#6d6d6d] transition-all peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-[10px] peer-[&:not(:placeholder-shown)]:top-3 peer-[&:not(:placeholder-shown)]:translate-y-0 peer-[&:not(:placeholder-shown)]:text-[10px]";
 
   return (
     <div className="mx-auto max-w-[600px] px-6 pb-16">
@@ -100,33 +111,36 @@ export default function OrderLookupForm() {
 
         <form onSubmit={submit} className="space-y-5">
           <div>
-            <label htmlFor="lookup-code" className={label}>
-              Order code
-            </label>
-            <input
-              id="lookup-code"
-              required
-              placeholder="e.g. AC-1042"
-              value={orderCode}
-              onChange={(e) => setOrderCode(e.target.value)}
-              disabled={loading}
-              className={field}
-            />
+            <div className="relative">
+              <input
+                id="lookup-code"
+                required
+                value={orderCode}
+                onChange={(e) => setOrderCode(e.target.value)}
+                disabled={loading}
+                placeholder=" "
+                className={fieldInput}
+              />
+              <label htmlFor="lookup-code" className={fieldLabel}>
+                Order code
+              </label>
+            </div>
+            <p className="mt-1.5 font-ui text-[11px] text-black/45">e.g. AC-1042</p>
           </div>
-          <div>
-            <label htmlFor="lookup-email" className={label}>
-              Email
-            </label>
+          <div className="relative">
             <input
               id="lookup-email"
               required
               type="email"
-              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
-              className={field}
+              placeholder=" "
+              className={fieldInput}
             />
+            <label htmlFor="lookup-email" className={fieldLabel}>
+              Email
+            </label>
           </div>
 
           {error && (

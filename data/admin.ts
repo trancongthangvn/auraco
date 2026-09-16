@@ -351,7 +351,7 @@ export const paymentMethodSettings: PaymentMethodSetting[] = [
   { key: "card", label: "Credit / Debit Card", enabled: true, detail: "Xử lý qua cổng PayPal Advanced Card Payments" },
   { key: "paypal", label: "PayPal", enabled: true, detail: "merchant@auraco.example" },
   { key: "applePay", label: "Apple Pay", enabled: false, detail: "Yêu cầu xác thực domain với PayPal" },
-  { key: "cashapp", label: "Cash App", enabled: true, detail: "$AuraCoShop" },
+  { key: "cashapp", label: "Cash App", enabled: true, detail: "$AetherShop" },
   { key: "zelle", label: "Zelle", enabled: true, detail: "payments@auraco.example" },
 ];
 

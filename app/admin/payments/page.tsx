@@ -370,7 +370,7 @@ export default function AdminPaymentsPage() {
                         onChange={(e) => setDraftFor(s.key, { detail: e.target.value })}
                         placeholder={
                           s.key === "cashapp"
-                            ? "VD: $AuraCoShop"
+                            ? "VD: $AetherShop"
                             : s.key === "zelle"
                               ? "VD: payments@auraco.com"
                               : ""

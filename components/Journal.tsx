@@ -171,7 +171,7 @@ export default function Journal() {
             hides it at every breakpoint (display: none) — dead markup, so
             the heading just centers on its own. */}
         <div className="mb-4 text-center">
-          <h2 className="font-serif-display text-[clamp(1.85rem,4vw,2.35rem)] font-bold text-[#2b261f]">
+          <h2 className="font-serif-display text-[clamp(1.85rem,4vw,2.35rem)] font-normal text-[#2b261f]">
             Journal
           </h2>
         </div>

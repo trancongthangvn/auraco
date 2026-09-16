@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Sans_3, Cormorant_Garamond } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 // Source Sans 3 covers body copy, nav/UI labels, and prices/product titles —
@@ -80,6 +81,16 @@ export const viewport: Viewport = {
 // use the dictionary at all) to opt out of static rendering. Locale is read
 // one level down, in `app/(storefront)/layout.tsx`, which only wraps the
 // customer-facing routes that actually need it.
+// Google Tag Manager container. Lives in the root layout, so it covers every
+// route on the site — storefront and /admin alike.
+//
+// `afterInteractive` rather than `beforeInteractive`: GTM's own snippet is
+// written to run from a normal <script> in <head>, and loading it before
+// hydration would block first paint for a tag manager that has nothing to do
+// with rendering. The <noscript> iframe below is GTM's documented fallback and
+// has to sit at the very top of <body>.
+const GTM_ID = "GTM-KP2GZZ9J";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -87,6 +98,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${sourceSans.variable} ${cormorantGaramond.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-[#2b261f] font-sans">
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
+        <Script id="gtm-base" strategy="afterInteractive">
+          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${GTM_ID}');`}
+        </Script>
         {children}
       </body>
     </html>

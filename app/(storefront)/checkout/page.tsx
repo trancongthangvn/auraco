@@ -2,7 +2,7 @@ import type { Viewport } from "next";
 import CheckoutClient from "@/components/checkout/CheckoutClient";
 
 export const metadata = {
-  title: "Checkout | AURA & CO",
+  title: "Checkout | AETHER",
 };
 
 // Scoped to this route only (doesn't touch the root layout's own viewport

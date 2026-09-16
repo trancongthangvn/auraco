@@ -7,7 +7,7 @@ import { serverApiFetch } from "@/lib/server-api";
 import type { ApiProduct } from "@/lib/catalog-mappers";
 import type { Product as CarouselProduct } from "@/data/site";
 
-export const metadata = { title: "Cart | AURA & CO" };
+export const metadata = { title: "Cart | AETHER" };
 
 function toCarouselProducts(list: ApiProduct[]): CarouselProduct[] {
   // Every product in the Best Sellers collection, unsliced — explicit

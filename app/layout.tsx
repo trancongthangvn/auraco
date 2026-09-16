@@ -15,7 +15,7 @@ const sourceSans = Source_Sans_3({
 });
 
 // Cormorant Garamond is the reference site's actual heading/logo face (h1,
-// h2, the "AURA & CO" wordmark) — see globals.css's .font-serif-display.
+// h2, the "AETHER" wordmark) — see globals.css's .font-serif-display.
 const cormorantGaramond = Cormorant_Garamond({
   variable: "--font-serif",
   subsets: ["latin"],
@@ -24,7 +24,7 @@ const cormorantGaramond = Cormorant_Garamond({
 });
 
 const SITE_URL = "https://aether.aetherpieces.com";
-const SITE_TITLE = "AURA & CO | Premium Gold Vermeil & Sterling Silver Jewelry";
+const SITE_TITLE = "AETHER | Premium Gold Vermeil & Sterling Silver Jewelry";
 const SITE_DESCRIPTION =
   "Timeless gold and silver, understated luxury. Everyday minimalist jewelry.";
 
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   openGraph: {
     type: "website",
-    siteName: "AURA & CO",
+    siteName: "AETHER",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     url: SITE_URL,

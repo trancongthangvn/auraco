@@ -153,7 +153,7 @@ export async function generateMetadata({
 }) {
   const { slug } = await params;
   const product = await fetchProduct(slug);
-  return { title: product ? `${product.name} | AURA & CO` : "AURA & CO" };
+  return { title: product ? `${product.name} | AETHER` : "AETHER" };
 }
 
 export default async function ProductPage({

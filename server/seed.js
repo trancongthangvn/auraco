@@ -1,5 +1,5 @@
 // ============================================================================
-// AURA & CO — database seed script
+// AETHER — database seed script
 //
 // Seeds server/schema.sql's tables from the TypeScript mock data that used to
 // power the site directly (data/products.ts, data/site.ts, data/admin.ts), so

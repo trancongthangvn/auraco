@@ -42,7 +42,7 @@ const dictionary: Dictionary = {
     returnPolicy: "Return Policy",
     termsOfService: "Terms of Service",
     contact: "Contact",
-    copyright: "© 2026 AURA & CO. All rights reserved.",
+    copyright: "© 2026 AETHER. All rights reserved.",
   },
   common: {
     home: "Home",

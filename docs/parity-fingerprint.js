@@ -51,7 +51,7 @@ const PARITY_FINGERPRINT = `(async () => {
     viewport: window.innerWidth,
     items: [
       sample("headerShell", [".site-header__inner", "header > div"]),
-      sample("logo", [".site-header__logo", 'header a[aria-label="AURA & CO"]']),
+      sample("logo", [".site-header__logo", 'header a[aria-label="AETHER"]']),
       sample("navLink", [".site-nav a", "header nav a"]),
       sample("sectionTitle", [".section__title", "h2.section-title"]),
       sample("homeBlock", [".home-section", ".home-block"]),

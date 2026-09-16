@@ -68,12 +68,12 @@ async function sendOrderConfirmationEmail(order) {
     console.warn('[email] RESEND_API_KEY not set — skipping order confirmation email for', order.order_code);
     return;
   }
-  const from = process.env.EMAIL_FROM || 'AURA & CO <orders@aura.maxmin.vn>';
+  const from = process.env.EMAIL_FROM || 'AETHER <orders@aura.maxmin.vn>';
   try {
     await resend.emails.send({
       from,
       to: order.email,
-      subject: `Xác nhận đơn hàng ${order.order_code} — AURA & CO`,
+      subject: `Xác nhận đơn hàng ${order.order_code} — AETHER`,
       html: renderOrderConfirmationHtml(order),
     });
   } catch (err) {

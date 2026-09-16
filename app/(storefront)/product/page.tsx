@@ -13,7 +13,7 @@ import {
   type ApiCollection,
 } from "@/lib/catalog-mappers";
 
-export const metadata = { title: "Products | AURA & CO" };
+export const metadata = { title: "Products | AETHER" };
 
 export default async function AllProductsPage({
   searchParams,

@@ -8,7 +8,7 @@ import { ArrowRightIcon } from "@/components/icons";
 import { getServerDictionary } from "@/lib/i18n/server";
 import { dateLocale } from "@/lib/i18n/date-locale";
 
-export const metadata = { title: "Journal | AURA & CO" };
+export const metadata = { title: "Journal | AETHER" };
 
 type PostSummary = {
   id: number;

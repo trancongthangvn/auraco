@@ -6,7 +6,7 @@ import { serverApiFetch } from "@/lib/server-api";
 import type { ApiProduct } from "@/lib/catalog-mappers";
 
 export const metadata = {
-  title: "Write a review | AURA & CO",
+  title: "Write a review | AETHER",
   // Nothing here should be indexed: the page only makes sense reached from
   // a specific order's confirmation screen, and its URL carries an order
   // code.

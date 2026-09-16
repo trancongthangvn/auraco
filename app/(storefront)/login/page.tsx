@@ -5,7 +5,7 @@ import LoginForm from "@/components/auth/LoginForm";
 import { getServerDictionary } from "@/lib/i18n/server";
 
 export const metadata = {
-  title: "Sign In | AURA & CO",
+  title: "Sign In | AETHER",
   description: "Sign in to view your orders, saved pieces, and account details.",
 };
 

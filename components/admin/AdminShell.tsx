@@ -187,7 +187,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <div className="h-14 flex items-center px-4 border-b border-[#e8ddc7] shrink-0 gap-2">
           <Link
             href="/admin"
-            aria-label="AURA & CO"
+            aria-label="AETHER"
             className={`flex min-w-0 items-center gap-2 ${collapsed ? "justify-center flex-1" : ""}`}
           >
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gold-light text-[13px] font-bold text-white">
@@ -195,7 +195,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </span>
             {!collapsed && (
               <span className="truncate font-serif-display text-[17px] font-semibold">
-                AURA & CO
+                AETHER
               </span>
             )}
           </Link>

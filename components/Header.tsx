@@ -319,7 +319,7 @@ export default function Header({
 
         <Link
           href="/"
-          aria-label="AURA & CO"
+          aria-label="AETHER"
           className="shrink-0 mx-auto flex items-center gap-2 whitespace-nowrap font-serif-display text-[27px] font-normal leading-[27px] tracking-[-0.015em] text-ink"
         >
           <Image
@@ -329,7 +329,7 @@ export default function Header({
             height={24}
             className="h-6 w-6 shrink-0"
           />
-          AURA & CO
+          AETHER
         </Link>
 
         <nav className="font-ui hidden min-[1200px]:flex items-center justify-center gap-6 text-[13.2px] font-normal uppercase tracking-[0.055em] leading-[1.2] text-[#2b261f] min-[1200px]:translate-y-[1.5px]">

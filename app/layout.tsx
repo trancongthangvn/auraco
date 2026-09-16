@@ -16,10 +16,16 @@ const sourceSans = Source_Sans_3({
 
 // Cormorant Garamond is the reference site's actual heading/logo face (h1,
 // h2, the "AETHER" wordmark) — see globals.css's .font-serif-display.
+// 400 is loaded even though nothing used to request it explicitly: several
+// headings already carry Tailwind's `font-normal` (the news page's "Journal"
+// title, PageHero's h1 on About/Contact/legal pages), and with 500 as the
+// lightest face on offer the browser was synthesising 400 from it — which
+// renders heavier than the design asks for. Loading the real 400 cut makes
+// those headings resolve to an actual face instead of a faux-weight.
 const cormorantGaramond = Cormorant_Garamond({
   variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
 });
 

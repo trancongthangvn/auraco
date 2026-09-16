@@ -23,7 +23,7 @@ const cormorantGaramond = Cormorant_Garamond({
   style: ["normal", "italic"],
 });
 
-const SITE_URL = "https://aura.maxmin.vn";
+const SITE_URL = "https://aether.aetherpieces.com";
 const SITE_TITLE = "AURA & CO | Premium Gold Vermeil & Sterling Silver Jewelry";
 const SITE_DESCRIPTION =
   "Timeless gold and silver, understated luxury. Everyday minimalist jewelry.";

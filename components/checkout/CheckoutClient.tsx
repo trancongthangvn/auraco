@@ -159,8 +159,17 @@ const countries = [
 const ORDER_PAYMENT_KEYS = ["card", "paypal", "cashapp", "zelle", "airwallex"];
 
 /** How many order-summary rows stay visible before the list scrolls.
- *  Counts cart lines, not units — a line of "× 5" is still one row. */
-const VISIBLE_SUMMARY_ROWS = 10;
+ *  Counts cart lines, not units — a line of "× 5" is still one row. Smaller
+ *  on a phone: this section sits inline in the page flow there (see
+ *  orderSummaryOpen below), ahead of the actual form and the pay button, so
+ *  a big bag pushes everything else down by a full screen or more before a
+ *  mobile shopper even reaches Contact/Delivery/Payment. The desktop sidebar
+ *  has no such problem — it sits beside the form, not above it — so it can
+ *  afford to show more before scrolling. Matches the md breakpoint the rest
+ *  of checkout (e.g. CurrencyPicker) already splits mobile/desktop on. */
+const VISIBLE_SUMMARY_ROWS_MOBILE = 3;
+const VISIBLE_SUMMARY_ROWS_DESKTOP = 10;
+const MOBILE_BREAKPOINT_PX = 768;
 
 /** …but never taller than this much of the window, whatever that many rows
  *  works out to. Ten rows is around 900px, which on a laptop would put the
@@ -408,9 +417,11 @@ export default function CheckoutClient() {
       const top = rows[0].offsetTop;
       const heightThrough = (row: HTMLElement) => row.offsetTop + row.offsetHeight - top;
       const fullHeight = heightThrough(rows[rows.length - 1]);
-      const rowsCap = rows[VISIBLE_SUMMARY_ROWS - 1]
-        ? heightThrough(rows[VISIBLE_SUMMARY_ROWS - 1])
-        : null;
+      const visibleRows =
+        window.innerWidth < MOBILE_BREAKPOINT_PX
+          ? VISIBLE_SUMMARY_ROWS_MOBILE
+          : VISIBLE_SUMMARY_ROWS_DESKTOP;
+      const rowsCap = rows[visibleRows - 1] ? heightThrough(rows[visibleRows - 1]) : null;
       // An embedded/measuring context can report innerHeight 0; taking that
       // at face value would cap the list at 0 and collapse it to nothing, so
       // an unusable reading means no viewport ceiling at all. The floor of

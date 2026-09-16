@@ -352,7 +352,7 @@ export const paymentMethodSettings: PaymentMethodSetting[] = [
   { key: "paypal", label: "PayPal", enabled: true, detail: "merchant@auraco.example" },
   { key: "applePay", label: "Apple Pay", enabled: false, detail: "Yêu cầu xác thực domain với PayPal" },
   { key: "cashapp", label: "Cash App", enabled: true, detail: "$AetherShop" },
-  { key: "zelle", label: "Zelle", enabled: true, detail: "payments@auraco.example" },
+  { key: "zelle", label: "Zelle", enabled: true, detail: "payments@aether.example" },
 ];
 
 export type PaymentTransaction = {

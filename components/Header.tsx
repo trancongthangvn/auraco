@@ -320,8 +320,15 @@ export default function Header({
         <Link
           href="/"
           aria-label="AURA & CO"
-          className="shrink-0 mx-auto whitespace-nowrap font-serif-display text-[27px] font-normal leading-[27px] tracking-[-0.015em] text-ink"
+          className="shrink-0 mx-auto flex items-center gap-2 whitespace-nowrap font-serif-display text-[27px] font-normal leading-[27px] tracking-[-0.015em] text-ink"
         >
+          <Image
+            src="/images/brand/mark.svg"
+            alt=""
+            width={24}
+            height={24}
+            className="h-6 w-6 shrink-0"
+          />
           AURA & CO
         </Link>
 

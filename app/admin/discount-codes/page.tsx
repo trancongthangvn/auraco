@@ -247,7 +247,7 @@ export default function AdminDiscountCodesPage() {
             <ModalHeader title="Thêm mã khuyến mãi" onClose={() => setCreating(false)} />
             <div className="px-6 py-5">
               <Label>Mã</Label>
-              <Input ref={createCodeRef} placeholder="VD: AURA15" className="mb-4" />
+              <Input ref={createCodeRef} placeholder="VD: AETHER15" className="mb-4" />
               <Label>Giá trị giảm (%)</Label>
               <Input ref={createValueRef} type="number" />
             </div>

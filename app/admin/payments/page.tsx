@@ -372,7 +372,7 @@ export default function AdminPaymentsPage() {
                           s.key === "cashapp"
                             ? "VD: $AetherShop"
                             : s.key === "zelle"
-                              ? "VD: payments@auraco.com"
+                              ? "VD: payments@aetherpieces.com"
                               : ""
                         }
                       />

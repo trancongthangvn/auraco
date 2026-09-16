@@ -53,6 +53,62 @@ const STATUS_LABEL: Record<string, string> = {
   "Đã hủy": "Cancelled",
 };
 
+/**
+ * White field with a hairline border and the label inside the box, lifting to a
+ * small caption once the field is focused or filled.
+ *
+ * The lift is driven from React state, not Tailwind's `peer` +
+ * `:placeholder-shown` variants. Those were tried first, to match the
+ * checkout's FloatingField: the classes were emitted, the selector matched the
+ * element, `:placeholder-shown` flipped correctly — and the label still never
+ * moved. State is used here instead because it can actually be verified.
+ */
+function FloatField({
+  id,
+  label,
+  value,
+  onChange,
+  type = "text",
+  required,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  required?: boolean;
+  disabled?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  const up = focused || value.length > 0;
+
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        type={type}
+        value={value}
+        required={required}
+        disabled={disabled}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-[6px] border border-[#d5d5d5] bg-white px-4 pb-2 pt-5 font-ui text-[13px] text-[#171717] outline-none transition-colors focus:border-[#2b261f] disabled:bg-black/[0.03]"
+      />
+      <label
+        htmlFor={id}
+        className={
+          "pointer-events-none absolute left-4 font-ui font-light text-[#6d6d6d] transition-all " +
+          (up ? "top-[6px] text-[10px]" : "top-1/2 -translate-y-1/2 text-[12px]")
+        }
+      >
+        {label}
+      </label>
+    </div>
+  );
+}
+
 export default function OrderLookupForm() {
   const { currency, rates } = useCurrency();
   const money = (v: string | number) => formatPrice(Number(v), currency, rates[currency]);
@@ -83,20 +139,6 @@ export default function OrderLookupForm() {
       .finally(() => setLoading(false));
   };
 
-  // Same floating-label treatment as the checkout's FloatingField (see
-  // components/checkout/CheckoutClient.tsx): white field, hairline border, and
-  // the label sitting inside the box until the field is focused or filled.
-  //
-  // `placeholder=" "` on both inputs is load-bearing, not a leftover:
-  // `:placeholder-shown` is what tells the label whether the field is still
-  // empty. A real placeholder would keep that selector permanently false and
-  // strand the label in its floated position — which is why the order-code
-  // example moved to a caption under the field instead of staying a
-  // placeholder. It is the one hint here a customer cannot guess.
-  const fieldInput =
-    "peer w-full rounded-[6px] border border-[#d5d5d5] bg-white px-4 pb-2 pt-5 font-ui text-[13px] text-[#171717] outline-none transition-colors focus:border-[#2b261f] disabled:bg-black/[0.03]";
-  const fieldLabel =
-    "pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-ui text-[12px] font-light text-[#6d6d6d] transition-all peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-[10px] peer-[&:not(:placeholder-shown)]:top-3 peer-[&:not(:placeholder-shown)]:translate-y-0 peer-[&:not(:placeholder-shown)]:text-[10px]";
 
   return (
     <div className="mx-auto max-w-[600px] px-6 pb-16">
@@ -111,37 +153,25 @@ export default function OrderLookupForm() {
 
         <form onSubmit={submit} className="space-y-5">
           <div>
-            <div className="relative">
-              <input
-                id="lookup-code"
-                required
-                value={orderCode}
-                onChange={(e) => setOrderCode(e.target.value)}
-                disabled={loading}
-                placeholder=" "
-                className={fieldInput}
-              />
-              <label htmlFor="lookup-code" className={fieldLabel}>
-                Order code
-              </label>
-            </div>
+            <FloatField
+              id="lookup-code"
+              label="Order code"
+              value={orderCode}
+              onChange={setOrderCode}
+              required
+              disabled={loading}
+            />
             <p className="mt-1.5 font-ui text-[11px] text-black/45">e.g. AC-1042</p>
           </div>
-          <div className="relative">
-            <input
-              id="lookup-email"
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-              placeholder=" "
-              className={fieldInput}
-            />
-            <label htmlFor="lookup-email" className={fieldLabel}>
-              Email
-            </label>
-          </div>
+          <FloatField
+            id="lookup-email"
+            label="Email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            required
+            disabled={loading}
+          />
 
           {error && (
             <p role="alert" className="border border-red-700/30 bg-red-50 px-4 py-2.5 text-sm text-red-700">

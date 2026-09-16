@@ -6,6 +6,76 @@ import { useDictionary } from "@/components/i18n/LanguageProvider";
 import { apiFetch, ApiError } from "@/lib/api";
 
 /**
+ * White field with a hairline border and the label inside the box, lifting to a
+ * small caption once the field is focused or filled.
+ *
+ * The lift is driven from React state, not Tailwind's `peer` +
+ * `:placeholder-shown` variants. Those were tried first, to match the
+ * checkout's FloatingField: the classes were emitted, the selector matched the
+ * element, `:placeholder-shown` flipped correctly — and the label still never
+ * moved. State is used here instead because it can actually be verified.
+ */
+function FloatField({
+  id,
+  label,
+  value,
+  onChange,
+  type = "text",
+  required,
+  disabled,
+  rows,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  required?: boolean;
+  disabled?: boolean;
+  rows?: number;
+}) {
+  const [focused, setFocused] = useState(false);
+  const multiline = typeof rows === "number";
+  const up = focused || value.length > 0;
+
+  const box =
+    "w-full rounded-[6px] border border-[#d5d5d5] bg-white px-4 pb-2 font-ui text-[13px] text-[#171717] outline-none transition-colors focus:border-[#2b261f] disabled:bg-black/[0.03] " +
+    (multiline ? "pt-6" : "pt-5");
+  const caption =
+    "pointer-events-none absolute left-4 font-ui font-light text-[#6d6d6d] transition-all " +
+    (up
+      ? "top-[6px] text-[10px]"
+      : multiline
+        ? "top-[18px] text-[12px]"
+        : "top-1/2 -translate-y-1/2 text-[12px]");
+
+  const shared = {
+    id,
+    value,
+    required,
+    disabled,
+    className: box,
+    onFocus: () => setFocused(true),
+    onBlur: () => setFocused(false),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      onChange(e.target.value),
+  };
+
+  return (
+    <div className="relative">
+      {multiline ? (
+        <textarea {...shared} rows={rows} />
+      ) : (
+        <input {...shared} type={type} />
+      )}
+      <label htmlFor={id} className={caption}>
+        {label}
+      </label>
+    </div>
+  );
+}
+
+/**
  * Posts to POST /api/inquiries, which is what fills the admin "Yêu cầu liên hệ"
  * inbox. The API requires a non-empty `subject`; the form's optional Product
  * field doubles as that, falling back to a generic subject when left blank.
@@ -53,25 +123,6 @@ export default function ContactForm() {
       });
   };
 
-  // Same floating-label treatment as the checkout's FloatingField (see
-  // components/checkout/CheckoutClient.tsx): white field, hairline border, and
-  // the label sitting inside the box until the field is focused or filled.
-  //
-  // `placeholder=" "` on every control below is load-bearing, not a leftover:
-  // `:placeholder-shown` is what tells the label whether the field is still
-  // empty. A real placeholder would keep that selector permanently false and
-  // strand the label in its floated position.
-  const fieldInput =
-    "peer w-full rounded-[6px] border border-[#d5d5d5] bg-white px-4 pb-2 pt-5 font-ui text-[13px] text-[#171717] outline-none transition-colors focus:border-[#2b261f] disabled:bg-black/[0.03]";
-  const fieldLabel =
-    "pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-ui text-[12px] font-light text-[#6d6d6d] transition-all peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-[10px] peer-[&:not(:placeholder-shown)]:top-3 peer-[&:not(:placeholder-shown)]:translate-y-0 peer-[&:not(:placeholder-shown)]:text-[10px]";
-  // A textarea is too tall to centre its label vertically, so that one starts
-  // near the top edge and only shrinks in place.
-  const areaInput =
-    "peer w-full rounded-[6px] border border-[#d5d5d5] bg-white px-4 pb-2 pt-6 font-ui text-[13px] text-[#171717] outline-none transition-colors focus:border-[#2b261f] disabled:bg-black/[0.03]";
-  const areaLabel =
-    "pointer-events-none absolute left-4 top-4 font-ui text-[12px] font-light text-[#6d6d6d] transition-all peer-focus:top-2 peer-focus:text-[10px] peer-[&:not(:placeholder-shown)]:top-2 peer-[&:not(:placeholder-shown)]:text-[10px]";
-
   return (
     <div className="mx-auto max-w-[600px] px-6 pb-16">
       <div className="rounded-[14px] border-[0.667px] border-[rgba(201,166,107,0.35)] bg-white p-8 shadow-[0_8px_28px_rgba(28,24,18,0.06)] sm:p-10">
@@ -81,90 +132,54 @@ export default function ContactForm() {
         <p className="mb-8 text-center text-sm text-black/60">{dict.subheading}</p>
 
         <form onSubmit={submit} className="space-y-5">
-          <div className="relative">
-            <input
-              id="contact-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={sending || sent}
-              placeholder=" "
-              className={fieldInput}
-            />
-            <label htmlFor="contact-name" className={fieldLabel}>
-              {dict.fullName}
-            </label>
-          </div>
-          <div className="relative">
-            <input
-              id="contact-phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              disabled={sending || sent}
-              placeholder=" "
-              className={fieldInput}
-            />
-            <label htmlFor="contact-phone" className={fieldLabel}>
-              {dict.phone}
-            </label>
-          </div>
-          <div className="relative">
-            <input
-              id="contact-email"
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={sending || sent}
-              placeholder=" "
-              className={fieldInput}
-            />
-            <label htmlFor="contact-email" className={fieldLabel}>
-              {dict.email}
-            </label>
-          </div>
-          <div className="relative">
-            <textarea
-              id="contact-address"
-              rows={3}
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              disabled={sending || sent}
-              placeholder=" "
-              className={areaInput}
-            />
-            <label htmlFor="contact-address" className={areaLabel}>
-              {dict.address}
-            </label>
-          </div>
-          <div className="relative">
-            <input
-              id="contact-product"
-              value={product}
-              onChange={(e) => setProduct(e.target.value)}
-              disabled={sending || sent}
-              placeholder=" "
-              className={fieldInput}
-            />
-            <label htmlFor="contact-product" className={fieldLabel}>
-              {dict.product}
-            </label>
-          </div>
-          <div className="relative">
-            <textarea
-              id="contact-message"
-              rows={4}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              disabled={sending || sent}
-              placeholder=" "
-              className={areaInput}
-            />
-            <label htmlFor="contact-message" className={areaLabel}>
-              {dict.message}
-            </label>
-          </div>
+          <FloatField
+            id="contact-name"
+            label={dict.fullName}
+            value={name}
+            onChange={setName}
+            required
+            disabled={sending || sent}
+          />
+          <FloatField
+            id="contact-phone"
+            label={dict.phone}
+            type="tel"
+            value={phone}
+            onChange={setPhone}
+            disabled={sending || sent}
+          />
+          <FloatField
+            id="contact-email"
+            label={dict.email}
+            type="email"
+            value={email}
+            onChange={setEmail}
+            required
+            disabled={sending || sent}
+          />
+          <FloatField
+            id="contact-address"
+            label={dict.address}
+            value={address}
+            onChange={setAddress}
+            rows={3}
+            disabled={sending || sent}
+          />
+          <FloatField
+            id="contact-product"
+            label={dict.product}
+            value={product}
+            onChange={setProduct}
+            disabled={sending || sent}
+          />
+          <FloatField
+            id="contact-message"
+            label={dict.message}
+            value={message}
+            onChange={setMessage}
+            rows={4}
+            disabled={sending || sent}
+          />
 
           {error && (
             <p role="alert" className="border border-red-700/30 bg-red-50 px-4 py-2.5 text-sm text-red-700">

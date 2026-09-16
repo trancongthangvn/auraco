@@ -717,7 +717,7 @@ export default function Header({
       >
         <div className="flex shrink-0 items-center justify-between border-b border-[#ece8e2] px-5 py-[13px]">
           <span className="font-serif-display text-[23px] tracking-[0.46px] text-[#28241f]">
-            AURA &amp; CO
+            AETHER
           </span>
           <button
             type="button"

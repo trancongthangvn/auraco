@@ -43,7 +43,7 @@ function renderOrderConfirmationHtml(order) {
 
   return `
   <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#111;">
-    <h2 style="font-weight:normal;letter-spacing:1px;text-transform:uppercase;">AURA &amp; CO</h2>
+    <h2 style="font-weight:normal;letter-spacing:1px;text-transform:uppercase;">AETHER</h2>
     <p>Xin chào ${order.customer_name},</p>
     <p>Cảm ơn bạn đã đặt hàng. Đơn hàng <strong>${order.order_code}</strong> của bạn đã được ghi nhận.</p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
@@ -58,7 +58,7 @@ function renderOrderConfirmationHtml(order) {
     </table>
     <p style="text-align:right;font-size:15px;"><strong>Tổng cộng: ${formatVnd(order.total)}</strong></p>
     <p style="font-size:13px;color:#555;">Giao đến: ${order.address}, ${order.city}${order.country ? `, ${order.country}` : ''}</p>
-    <p style="font-size:13px;color:#555;">Bạn có thể tra cứu đơn hàng bất cứ lúc nào bằng mã đơn và email này trên website AURA &amp; CO.</p>
+    <p style="font-size:13px;color:#555;">Bạn có thể tra cứu đơn hàng bất cứ lúc nào bằng mã đơn và email này trên website AETHER.</p>
   </div>`;
 }
 

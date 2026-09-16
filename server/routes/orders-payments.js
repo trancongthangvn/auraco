@@ -5,6 +5,7 @@ const { pool, query } = require('../db');
 const { authMiddleware, requireAdmin, requireStaffOrAdmin } = require('../middleware/auth');
 const { upload, verifyMagicBytes } = require('../lib/upload');
 const { sendOrderConfirmationEmail } = require('../lib/email');
+const { createThankYouDiscount } = require('../lib/discounts');
 const { discountedUnitPrice } = require('../lib/pricing');
 const airwallex = require('../lib/airwallex');
 const paypal = require('../lib/paypal');
@@ -354,9 +355,14 @@ router.post('/orders', async (req, res) => {
     const itemsRes = await query(ORDER_ITEMS_SQL, [order.id]);
     const fullOrder = { ...order, items: itemsRes.rows };
 
-    // Fire-and-forget: the order is already committed, so a slow or failing
-    // email must never delay or fail this response (see lib/email.js).
-    sendOrderConfirmationEmail(fullOrder).catch(() => {});
+    // Fire-and-forget, same as the email itself: the order is already
+    // committed, so neither generating the thank-you code nor sending the
+    // email may delay or fail this response. createThankYouDiscount() never
+    // throws (see lib/discounts.js) — a failure there just means the
+    // confirmation email goes out without a promo block.
+    createThankYouDiscount().then((promo) =>
+      sendOrderConfirmationEmail(fullOrder, promo).catch(() => {})
+    );
 
     return res.status(201).json({ data: fullOrder });
   } catch (err) {

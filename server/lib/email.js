@@ -29,7 +29,15 @@ function formatVnd(n) {
   return `${Number(n).toLocaleString('vi-VN')}đ`;
 }
 
-function renderOrderConfirmationHtml(order) {
+function formatVnDate(isoDate) {
+  const [y, m, d] = isoDate.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// `promo` is the { code, value, endDate } returned by lib/discounts.js's
+// createThankYouDiscount(), or null/undefined when generating one failed —
+// the email renders the same either way, just without this block.
+function renderOrderConfirmationHtml(order, promo) {
   const itemRows = (order.items || [])
     .map(
       (it) => `
@@ -40,6 +48,15 @@ function renderOrderConfirmationHtml(order) {
       </tr>`
     )
     .join('');
+
+  const promoBlock = promo
+    ? `
+    <div style="margin:20px 0;padding:16px;border:1px dashed #111;text-align:center;">
+      <p style="margin:0 0 8px;font-size:13px;color:#555;">Cảm ơn bạn đã mua hàng! Đây là mã giảm ${promo.value}% dành riêng cho bạn, dùng cho đơn hàng tiếp theo:</p>
+      <p style="margin:0;font-size:20px;font-weight:bold;letter-spacing:2px;">${promo.code}</p>
+      <p style="margin:8px 0 0;font-size:12px;color:#888;">Có hiệu lực đến ${formatVnDate(promo.endDate)}</p>
+    </div>`
+    : '';
 
   return `
   <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#111;">
@@ -58,23 +75,24 @@ function renderOrderConfirmationHtml(order) {
     </table>
     <p style="text-align:right;font-size:15px;"><strong>Tổng cộng: ${formatVnd(order.total)}</strong></p>
     <p style="font-size:13px;color:#555;">Giao đến: ${order.address}, ${order.city}${order.country ? `, ${order.country}` : ''}</p>
+    ${promoBlock}
     <p style="font-size:13px;color:#555;">Bạn có thể tra cứu đơn hàng bất cứ lúc nào bằng mã đơn và email này trên website AETHER.</p>
   </div>`;
 }
 
-async function sendOrderConfirmationEmail(order) {
+async function sendOrderConfirmationEmail(order, promo) {
   const resend = getClient();
   if (!resend) {
     console.warn('[email] RESEND_API_KEY not set — skipping order confirmation email for', order.order_code);
     return;
   }
-  const from = process.env.EMAIL_FROM || 'AETHER <orders@aura.maxmin.vn>';
+  const from = process.env.EMAIL_FROM || 'AETHER <orders@aetherpieces.com>';
   try {
     await resend.emails.send({
       from,
       to: order.email,
       subject: `Xác nhận đơn hàng ${order.order_code} — AETHER`,
-      html: renderOrderConfirmationHtml(order),
+      html: renderOrderConfirmationHtml(order, promo),
     });
   } catch (err) {
     // Never let an email failure surface as an order-creation failure.

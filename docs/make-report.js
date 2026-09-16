@@ -226,7 +226,7 @@ const doc = new Document({
     properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
     children: [
       new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 },
-        children: [new TextRun({ text: "AURA & CO", bold: true, size: 44, color: INK, font: "Calibri" })] }),
+        children: [new TextRun({ text: "AETHER", bold: true, size: 44, color: INK, font: "Calibri" })] }),
       new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 300 },
         border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: GOLD, space: 8 } },
         children: [new TextRun({ text: "BÁO CÁO TÍNH NĂNG VÀ BÁO GIÁ GIAI ĐOẠN 2", bold: true, size: 26, color: GOLD, font: "Calibri" })] }),

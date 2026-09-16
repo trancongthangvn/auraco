@@ -890,10 +890,10 @@ export default function CheckoutClient() {
         <div className="mx-auto grid max-w-[1280px] grid-cols-[auto_1fr] items-center gap-4 px-6 py-4">
           <Link
             href="/"
-            aria-label="AURA & CO"
+            aria-label="AETHER"
             className="shrink-0 whitespace-nowrap font-serif-display text-[22px] font-normal leading-none tracking-[-0.015em] text-ink"
           >
-            AURA & CO
+            AETHER
           </Link>
           <div className="flex items-center justify-end gap-[5px]">
             <CurrencyPicker showOnMobile />

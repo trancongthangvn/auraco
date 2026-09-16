@@ -228,7 +228,7 @@ export const inquiries: Inquiry[] = [
     phone: "0909 111 222",
     subject: "Hỏi về kích thước nhẫn",
     message:
-      "Chào shop, mình muốn hỏi vòng size nhẫn AURA & CO có tương đương bảng size quốc tế không, mình đeo size 6 US.",
+      "Chào shop, mình muốn hỏi vòng size nhẫn AETHER có tương đương bảng size quốc tế không, mình đeo size 6 US.",
     date: "25/08/2026",
     resolved: false,
   },
@@ -250,7 +250,7 @@ export const inquiries: Inquiry[] = [
     phone: "0977 333 444",
     subject: "Hợp tác KOL/Affiliate",
     message:
-      "Mình làm nội dung về trang sức, muốn trao đổi cơ hội hợp tác review sản phẩm với AURA & CO.",
+      "Mình làm nội dung về trang sức, muốn trao đổi cơ hội hợp tác review sản phẩm với AETHER.",
     date: "22/08/2026",
     resolved: true,
   },

@@ -5,7 +5,7 @@ import PageHero from "@/components/PageHero";
 import ContactForm from "@/components/ContactForm";
 
 export const metadata = {
-  title: "Contact | AURA & CO",
+  title: "Contact | AETHER",
   description:
     "Questions about sizing, materials, or your order? Reach our US-facing support team.",
 };

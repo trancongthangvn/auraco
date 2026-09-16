@@ -1,6 +1,6 @@
 import LegalPage from "@/components/LegalPage";
 
-export const metadata = { title: "Terms of Service | AURA & CO" };
+export const metadata = { title: "Terms of Service | AETHER" };
 
 export default function TermsOfServicePage() {
   return (
@@ -25,11 +25,11 @@ export default function TermsOfServicePage() {
         },
         {
           heading: "5. Intellectual Property",
-          body: "All content on this site, including images, text, and designs, is the property of AURA & CO and may not be reproduced without permission.",
+          body: "All content on this site, including images, text, and designs, is the property of AETHER and may not be reproduced without permission.",
         },
         {
           heading: "6. Limitation of Liability",
-          body: "AURA & CO is not liable for any indirect or consequential loss arising from the use of this site or our products, to the fullest extent permitted by law.",
+          body: "AETHER is not liable for any indirect or consequential loss arising from the use of this site or our products, to the fullest extent permitted by law.",
         },
         {
           heading: "7. Changes to These Terms",

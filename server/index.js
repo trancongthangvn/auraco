@@ -252,5 +252,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`AURA & CO API server listening on port ${PORT}`);
+  console.log(`AETHER API server listening on port ${PORT}`);
 });

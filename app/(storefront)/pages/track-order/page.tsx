@@ -5,9 +5,9 @@ import PageHero from "@/components/PageHero";
 import OrderLookupForm from "@/components/OrderLookupForm";
 
 export const metadata = {
-  title: "Track Your Order | AURA & CO",
+  title: "Track Your Order | AETHER",
   description:
-    "Look up your AURA & CO order by order code and email to check its status.",
+    "Look up your AETHER order by order code and email to check its status.",
 };
 
 export default function TrackOrderPage() {

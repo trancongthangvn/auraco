@@ -1,6 +1,6 @@
 import LegalPage from "@/components/LegalPage";
 
-export const metadata = { title: "Security Policy | AURA & CO" };
+export const metadata = { title: "Security Policy | AETHER" };
 
 export default function SecurityPolicyPage() {
   return (

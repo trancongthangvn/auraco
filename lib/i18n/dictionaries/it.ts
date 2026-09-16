@@ -39,7 +39,7 @@ const dictionary = {
     returnPolicy: "Politica di reso",
     termsOfService: "Termini di servizio",
     contact: "Contatti",
-    copyright: "© 2026 AURA & CO. Tutti i diritti riservati.",
+    copyright: "© 2026 AETHER. Tutti i diritti riservati.",
   },
   common: {
     home: "Home",

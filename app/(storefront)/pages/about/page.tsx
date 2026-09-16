@@ -3,7 +3,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/PageHero";
 
-export const metadata = { title: "About | AURA & CO" };
+export const metadata = { title: "About | AETHER" };
 
 export default function AboutPage() {
   return (
@@ -12,12 +12,12 @@ export default function AboutPage() {
       <Header />
       <main>
         <PageHero
-          title="About AURA & CO"
+          title="About AETHER"
           subtitle="Your Anchor in a Fast-Paced World."
         />
         <div className="mx-auto max-w-[800px] px-6 py-16 space-y-6">
           <p className="text-sm text-black/70 leading-relaxed">
-            AURA & CO was founded on a simple idea: jewelry you can wear every
+            AETHER was founded on a simple idea: jewelry you can wear every
             single day should never feel like an occasion piece. We design
             necklaces, bracelets, earrings, and sets that move with your life,
             from the morning commute to the dinner you didn&apos;t plan on staying

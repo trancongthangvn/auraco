@@ -5,7 +5,7 @@ import AccountClient from "@/components/account/AccountClient";
 import { getServerDictionary } from "@/lib/i18n/server";
 
 export const metadata = {
-  title: "My account | AURA & CO",
+  title: "My account | AETHER",
   // Per-customer screen: nothing here should be indexed.
   robots: { index: false, follow: false },
 };

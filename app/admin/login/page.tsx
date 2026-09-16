@@ -33,7 +33,7 @@ export default function AdminLoginPage() {
       >
         <Image
           src="/images/brand/logo-badge.png"
-          alt="AURA & CO"
+          alt="AETHER"
           width={56}
           height={56}
           className="h-14 w-14 rounded-xl mx-auto mb-4"
@@ -68,7 +68,7 @@ export default function AdminLoginPage() {
           {loading ? "Đang xác thực..." : "ĐĂNG NHẬP"}
         </Button>
         <p className="text-xs text-black/40 mt-4 text-center">
-          Tài khoản quản trị được cấp riêng cho AURA & CO, không tự đăng ký
+          Tài khoản quản trị được cấp riêng cho AETHER, không tự đăng ký
           được từ trang này.
         </p>
       </form>

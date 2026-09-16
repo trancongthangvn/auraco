@@ -43,14 +43,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const post = await fetchPost(slug);
-  if (!post) return { title: "AURA & CO" };
+  if (!post) return { title: "AETHER" };
 
   const title = post.seo_title || post.title;
   const description = post.seo_description || post.excerpt || undefined;
   const image = post.og_image || post.image_url;
 
   return {
-    title: `${title} | AURA & CO`,
+    title: `${title} | AETHER`,
     description,
     openGraph: {
       type: "article",

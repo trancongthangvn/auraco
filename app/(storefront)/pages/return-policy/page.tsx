@@ -1,6 +1,6 @@
 import LegalPage from "@/components/LegalPage";
 
-export const metadata = { title: "Return Policy | AURA & CO" };
+export const metadata = { title: "Return Policy | AETHER" };
 
 export default function ReturnPolicyPage() {
   return (

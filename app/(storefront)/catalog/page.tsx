@@ -10,7 +10,7 @@ import { toFullProduct, toCollectionFilters, type ApiProduct, type ApiCollection
 import { getServerDictionary } from "@/lib/i18n/server";
 
 export const metadata = {
-  title: "Catalog | AURA & CO",
+  title: "Catalog | AETHER",
 };
 
 export default async function CatalogPage({

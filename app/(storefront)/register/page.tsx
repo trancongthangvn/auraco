@@ -6,7 +6,7 @@ import RegisterForm from "@/components/auth/RegisterForm";
 import { getServerDictionary } from "@/lib/i18n/server";
 
 export const metadata = {
-  title: "Create Account | AURA & CO",
+  title: "Create Account | AETHER",
   description:
     "Create an account to check out faster and keep track of your orders.",
 };

@@ -20,7 +20,7 @@ import {
   ModalFooter,
 } from "@/components/admin/ui/Modal";
 
-const SITE_HOST = "aether.aetherpieces.com";
+const SITE_HOST = "aetherpieces.com";
 
 type PostStatus = "published" | "draft" | "scheduled";
 

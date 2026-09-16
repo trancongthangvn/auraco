@@ -6,7 +6,7 @@
 - **Container**: LXC `118` named `auraco`, storage backend `local-lvm`.
   - **Node.js 22**, **PostgreSQL 15** (database `auraco`, role `auraco_app` — owns all 17 tables), **PM2** (global) are installed on the container.
   - **Staging**: source at `/var/www/auraco-app-staging` — nginx port `8080` reverse-proxies to `aura-web-staging` (Next.js `next start`, port `3101`); its own Express API is `aura-api-staging` (port `4001`).
-  - **Production**: source at `/var/www/auraco-app` — nginx port `80` reverse-proxies to `aura-web` (port `3100`); its Express API is `aura-api` (port `4000`). Publicly exposed at **https://aura.maxmin.vn** via a Cloudflare Tunnel pointed at container 118 port 80.
+  - **Production**: source at `/var/www/auraco-app` — nginx port `80` reverse-proxies to `aura-web` (port `3100`); its Express API is `aura-api` (port `4000`). Publicly exposed at **https://aetherpieces.com** via a Cloudflare Tunnel pointed at container 118 port 80. The retired hosts `aether.aetherpieces.com` and `aura.maxmin.vn` still resolve through that same tunnel and 308-redirect to the apex (see `proxy.ts`) — **do not delete their tunnel routes**, order-confirmation emails already sent to customers still link to them.
   - Staging and production currently **share one Postgres database** (`auraco`) — this is a demo/personal project, not yet worth splitting. Revisit if real customer data ever needs isolating from test data.
   - All 4 processes run under **PM2** via `/var/www/ecosystem.config.js` (also committed to the repo root as `ecosystem.config.js`), started with `pm2 start ecosystem.config.js --only <names>` and persisted with `pm2 save`.
 - **GitHub repo**: `trancongthangvn/auraco` (remote origin has no embedded token; commit author configured **locally** as `ALODEV <hello.alodev@gmail.com>` — do not commit as "Claude"). As of 2026-09-05, **all three of** the local dev machine, `/var/www/auraco-app-staging` and `/var/www/auraco-app` are independent git clones of this same repo (each has its own `.git`, `git remote -v` → `origin` → the GitHub URL). Deploying now means committing + pushing, then pulling on the target environment — see "Deploy pipeline" below. Before that date, the two server directories were plain rsync/tar copies with no version control at all; that gap is exactly what let a fixed bug's old code quietly resurface (nothing recorded which file changed when, so a later manual edit or partial deploy could silently undo an earlier fix with no way to tell).
@@ -26,10 +26,20 @@ Real backend, not static export. Two independent layers per environment:
 
 ## Deploy pipeline (git-based, current state as of 2026-09-05)
 
-Source of truth is now GitHub (`trancongthangvn/auraco`, branch `main`), not the local
-working directory. Every environment — local dev, staging, production — is its own
-clone tracking that same `origin`. Deploying is: commit locally → push → pull on the
-target environment → rebuild in place → restart. No more tar/rsync/scp of source.
+Source of truth is GitHub (`trancongthangvn/auraco`), not the local working directory.
+Every environment — local dev, staging, production — is its own clone of that same
+`origin`, but **staging and production deliberately track different branches**:
+
+| Environment | Directory | Resets to |
+|---|---|---|
+| Staging | `/var/www/auraco-app-staging` | `origin/main` |
+| Production | `/var/www/auraco-app` | `origin/prod-release-no-payment` |
+
+`prod-release-no-payment` is `main` minus the payment-gateway integration. Anything
+that has to reach production must be cherry-picked onto that branch first — resetting
+production to `origin/main` would ship the entire payment integration as a silent side
+effect of an unrelated change. Deploying is: commit locally → push → pull on the target
+environment → rebuild in place → restart. No more tar/rsync/scp of source.
 
 ```bash
 # 1. Build & verify locally first
@@ -62,25 +72,36 @@ ssh root@10.5.100.10 "pct exec 118 -- pm2 restart aura-web-staging aura-api-stag
 
 # 5. Verify staging (curl + browser incl. mobile viewport + console errors), get user confirmation
 
-# 6. Only on explicit confirmation, promote to production — same pull-and-rebuild,
-#    against the SAME commit that was just verified on staging (no separate copy step,
-#    no risk of drifting from what was actually checked). server/.env and .env.local
-#    are gitignored, so they are untouched by the reset — production keeps its own
-#    ports/secrets automatically.
+# 6. Only on explicit confirmation, promote to production. Production tracks
+#    prod-release-no-payment, NOT main — the commit just verified on staging has to be
+#    cherry-picked onto that branch first. NEVER reset production to origin/main: that
+#    ships the whole payment integration to production as a side effect of whatever
+#    unrelated change was being deployed.
+git checkout prod-release-no-payment
+git cherry-pick <the commit just verified on staging>
+git push origin prod-release-no-payment
+git checkout main
+
+#    server/.env and .env.local are gitignored, so the reset leaves them alone —
+#    production keeps its own ports/secrets automatically.
 ssh root@10.5.100.10 "pct exec 118 -- bash -c '
   cd /var/www/auraco-app &&
-  git fetch origin main &&
-  git reset --hard origin/main &&
+  git fetch origin prod-release-no-payment &&
+  git reset --hard origin/prod-release-no-payment &&
   npm ci && npm run build &&
   cd server && npm ci
 '"
 ssh root@10.5.100.10 "pct exec 118 -- pm2 restart aura-api aura-web"
 
-# 7. Verify production (curl both LAN IP and https://aura.maxmin.vn, browser check, mobile viewport)
+# 7. Verify production (curl both LAN IP and https://aetherpieces.com, browser check, mobile viewport)
 
-# 8. Confirm all three environments landed on the same commit (cheap sanity check,
-#    catches a failed fetch/reset before it's mistaken for a successful deploy):
-git log --oneline -1                                                          # local
+# 8. Confirm each environment landed on the commit it should (cheap sanity check,
+#    catches a failed fetch/reset before it's mistaken for a successful deploy).
+#    Staging and production show DIFFERENT commits by design — they track different
+#    branches. What matters is that each one matches its own origin ref, not that
+#    they match each other.
+git log --oneline -1 main                      # what staging should be on
+git log --oneline -1 prod-release-no-payment   # what production should be on
 ssh root@10.5.100.10 "pct exec 118 -- bash -c '
   cd /var/www/auraco-app-staging && git log --oneline -1
   cd /var/www/auraco-app && git log --oneline -1
@@ -97,10 +118,10 @@ replaces. `ls .next/BUILD_ID` confirms a build actually completed (see gotcha #1
 ## Environment files (never committed — see `.gitignore`)
 
 Each environment needs its own pair, written directly on the container (never via git —
-`server/.env` and `.env.local` are both gitignored, so `git reset --hard origin/main`
-during a deploy never touches them):
+`server/.env` and `.env.local` are both gitignored, so the `git reset --hard` a deploy
+runs never touches them, whichever branch that environment tracks):
 
-- `server/.env`: `DATABASE_URL=postgres://auraco_app:<password>@localhost:5432/auraco`, `JWT_SECRET=<random>`, `PORT=4000` (prod) / `4001` (staging), `CORS_ORIGINS=http://10.5.100.118:8080,https://aura.maxmin.vn`.
+- `server/.env`: `DATABASE_URL=postgres://auraco_app:<password>@localhost:5432/auraco`, `JWT_SECRET=<random>`, `PORT=4000` (prod) / `4001` (staging), `CORS_ORIGINS=http://10.5.100.118:8080,https://aura.maxmin.vn,https://aether.aetherpieces.com,https://aetherpieces.com`. **Every public host the site answers on must be listed in `CORS_ORIGINS`** — PayPal's return/cancel URLs are validated against this same list (`allowedReturnUrl` in `server/routes/orders-payments.js`), so a host missing from it makes checkout fail with a 400 at the redirect to PayPal, not just a CORS error.
 - `.env.local` (Next.js project root): `API_URL=http://localhost:4000` (prod) / `http://localhost:4001` (staging).
 - `server/.env.example` **is** committed (placeholder values only) — documents the required variable names.
 
@@ -119,7 +140,7 @@ during a deploy never touches them):
 11. **`images.unoptimized` was a leftover from the old static export.** It is now off, so Next optimizes images (a 1.8MB source PNG serves as a 27KB AVIF). Two consequences: (a) any absolute *external* image URL in the database will throw at render and 500 that page unless its host is in `next.config.ts`'s `remotePatterns` — the admin's paste-URL field is therefore restricted to same-origin paths; (b) every `next/image` whose `src` may be empty (a product saved without images, a collection with no `image_url`) must be guarded with `{src && <Image .../>}`, otherwise it renders as a broken-image icon.
 
 12. **`pct exec` into 118 can hang indefinitely when the Proxmox host itself is overloaded** — seen at `load average: 55-58` (on a host with `free -h` showing ~21/39GB swap in use) while `ssh root@10.5.100.10 "echo ..."` (no `pct exec`) still returned instantly. Symptom: every `pct exec 118 -- ...` call times out even with a 3-minute budget, including trivial ones like `ps aux` — it is not the command that is slow, it is entering the container's namespace. Before assuming a deploy step itself is broken, run `ssh root@10.5.100.10 "uptime"` (bare SSH, no `pct exec`) — if load is 50+, wait and retry later rather than repeatedly hammering `pct exec`, which just stacks more queued exec attempts on an already-thrashing host. A build kicked off right before the host tips into this state can be left half-written (`.next/` containing only `build/`+`cache/` subfolders, no `BUILD_ID`) — check for `BUILD_ID` before trusting a build "probably finished in the background."
-13. **No version control on the server was the root cause of "a fixed bug's old code comes back."** Before 2026-09-05, staging and production were plain tar/rsync copies with no git history on either — nothing recorded which file changed when, so there was no way to tell a stale/partial deploy from a real fix, and no way to diff or roll back. Separately (same underlying "no source of truth" problem, different symptom): each environment had its **own** `server/uploads` folder on disk even though they shared one database, so a product photo uploaded on staging 404'd on production and vice versa — this looked identical to "the fix didn't take" from the storefront but was actually a missing file, not a code regression. Both are fixed now: all three environments (local, staging, production) are git clones of `trancongthangvn/auraco` tracking `origin/main` (see "Deploy pipeline" above), and `server/uploads` is a symlink to one shared `/var/www/auraco-uploads` on both. If "a fix disappeared" ever comes up again, check `git log --oneline -1` on the environment in question **before** assuming the code regressed — it may just be behind `origin/main`.
+13. **No version control on the server was the root cause of "a fixed bug's old code comes back."** Before 2026-09-05, staging and production were plain tar/rsync copies with no git history on either — nothing recorded which file changed when, so there was no way to tell a stale/partial deploy from a real fix, and no way to diff or roll back. Separately (same underlying "no source of truth" problem, different symptom): each environment had its **own** `server/uploads` folder on disk even though they shared one database, so a product photo uploaded on staging 404'd on production and vice versa — this looked identical to "the fix didn't take" from the storefront but was actually a missing file, not a code regression. Both are fixed now: all three environments (local, staging, production) are git clones of `trancongthangvn/auraco` — staging tracking `origin/main`, production tracking `origin/prod-release-no-payment` (see "Deploy pipeline" above) — and `server/uploads` is a symlink to one shared `/var/www/auraco-uploads` on both. If "a fix disappeared" ever comes up again, check `git log --oneline -1` on the environment in question **before** assuming the code regressed — it may just be behind its own branch's origin ref (`origin/main` for staging, `origin/prod-release-no-payment` for production).
 
 ## Payment methods
 

@@ -65,11 +65,78 @@ const PAYMENT_LABEL: Record<string, string> = {
 
 const card =
   "rounded-[14px] border-[0.667px] border-[rgba(201,166,107,0.35)] bg-white p-6 shadow-[0_8px_28px_rgba(28,24,18,0.06)] sm:p-8";
-const field =
-  "w-full rounded-[8px] border border-[rgba(43,38,31,0.15)] bg-[#faf6ec] px-4 py-3 text-sm text-[#2b261f] placeholder:text-black/35 focus:border-[#2b261f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b261f] disabled:bg-black/[0.04] disabled:text-black/50";
-const label = "block text-xs font-semibold tracking-wide uppercase mb-2 text-[#2b261f]";
 const primaryButton =
   "inline-flex w-full items-center justify-center rounded-full border border-[#2b261f] py-3.5 text-xs font-semibold tracking-[0.12em] text-[#2b261f] transition-colors hover:bg-[#2b261f] hover:text-white disabled:opacity-60";
+
+/**
+ * White field with a hairline border and the label inside the box, lifting to a
+ * small caption once the field is focused or filled — the same treatment the
+ * contact and order-lookup forms use.
+ *
+ * Driven from React state rather than Tailwind's `peer` +
+ * `:placeholder-shown` variants: that pair was tried on those forms first and
+ * silently failed to move the label even though the classes were emitted and
+ * the selector matched, so state is what actually gets verified here.
+ *
+ * `disabled` fields (the locked email) keep their caption lifted, since they
+ * always carry a value, and drop to a muted grey so the label does not read as
+ * editable.
+ */
+function FloatField({
+  id,
+  label,
+  value,
+  onChange,
+  type = "text",
+  required,
+  disabled,
+  autoComplete,
+  minLength,
+  maxLength,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange?: (v: string) => void;
+  type?: string;
+  required?: boolean;
+  disabled?: boolean;
+  autoComplete?: string;
+  minLength?: number;
+  maxLength?: number;
+}) {
+  const [focused, setFocused] = useState(false);
+  const up = focused || value.length > 0;
+
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        type={type}
+        value={value}
+        required={required}
+        disabled={disabled}
+        autoComplete={autoComplete}
+        minLength={minLength}
+        maxLength={maxLength}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={(e) => onChange?.(e.target.value)}
+        className="w-full rounded-[6px] border border-[#d5d5d5] bg-white px-4 pb-2 pt-5 font-ui text-[13px] text-[#171717] outline-none transition-colors focus:border-[#2b261f] disabled:bg-black/[0.04] disabled:text-black/50"
+      />
+      <label
+        htmlFor={id}
+        className={
+          "pointer-events-none absolute left-4 font-ui font-light transition-all " +
+          (up ? "top-[6px] text-[10px]" : "top-1/2 -translate-y-1/2 text-[12px]") +
+          (disabled ? " text-black/35" : " text-[#6d6d6d]")
+        }
+      >
+        {label}
+      </label>
+    </div>
+  );
+}
 
 export default function AccountClient({ title, subtitle }: { title: string; subtitle: string }) {
   const dict = useDictionary().account;
@@ -290,35 +357,34 @@ function EditView({ customer, onSaved }: { customer: Customer; onSaved: (c: Cust
     <div className="space-y-6">
       <form onSubmit={saveProfile} className={`${card} space-y-5`}>
         <h2 className="font-serif-display text-xl font-normal text-[#2b261f]">{dict.editDetails}</h2>
+        <FloatField
+          id="acc-name"
+          label={dict.name}
+          value={fullName}
+          onChange={setFullName}
+          required
+          maxLength={160}
+          disabled={saving}
+        />
         <div>
-          <label htmlFor="acc-name" className={label}>{dict.name}</label>
-          <input
-            id="acc-name"
-            required
-            maxLength={160}
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            disabled={saving}
-            className={field}
+          <FloatField
+            id="acc-email"
+            label={dict.email}
+            type="email"
+            value={customer.email}
+            disabled
           />
-        </div>
-        <div>
-          <label htmlFor="acc-email" className={label}>{dict.email}</label>
-          <input id="acc-email" type="email" value={customer.email} disabled className={field} />
           <p className="mt-1.5 text-xs text-black/45">{dict.emailLocked}</p>
         </div>
-        <div>
-          <label htmlFor="acc-phone" className={label}>{dict.phone}</label>
-          <input
-            id="acc-phone"
-            type="tel"
-            maxLength={40}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            disabled={saving}
-            className={field}
-          />
-        </div>
+        <FloatField
+          id="acc-phone"
+          label={dict.phone}
+          type="tel"
+          value={phone}
+          onChange={setPhone}
+          maxLength={40}
+          disabled={saving}
+        />
         <Message msg={profileMsg} />
         <button type="submit" disabled={saving} className={primaryButton}>
           {saving ? dict.saving : dict.save}
@@ -327,47 +393,38 @@ function EditView({ customer, onSaved }: { customer: Customer; onSaved: (c: Cust
 
       <form onSubmit={changePassword} className={`${card} space-y-5`}>
         <h2 className="font-serif-display text-xl font-normal text-[#2b261f]">{dict.changePassword}</h2>
-        <div>
-          <label htmlFor="acc-current" className={label}>{dict.currentPassword}</label>
-          <input
-            id="acc-current"
-            type="password"
-            required
-            autoComplete="current-password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            disabled={changing}
-            className={field}
-          />
-        </div>
-        <div>
-          <label htmlFor="acc-new" className={label}>{dict.newPassword}</label>
-          <input
-            id="acc-new"
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            disabled={changing}
-            className={field}
-          />
-        </div>
-        <div>
-          <label htmlFor="acc-confirm" className={label}>{dict.confirmNewPassword}</label>
-          <input
-            id="acc-confirm"
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            disabled={changing}
-            className={field}
-          />
-        </div>
+        <FloatField
+          id="acc-current"
+          label={dict.currentPassword}
+          type="password"
+          autoComplete="current-password"
+          value={currentPassword}
+          onChange={setCurrentPassword}
+          required
+          disabled={changing}
+        />
+        <FloatField
+          id="acc-new"
+          label={dict.newPassword}
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          value={newPassword}
+          onChange={setNewPassword}
+          required
+          disabled={changing}
+        />
+        <FloatField
+          id="acc-confirm"
+          label={dict.confirmNewPassword}
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          required
+          disabled={changing}
+        />
         <Message msg={passwordMsg} />
         <button type="submit" disabled={changing} className={primaryButton}>
           {changing ? dict.saving : dict.updatePassword}

@@ -105,6 +105,8 @@ function toPublicSiteSettings(row) {
     itGirlEditImageUrl: extra.it_girl_edit_image_url ?? null,
     itGirlEditHeading: extra.it_girl_edit_heading ?? null,
     itGirlEditDescription: extra.it_girl_edit_description ?? null,
+    welcomePopupImageUrl: extra.welcome_popup_image_url ?? null,
+    welcomePopupHeading: extra.welcome_popup_heading ?? null,
     currencyRates: extra.currency_rates ?? null,
     currencyActive: extra.currency_active ?? null,
   };
@@ -436,6 +438,18 @@ router.put('/admin/site-settings', authMiddleware, requireAdmin, async (req, res
       return res.status(400).json({ error: 'itGirlEditDescription must be a string or null' });
     }
     extraPatch.it_girl_edit_description = body.itGirlEditDescription;
+  }
+  if (body.welcomePopupImageUrl !== undefined) {
+    if (body.welcomePopupImageUrl !== null && typeof body.welcomePopupImageUrl !== 'string') {
+      return res.status(400).json({ error: 'welcomePopupImageUrl must be a string or null' });
+    }
+    extraPatch.welcome_popup_image_url = body.welcomePopupImageUrl;
+  }
+  if (body.welcomePopupHeading !== undefined) {
+    if (body.welcomePopupHeading !== null && typeof body.welcomePopupHeading !== 'string') {
+      return res.status(400).json({ error: 'welcomePopupHeading must be a string or null' });
+    }
+    extraPatch.welcome_popup_heading = body.welcomePopupHeading;
   }
   if (body.currencyRates !== undefined) {
     if (!isCurrencyRates(body.currencyRates)) {

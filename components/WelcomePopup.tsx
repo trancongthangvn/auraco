@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 const ARTWORK = "/images/settings/welcome-popup/98418fc0-5417-4aa4-a7b5-322bc1a2a793.webp";
+const DEFAULT_HEADING = "Sign up for 10% off";
 
 /**
  * Welcome offer dialog, matching the reference site's `.welcome-popup`:
@@ -29,6 +31,36 @@ export default function WelcomePopup() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const pathname = usePathname();
+
+  // Artwork and heading are admin-editable (Cài đặt web > Pop-up chào mừng).
+  // Same public site-settings + `extra` JSONB fallback pattern as ITGirlEdit:
+  // each field falls back to the hardcoded default above until an admin sets
+  // one, so the popup keeps its current look with no migration needed.
+  const [content, setContent] = useState({
+    image: ARTWORK,
+    heading: DEFAULT_HEADING,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<{
+      welcomePopupImageUrl?: string | null;
+      welcomePopupHeading?: string | null;
+    }>("/api/content/site-settings")
+      .then((data) => {
+        if (cancelled) return;
+        setContent({
+          image: data.welcomePopupImageUrl || ARTWORK,
+          heading: data.welcomePopupHeading || DEFAULT_HEADING,
+        });
+      })
+      .catch(() => {
+        // Keep the defaults — decorative dialog, not worth an error state.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Homepage only. Now that this component lives in the layout it renders
   // on every storefront route, and letting the timer fire everywhere would
@@ -94,7 +126,7 @@ export default function WelcomePopup() {
         <div className="grid grid-rows-[210px_auto] min-[750px]:min-h-[440px] min-[750px]:grid-cols-2 min-[750px]:grid-rows-none">
           <div className="relative">
             <Image
-              src={ARTWORK}
+              src={content.image}
               alt=""
               fill
               sizes="(min-width: 750px) 450px, 100vw"
@@ -104,7 +136,7 @@ export default function WelcomePopup() {
 
           <div className="flex flex-col justify-center bg-white px-6 pt-8 pb-7 min-[750px]:px-14 min-[750px]:pt-[54px] min-[750px]:pb-[46px]">
             <h2 className="font-ui mb-5 max-w-[460px] text-[21px] leading-[1.1] font-semibold tracking-[-0.01em] text-[#050505] uppercase min-[750px]:text-[25px]">
-              Sign up for 10% off
+              {content.heading}
             </h2>
 
             {sent ? (

@@ -34,6 +34,8 @@ type SiteSettings = {
     it_girl_edit_image_url?: string | null;
     it_girl_edit_heading?: string | null;
     it_girl_edit_description?: string | null;
+    welcome_popup_image_url?: string | null;
+    welcome_popup_heading?: string | null;
     currency_rates?: Record<string, number> | null;
     currency_active?: Record<string, boolean> | null;
     [key: string]: unknown;
@@ -65,6 +67,12 @@ const DEFAULT_IT_GIRL_EDIT_DESCRIPTION =
   "girl who sets the standard instead of following it. From coffee runs to VIP " +
   "nights out, make every look unforgettable.";
 
+// Matches components/WelcomePopup.tsx's own hardcoded fallbacks, so this form
+// starts pre-filled with today's live popup instead of an empty section.
+const DEFAULT_WELCOME_POPUP_IMAGE =
+  "/images/settings/welcome-popup/98418fc0-5417-4aa4-a7b5-322bc1a2a793.webp";
+const DEFAULT_WELCOME_POPUP_HEADING = "Sign up for 10% off";
+
 // USD's own rate is always fixed at 1 (it's the list-price currency itself,
 // not something an admin sets) — only EUR/GBP are ever editable here.
 const CURRENCY_ROWS = [
@@ -89,6 +97,8 @@ export default function AdminSiteSettingsPage() {
   const [itGirlEditImage, setItGirlEditImage] = useState<string | null>(null);
   const [itGirlEditHeading, setItGirlEditHeading] = useState("");
   const [itGirlEditDescription, setItGirlEditDescription] = useState("");
+  const [welcomePopupImage, setWelcomePopupImage] = useState<string | null>(null);
+  const [welcomePopupHeading, setWelcomePopupHeading] = useState("");
   // EUR/GBP only — USD is fixed at "1" and never sent to the server.
   const [currencyRates, setCurrencyRates] = useState<Record<string, string>>({
     EUR: "1",
@@ -139,6 +149,12 @@ export default function AdminSiteSettingsPage() {
         );
         setItGirlEditDescription(
           (extra.it_girl_edit_description as string) || DEFAULT_IT_GIRL_EDIT_DESCRIPTION
+        );
+        setWelcomePopupImage(
+          (extra.welcome_popup_image_url as string | null) ?? DEFAULT_WELCOME_POPUP_IMAGE
+        );
+        setWelcomePopupHeading(
+          (extra.welcome_popup_heading as string) || DEFAULT_WELCOME_POPUP_HEADING
         );
         if (extra.currency_rates) {
           setCurrencyRates({
@@ -226,6 +242,9 @@ export default function AdminSiteSettingsPage() {
           itGirlEditHeading: itGirlEditHeading.trim() || DEFAULT_IT_GIRL_EDIT_HEADING,
           itGirlEditDescription:
             itGirlEditDescription.trim() || DEFAULT_IT_GIRL_EDIT_DESCRIPTION,
+          welcomePopupImageUrl: welcomePopupImage,
+          welcomePopupHeading:
+            welcomePopupHeading.trim() || DEFAULT_WELCOME_POPUP_HEADING,
           currencyRates: { USD: 1, EUR: parsedEurRate, GBP: parsedGbpRate },
           currencyActive: {
             USD: true,
@@ -480,6 +499,29 @@ export default function AdminSiteSettingsPage() {
                   onChange={(e) => setItGirlEditDescription(e.target.value)}
                   rows={4}
                 />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-black/10 pt-5">
+            <Label>Pop-up chào mừng (hiện khi khách vào trang chủ)</Label>
+            <div className="space-y-4">
+              <ImageField
+                label="Ảnh"
+                value={welcomePopupImage}
+                onChange={setWelcomePopupImage}
+              />
+              <div>
+                <Label>Tiêu đề</Label>
+                <Input
+                  value={welcomePopupHeading}
+                  onChange={(e) => setWelcomePopupHeading(e.target.value)}
+                  placeholder={DEFAULT_WELCOME_POPUP_HEADING}
+                />
+                <p className="text-xs text-black/40 mt-2">
+                  Dòng chữ lớn in hoa trong pop-up. Để trống sẽ dùng lại
+                  &quot;{DEFAULT_WELCOME_POPUP_HEADING}&quot;.
+                </p>
               </div>
             </div>
           </div>

@@ -1273,7 +1273,7 @@ export default function CheckoutClient() {
                 type="button"
                 disabled={submitting || itemsLoading || checkoutBlocked}
                 onClick={handlePayNow}
-                className="w-full rounded-[4px] bg-[#2b261f] py-4 font-ui text-sm tracking-wide text-white transition-colors hover:bg-black disabled:opacity-50"
+                className="w-full rounded-[6px] bg-[#2b261f] py-[18px] font-ui text-[13px] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-black disabled:opacity-50"
               >
                 {submitting ? "PLACING ORDER..." : "PAY NOW"}
               </button>

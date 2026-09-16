@@ -18,15 +18,19 @@ Full infra details, environment file contents, and hard-learned gotchas live in 
 - Proxmox host `pve1`: `ssh root@10.5.100.10` (password known to the user, prompt if needed).
 - Container `118` (`auraco`): Node 22 + PostgreSQL 15 (db `auraco`, role `auraco_app`) + PM2 installed.
   - Staging: `/var/www/auraco-app-staging`, nginx port 8080 → `aura-web-staging` (port 3101) → its own `aura-api-staging` (port 4001).
-  - Production: `/var/www/auraco-app`, nginx port 80 → `aura-web` (port 3100) → its own `aura-api` (port 4000), publicly at `https://aura.maxmin.vn`.
+  - Production: `/var/www/auraco-app`, nginx port 80 → `aura-web` (port 3100) → its own `aura-api` (port 4000), publicly at `https://aetherpieces.com`. The retired hosts `aether.aetherpieces.com` and `aura.maxmin.vn` still resolve through the same tunnel and 308-redirect to the apex — do not delete their tunnel routes.
   - Staging and production share one Postgres database.
+  - **Both environments track `origin/main`.** Production used to track a
+    `prod-release-no-payment` branch; that split was retired on 2026-09-16 when the
+    owner opted to run PayPal on production. See `DEPLOYMENT.md`'s "Deploy pipeline"
+    for the rollback note.
 - GitHub remote: `trancongthangvn/auraco`, commit author configured locally as `ALODEV <hello.alodev@gmail.com>` — never commit as "Claude".
 - This is a REAL backend now (Express + PostgreSQL), not a static export. See `DEPLOYMENT.md`'s "Architecture" section.
 
 ## Steps
 
 1. **Build & verify locally first**: `npx eslint .`, `npx tsc --noEmit`, `npm run build` — all must be clean before deploying anything.
-2. **Ship source** (exclude `node_modules`, `.next`, `out`, `.git`, `server/node_modules`, `server/uploads`, `*.env`) to the container's staging directory via rsync → tar → `pct push` → extract (see `DEPLOYMENT.md` for the exact commands).
+2. **Commit and push to `origin/main`**, then pull it down on staging with `git fetch origin main && git reset --hard origin/main`. Source no longer travels by rsync/tar/`pct push` — every environment is its own git clone (see `DEPLOYMENT.md`'s "Deploy pipeline"). Never commit as "Claude"; the author is configured locally as ALODEV.
 3. **Install deps + build IN PLACE on the container**: `npm ci && npm run build` at the app root, `cd server && npm ci` — never rebuild locally and copy `.next` over (see gotcha below).
 4. **Restart staging PM2 processes**: `pm2 restart aura-web-staging aura-api-staging`.
 5. **Verify staging**: curl key routes for 200, then a real browser check — homepage, one product page, catalog, checkout, admin login, **and at least one mobile-viewport pass with console-error checking** (a past bug crashed the checkout page only visible via console, not curl).
@@ -45,8 +49,8 @@ Full infra details, environment file contents, and hard-learned gotchas live in 
    **Use the user's real Chrome, not the in-app Browser pane.** The pane does not composite frames: screenshots time out, lazy images never finish loading, and `srcset` picks `w=3840` — all false alarms that waste a lot of time. Drive real Chrome via the `claude-in-chrome` MCP (`select_browser` → `tabs_context_mcp` → `navigate` → `javascript_tool`), and set `img.loading='eager'` before measuring images, since a background tab does not load lazy ones.
 
    Report the staging link and wait for confirmation.
-6. **Only on explicit confirmation, promote to production**: copy staging's source into `/var/www/auraco-app` while PRESERVING production's own `server/.env` and `.env.local` (different ports — back them up first, `cp -a`, restore them), then **rebuild in place there too** (`npm run build`), then `pm2 restart aura-api aura-web`.
-7. **Verify production**: curl + browser check against both the LAN IP and `https://aura.maxmin.vn`. Confirm `/api/health` uptime reached through the Next.js rewrite matches uptime hit directly on the API port — a mismatch means the rewrite is still pointing at the wrong environment's API (see gotcha below).
+6. **Only on explicit confirmation, promote to production**: `cd /var/www/auraco-app && git fetch origin main && git reset --hard origin/main`, then **rebuild in place there too** (`npm ci && npm run build`, `cd server && npm ci`), then `pm2 restart aura-api aura-web`. Never copy staging's source across — that was the old rsync method, and with PayPal now living on `main` it would ship payment code to production as an unreviewed side effect. `server/.env` and `.env.local` are gitignored, so the reset leaves production's own ports, secrets and PayPal credentials untouched.
+7. **Verify production**: curl + browser check against both the LAN IP and `https://aetherpieces.com`. Confirm `/api/health` uptime reached through the Next.js rewrite matches uptime hit directly on the API port — a mismatch means the rewrite is still pointing at the wrong environment's API (see gotcha below). Also check that `aether.aetherpieces.com` and `aura.maxmin.vn` still answer with a 308 to the apex rather than serving a page.
 
 ## Hard-learned gotchas
 

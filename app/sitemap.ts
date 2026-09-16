@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { serverApiFetch } from "@/lib/server-api";
 
-const BASE_URL = "https://aura.maxmin.vn";
+const BASE_URL = "https://aether.aetherpieces.com";
 
 type ApiProductSlug = { slug: string };
 type ApiCollectionSlug = { slug: string };

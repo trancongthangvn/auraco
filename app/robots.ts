@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/admin/", "/checkout"],
     },
-    sitemap: "https://aura.maxmin.vn/sitemap.xml",
+    sitemap: "https://aether.aetherpieces.com/sitemap.xml",
   };
 }

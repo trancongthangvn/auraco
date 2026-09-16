@@ -15,7 +15,7 @@
 // asked to remove would be worse.
 const CF_API_TOKEN = process.env.CF_API_TOKEN;
 const CF_ZONE_ID = process.env.CF_ZONE_ID;
-const PRODUCTION_ORIGIN = 'https://aura.maxmin.vn';
+const PRODUCTION_ORIGIN = 'https://aether.aetherpieces.com';
 
 /**
  * Purges one or more /uploads/<file>-relative paths from Cloudflare's cache.

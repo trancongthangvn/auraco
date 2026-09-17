@@ -35,6 +35,16 @@ export default function Lightbox({
   const [tx, setTx] = useState(0);
   const [ty, setTy] = useState(0);
   const frameRef = useRef<HTMLDivElement>(null);
+  // Each photo's own width/height ratio, learned from the decoded image
+  // (see the <Image onLoad> below) and cached by src so revisiting a photo
+  // already seen this session doesn't flash back to the 4:5 fallback.
+  // Explicit request: the fixed 4:5 frame this used to have left visible
+  // dark bars beside any square or landscape photo, since a portrait frame
+  // can only use so much of a wide stage - fitting the frame to each
+  // photo's real ratio means the box always matches the picture exactly, no
+  // letterboxing, at the cost of the frame size varying between photos
+  // (the very thing the fixed 4:5 frame was originally chosen to avoid).
+  const [ratios, setRatios] = useState<Record<string, number>>({});
   // Written during a gesture and read on the next touch event, so it must
   // not go through state (a re-render per touchmove would lag the pinch).
   const gesture = useRef({
@@ -234,44 +244,39 @@ export default function Lightbox({
             sized against BOTH of the stage's dimensions at once. */}
         <div className="pointer-events-none absolute inset-0 flex [container-type:size] items-center justify-center p-6">
           {images[index] && (
-            // Fixed aspect-[4/5] frame, not object-contain filling however
-            // much space each photo's own ratio happens to need — explicit
-            // follow-up request: a tall lifestyle/portrait photo filled
-            // nearly the whole screen while a near-square product shot
-            // showed much smaller with big margins, reading as
-            // inconsistent between photos. Same fixed 4:5 frame + crop
-            // trade-off already applied to the gallery's own hero image.
-            // object-cover crops a mismatched photo's own margin to fill
-            // it — source images are still served at full resolution
-            // (`sizes` unchanged), so this doesn't affect sharpness.
+            // Frame sized to THIS photo's own ratio (falls back to 4:5
+            // until it's decoded once — see the <Image onLoad> below), so
+            // the box always matches the picture with no letterboxing.
             //
             // The height is picked explicitly rather than left to
             // `h-full` + `max-w-full`, which silently broke the ratio on
             // phones: with a definite height, the width is derived from
             // the ratio and then CLAMPED by max-width, but the height is
-            // never recomputed from that clamp — so on a 375px viewport
-            // the frame came out 327x698 (ratio 0.47) instead of 4:5,
-            // cropping far harder than the same photo on the page behind
-            // it. Desktop never showed it because a wide stage means
-            // max-width never bites. min(100cqh, 125cqw) is the tallest
-            // 4:5 box that fits the stage BOTH ways: the derived width,
-            // 80% of it, is min(80cqh, 100cqw), so neither dimension can
-            // overflow and the ratio stays exact at every viewport.
+            // never recomputed from that clamp — so a portrait photo on a
+            // narrow phone stage came out shorter/wider than its own
+            // ratio, cropping harder than the same photo on the page
+            // behind it. Desktop never showed it because a wide stage
+            // means max-width never bites. min(100cqh, 100cqw/ratio) is
+            // the tallest box of this ratio that fits the stage BOTH
+            // ways, so neither dimension can overflow.
             // pointer-events-auto (the wrapper above is none) is what
             // lets the pinch handlers see the touches at all; the click
             // handler keeps tap-to-close working the way it did when those
             // taps fell straight through to the backdrop button.
             // touch-none stops the browser treating a pinch here as a page
             // gesture. overflow-hidden keeps the magnified photo inside
-            // the frame instead of spilling over the close/next controls —
-            // the frame's own size and 4:5 ratio are untouched.
+            // the frame instead of spilling over the close/next controls.
             <div
               ref={frameRef}
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
               onClick={onFrameClick}
-              className="pointer-events-auto relative aspect-[4/5] h-[min(100cqh,125cqw)] touch-none overflow-hidden"
+              className="pointer-events-auto relative touch-none overflow-hidden"
+              style={{
+                aspectRatio: ratios[images[index]] ?? 4 / 5,
+                height: `min(100cqh, ${(100 / (ratios[images[index]] ?? 4 / 5)).toFixed(4)}cqw)`,
+              }}
             >
               <div
                 className="absolute inset-0"
@@ -294,6 +299,13 @@ export default function Lightbox({
                   // gallery's own hero still requests 100vw.
                   sizes="(max-width: 1000px) 200vw, 100vw"
                   className="object-cover"
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    const src = images[index];
+                    if (!img.naturalWidth || !img.naturalHeight) return;
+                    const r = img.naturalWidth / img.naturalHeight;
+                    setRatios((prev) => (prev[src] ? prev : { ...prev, [src]: r }));
+                  }}
                 />
               </div>
             </div>

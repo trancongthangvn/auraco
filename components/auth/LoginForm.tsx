@@ -63,13 +63,9 @@ export default function LoginForm() {
           shows "Forgot your password?" as its own line above "Remember me",
           both left-aligned, not split across a justify-between row. */}
       <div className="space-y-4 text-sm">
-        <button
-          type="button"
-          onClick={() => setMessage(dict.forgotDemoMessage)}
-          className="text-black/60 underline hover:text-black"
-        >
+        <Link href="/forgot-password" className="text-black/60 underline hover:text-black">
           {dict.forgotPassword}
-        </button>
+        </Link>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"

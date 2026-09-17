@@ -6,13 +6,20 @@
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { query } = require('../db');
 const { signCustomerToken, requireCustomer } = require('../lib/customerAuth');
+const { sendPasswordResetEmail } = require('../lib/email');
 
 const router = express.Router();
 
 const MIN_PASSWORD = 8;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const RESET_TOKEN_VALID_MINUTES = 60;
+
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 const str = (v) => (typeof v === 'string' ? v.trim() : '');
 
@@ -133,6 +140,73 @@ router.post('/change-password', requireCustomer, async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Could not change your password.' });
+  }
+});
+
+// POST /api/account/forgot-password  { email }
+//
+// Always responds the same way whether or not the address has an account -
+// same reasoning as login's "Incorrect email or password" for either case:
+// this endpoint must not be usable to find out who has an account.
+router.post('/forgot-password', async (req, res) => {
+  const email = str(req.body && req.body.email).toLowerCase();
+  if (!EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+  try {
+    const result = await query(`SELECT id, email FROM customers WHERE lower(email) = $1`, [email]);
+    const customer = result.rows[0];
+    if (customer) {
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + RESET_TOKEN_VALID_MINUTES * 60 * 1000);
+      await query(
+        `INSERT INTO password_resets (customer_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
+        [customer.id, hashResetToken(token), expiresAt]
+      );
+      sendPasswordResetEmail(customer.email, token).catch(() => {});
+    }
+    return res.json({ data: { ok: true } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Could not process your request. Please try again.' });
+  }
+});
+
+// POST /api/account/reset-password  { email, token, new_password }
+router.post('/reset-password', async (req, res) => {
+  const email = str(req.body && req.body.email).toLowerCase();
+  const token = str(req.body && req.body.token);
+  const newPassword = req.body && req.body.new_password;
+  const invalid = () => res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+
+  if (!EMAIL_RE.test(email) || !token) return invalid();
+  if (typeof newPassword !== 'string' || newPassword.length < MIN_PASSWORD) {
+    return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD} characters.` });
+  }
+
+  try {
+    const customerRes = await query(`SELECT id FROM customers WHERE lower(email) = $1`, [email]);
+    const customer = customerRes.rows[0];
+    if (!customer) return invalid();
+
+    const resetRes = await query(
+      `SELECT id FROM password_resets
+        WHERE customer_id = $1 AND token_hash = $2 AND used_at IS NULL AND expires_at > now()`,
+      [customer.id, hashResetToken(token)]
+    );
+    const reset = resetRes.rows[0];
+    if (!reset) return invalid();
+
+    await query(`UPDATE customers SET password_hash = $1, updated_at = now() WHERE id = $2`, [
+      await bcrypt.hash(newPassword, 10),
+      customer.id,
+    ]);
+    await query(`UPDATE password_resets SET used_at = now() WHERE id = $1`, [reset.id]);
+
+    return res.json({ data: { ok: true } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Could not reset your password. Please try again.' });
   }
 });
 

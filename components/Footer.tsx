@@ -6,7 +6,7 @@ import { footerLinks } from "@/data/site";
 import { ChevronDownIcon } from "@/components/icons";
 import { useDictionary } from "@/components/i18n/LanguageProvider";
 import PaymentIcons from "@/components/PaymentIcons";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import { renderPromoNumeric } from "@/lib/renderPromoNumeric";
 
 /** Turns the literal words "Security"/"Privacy" in the disclaimer sentence
@@ -38,6 +38,9 @@ export default function Footer() {
   const dict = useDictionary();
   const [email, setEmail] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
   const [shopOpen, setShopOpen] = useState(false);
   const [policiesOpen, setPoliciesOpen] = useState(false);
   const [contact, setContact] = useState<{ email: string | null; phone: string | null }>({
@@ -73,37 +76,71 @@ export default function Footer() {
           <h2 className="font-serif-display mb-4 text-[28px] font-normal uppercase leading-[29.4px] tracking-[0.28px] text-[#28241f]">
             {renderPromoNumeric(dict.footer.newsletterHeading)}
           </h2>
-          <form onSubmit={(e) => e.preventDefault()} className="grid gap-[13.6px]">
-            <div className="flex items-center gap-2 border-b border-ink pb-[5.6px]">
-              <input
-                type="email"
-                required
-                placeholder={dict.footer.emailPlaceholder}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="font-ui min-w-0 flex-1 bg-transparent py-[5.6px] text-[13px] font-light leading-[20.15px] tracking-[0.13px] text-[#28241f] outline-none placeholder:text-[#5c554a] placeholder:opacity-85"
-              />
-              {/* The reference draws this arrow as a text glyph, not an icon — at
-                  21.6px it sits taller than any of our SVG arrows. */}
-              <button
-                type="submit"
-                aria-label={dict.footer.subscribe}
-                className="shrink-0 px-[2.4px] py-1 text-[21.6px] leading-none text-ink transition-colors hover:text-gold"
-              >
-                &rarr;
-              </button>
-            </div>
-            <label className="font-ui grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-[12px] font-light leading-[18px] tracking-[0.12px] text-[#6e6963]">
-              <input
-                type="checkbox"
-                required
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-[2.4px] h-[13px] w-[13px] accent-gold"
-              />
-              <span>{renderDisclaimer(dict.footer.newsletterDisclaimer)}</span>
-            </label>
-          </form>
+          {sent ? (
+            <p className="font-ui text-[13px] font-light text-[#28241f]" role="status">
+              Thank you - check your inbox for your welcome offer.
+            </p>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (sending) return;
+                setSending(true);
+                setError("");
+                apiFetch("/api/newsletter/signup", {
+                  method: "POST",
+                  body: JSON.stringify({ email: email.trim() }),
+                })
+                  .then(() => setSent(true))
+                  .catch((err: unknown) => {
+                    setError(
+                      err instanceof ApiError
+                        ? err.message
+                        : "Something went wrong. Please try again."
+                    );
+                  })
+                  .finally(() => setSending(false));
+              }}
+              className="grid gap-[13.6px]"
+            >
+              <div className="flex items-center gap-2 border-b border-ink pb-[5.6px]">
+                <input
+                  type="email"
+                  required
+                  disabled={sending}
+                  placeholder={dict.footer.emailPlaceholder}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="font-ui min-w-0 flex-1 bg-transparent py-[5.6px] text-[13px] font-light leading-[20.15px] tracking-[0.13px] text-[#28241f] outline-none placeholder:text-[#5c554a] placeholder:opacity-85 disabled:opacity-60"
+                />
+                {/* The reference draws this arrow as a text glyph, not an icon — at
+                    21.6px it sits taller than any of our SVG arrows. */}
+                <button
+                  type="submit"
+                  disabled={sending}
+                  aria-label={dict.footer.subscribe}
+                  className="shrink-0 px-[2.4px] py-1 text-[21.6px] leading-none text-ink transition-colors hover:text-gold disabled:opacity-60"
+                >
+                  &rarr;
+                </button>
+              </div>
+              <label className="font-ui grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-[12px] font-light leading-[18px] tracking-[0.12px] text-[#6e6963]">
+                <input
+                  type="checkbox"
+                  required
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="mt-[2.4px] h-[13px] w-[13px] accent-gold"
+                />
+                <span>{renderDisclaimer(dict.footer.newsletterDisclaimer)}</span>
+              </label>
+              {error && (
+                <p role="alert" className="font-ui text-[12px] text-red-700">
+                  {error}
+                </p>
+              )}
+            </form>
+          )}
         </div>
 
         <div className="border-b border-gold-light/35 md:border-b-0">

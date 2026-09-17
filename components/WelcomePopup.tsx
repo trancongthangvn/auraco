@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 
 const ARTWORK = "/images/settings/welcome-popup/98418fc0-5417-4aa4-a7b5-322bc1a2a793.webp";
 const DEFAULT_HEADING = "Sign up for 10% off";
@@ -30,6 +30,8 @@ export default function WelcomePopup() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
 
   // Artwork and heading are admin-editable (Cài đặt web > Pop-up chào mừng).
@@ -141,14 +143,29 @@ export default function WelcomePopup() {
 
             {sent ? (
               <p className="font-ui text-[13px] font-light text-[#111]" role="status">
-                Thank you — check your inbox for your welcome offer.
+                Thank you - check your inbox for your welcome offer.
               </p>
             ) : (
               <form
                 className="w-full max-w-[360px]"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  setSent(true);
+                  if (sending) return;
+                  setSending(true);
+                  setError(null);
+                  apiFetch("/api/newsletter/signup", {
+                    method: "POST",
+                    body: JSON.stringify({ email: email.trim() }),
+                  })
+                    .then(() => setSent(true))
+                    .catch((err: unknown) => {
+                      setError(
+                        err instanceof ApiError
+                          ? err.message
+                          : "Something went wrong. Please try again."
+                      );
+                    })
+                    .finally(() => setSending(false));
                 }}
               >
                 <label htmlFor="welcome-email" className="sr-only">
@@ -158,16 +175,23 @@ export default function WelcomePopup() {
                   id="welcome-email"
                   type="email"
                   required
+                  disabled={sending}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
-                  className="font-ui mb-6 h-12 w-full border border-[#111] px-4 text-[13px] font-normal tracking-[0.01em] text-[#111] outline-none placeholder:text-[#777] focus-visible:outline-1 focus-visible:outline-offset-[-1px] focus-visible:outline-black"
+                  className="font-ui mb-3 h-12 w-full border border-[#111] px-4 text-[13px] font-normal tracking-[0.01em] text-[#111] outline-none placeholder:text-[#777] focus-visible:outline-1 focus-visible:outline-offset-[-1px] focus-visible:outline-black disabled:opacity-60"
                 />
+                {error && (
+                  <p role="alert" className="font-ui mb-3 text-[12px] text-red-700">
+                    {error}
+                  </p>
+                )}
                 <button
                   type="submit"
-                  className="font-ui flex h-[47px] w-full items-center justify-center bg-black px-5 text-[13px] font-medium tracking-[0.01em] text-white transition-opacity hover:opacity-85"
+                  disabled={sending}
+                  className="font-ui flex h-[47px] w-full items-center justify-center bg-black px-5 text-[13px] font-medium tracking-[0.01em] text-white transition-opacity hover:opacity-85 disabled:opacity-60"
                 >
-                  Reveal My Offer
+                  {sending ? "Sending..." : "Reveal My Offer"}
                 </button>
               </form>
             )}

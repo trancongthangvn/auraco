@@ -36,6 +36,14 @@ function formatUsd(n) {
   return `USD ${Number(n).toFixed(2)}`;
 }
 
+// $-sign form for the per-item line total below — order.total above stays
+// spelled out as "USD X.XX" (unambiguous next to a currency picker on the
+// storefront itself), but a per-row amount next to its own qty reads fine
+// with just the symbol, matching the reference template's item table.
+function formatUsdSign(n) {
+  return `$${Number(n).toFixed(2)}`;
+}
+
 // Spelled out with a month name (not MM/DD or DD/MM) since the storefront's
 // customers aren't assumed to share one date-order convention.
 function formatLongDate(isoDate) {
@@ -63,7 +71,7 @@ function renderOrderConfirmationHtml(order, promo) {
       <tr>
         <td style="padding:8px 0;border-bottom:1px solid #eee;">${it.name}${it.material ? ` - ${it.material}` : ''}</td>
         <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center;">${it.qty}</td>
-        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${formatUsd(it.price)}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${formatUsdSign(it.qty * it.price)}</td>
       </tr>`
     )
     .join('');
@@ -78,7 +86,7 @@ function renderOrderConfirmationHtml(order, promo) {
     : '';
 
   return `
-  <div style="background:#f4f4f4;padding:32px 16px;font-family:Georgia,serif;">
+  <div style="background:#f4f4f4;padding:32px 16px;font-family:Georgia,'Times New Roman',Times,serif;">
     <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;padding:32px;color:#111;">
       <p style="margin:0 0 24px;text-align:center;font-size:18px;font-weight:normal;letter-spacing:2px;text-transform:uppercase;">AETHER</p>
 
@@ -94,7 +102,7 @@ function renderOrderConfirmationHtml(order, promo) {
           <tr>
             <th style="text-align:left;border-bottom:1px solid #111;padding-bottom:8px;">Item</th>
             <th style="text-align:center;border-bottom:1px solid #111;padding-bottom:8px;">Qty</th>
-            <th style="text-align:right;border-bottom:1px solid #111;padding-bottom:8px;">Price</th>
+            <th style="text-align:right;border-bottom:1px solid #111;padding-bottom:8px;">Line total</th>
           </tr>
         </thead>
         <tbody>${itemRows}</tbody>
@@ -142,7 +150,7 @@ async function sendOrderConfirmationEmail(order, promo) {
 // no null-promo case to render here.
 function renderWelcomeHtml(promo) {
   return `
-  <div style="background:#f4f4f4;padding:32px 16px;font-family:Georgia,serif;">
+  <div style="background:#f4f4f4;padding:32px 16px;font-family:Georgia,'Times New Roman',Times,serif;">
     <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;padding:32px;color:#111;text-align:center;">
       <p style="margin:0 0 24px;font-size:18px;font-weight:normal;letter-spacing:2px;text-transform:uppercase;">AETHER</p>
 
@@ -192,7 +200,7 @@ const RESET_TOKEN_VALID_MINUTES = 60;
 // the usable value exists outside that one request).
 function renderPasswordResetHtml(resetUrl) {
   return `
-  <div style="background:#f4f4f4;padding:32px 16px;font-family:Georgia,serif;">
+  <div style="background:#f4f4f4;padding:32px 16px;font-family:Georgia,'Times New Roman',Times,serif;">
     <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;padding:32px;color:#111;">
       <p style="margin:0 0 24px;text-align:center;font-size:18px;font-weight:normal;letter-spacing:2px;text-transform:uppercase;">AETHER</p>
 

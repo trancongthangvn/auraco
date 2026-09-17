@@ -157,7 +157,7 @@ router.post('/orders', async (req, res) => {
     const variantMap = new Map();
     if (variantIds.length > 0) {
       const varRes = await client.query(
-        `SELECT id, product_id, stock, active FROM product_variants WHERE id = ANY($1::int[])`,
+        `SELECT id, product_id, stock, active, color_name, size FROM product_variants WHERE id = ANY($1::int[])`,
         [variantIds]
       );
       for (const v of varRes.rows) variantMap.set(v.id, v);
@@ -199,8 +199,9 @@ router.post('/orders', async (req, res) => {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: `Product ${it.product_id} not found` });
       }
+      let variant = null;
       if (it.variant_id !== undefined && it.variant_id !== null) {
-        const variant = variantMap.get(Number(it.variant_id));
+        variant = variantMap.get(Number(it.variant_id));
         if (!variant || variant.product_id !== product.id || !variant.active || variant.stock <= 0) {
           await client.query('ROLLBACK');
           return res.status(409).json({ error: `${product.name} is out of stock`, code: 'OUT_OF_STOCK', product_id: product.id });
@@ -217,6 +218,7 @@ router.post('/orders', async (req, res) => {
       const cardPrice = discountedUnitPrice(product);
       const bundlePct = bundleDiscountByCompanion.get(product.id);
       const images = Array.isArray(product.images) ? product.images : [];
+      const variantLabel = variant ? [variant.color_name, variant.size].filter(Boolean).join(' / ') || null : null;
       const addLine = (price, lineQty) => {
         if (lineQty <= 0) return;
         subtotal += price * lineQty;
@@ -227,6 +229,8 @@ router.post('/orders', async (req, res) => {
           price,
           qty: lineQty,
           image_url: images.length > 0 ? images[0] : null,
+          variant_id: variant ? variant.id : null,
+          variant_label: variantLabel,
         });
       };
       // The companion discount buys ONE unit at the bundle price, not every
@@ -338,10 +342,52 @@ router.post('/orders', async (req, res) => {
 
     for (const li of lineItems) {
       await client.query(
-        `INSERT INTO order_items (order_id, product_id, name, material, price, qty, image_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [order.id, li.product_id, li.name, li.material, li.price, li.qty, li.image_url]
+        `INSERT INTO order_items (order_id, product_id, name, material, price, qty, image_url, variant_id, variant_label)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [order.id, li.product_id, li.name, li.material, li.price, li.qty, li.image_url, li.variant_id, li.variant_label]
       );
+    }
+
+    // Decrement stock by the ordered qty, one UPDATE per distinct
+    // product/variant (a bundle line and its companion's own full-price
+    // line both belong to the same product, so this sums them into a
+    // single write instead of two separate ones racing on the same row).
+    // A variant line decrements product_variants.stock and then re-derives
+    // products.stock as the sum of its active variants (same rule
+    // recomputeProductStock in routes/products.js applies after an admin
+    // edits a variant) so the two never drift apart. A plain line
+    // decrements products.stock directly. GREATEST(...,0) is a last-resort
+    // floor only — the out-of-stock check above already refuses a line
+    // once its product/variant has none left, so this never actually has
+    // to clamp in normal operation.
+    const productQtyByVariant = new Map();
+    const productQtyPlain = new Map();
+    for (const li of lineItems) {
+      if (li.variant_id) {
+        productQtyByVariant.set(li.variant_id, (productQtyByVariant.get(li.variant_id) ?? 0) + li.qty);
+      } else {
+        productQtyPlain.set(li.product_id, (productQtyPlain.get(li.product_id) ?? 0) + li.qty);
+      }
+    }
+    for (const [variantId, qty] of productQtyByVariant) {
+      const variant = variantMap.get(variantId);
+      await client.query(`UPDATE product_variants SET stock = GREATEST(stock - $1, 0), updated_at = now() WHERE id = $2`, [
+        qty,
+        variantId,
+      ]);
+      await client.query(
+        `UPDATE products SET stock = COALESCE(
+           (SELECT SUM(stock) FROM product_variants WHERE product_id = $1 AND active = TRUE), 0
+         ), updated_at = now()
+         WHERE id = $1`,
+        [variant.product_id]
+      );
+    }
+    for (const [productId, qty] of productQtyPlain) {
+      await client.query(`UPDATE products SET stock = GREATEST(stock - $1, 0), updated_at = now() WHERE id = $2`, [
+        qty,
+        productId,
+      ]);
     }
 
     if (discountCodeId) {

@@ -115,7 +115,7 @@ function renderOrderConfirmationHtml(order, promo) {
       <p style="margin:0 0 24px;font-size:14px;color:#555;">Your payment is being reviewed. We will email you once your order is confirmed.</p>
 
       <div style="text-align:center;margin:0 0 24px;">
-        <a href="${SITE_URL}/thankyou?order=${encodeURIComponent(order.order_code)}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;padding:12px 32px;font-size:13px;letter-spacing:1px;text-transform:uppercase;">View order</a>
+        <a href="${SITE_URL}/thankyou?order=${encodeURIComponent(order.order_code)}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;padding:10px 28px;font-size:13px;">View order</a>
       </div>
 
       <p style="margin:0;font-size:14px;">Thanks,<br/>AETHER</p>

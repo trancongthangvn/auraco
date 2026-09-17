@@ -146,7 +146,7 @@ const dictionary = {
       createOne: "En créer un",
       accountNotePrefix: "Gérez votre profil et vos commandes dans",
       myAccount: "Mon compte",
-      demoNotice: "Démo d'interface — aucun vrai système de compte connecté.",
+      demoNotice: "Démo d'interface - aucun vrai système de compte connecté.",
     },
     register: {
       title: "Créer un compte",
@@ -166,7 +166,7 @@ const dictionary = {
         "Ceci est une démo d'interface. Aucun système de compte n'est encore connecté.",
       haveAccount: "Vous avez déjà un compte ?",
       signIn: "Se connecter",
-      demoNotice: "Démo d'interface — aucun vrai système de compte connecté.",
+      demoNotice: "Démo d'interface - aucun vrai système de compte connecté.",
     },
   },
   account: {
@@ -193,7 +193,7 @@ const dictionary = {
     passwordChanged: "Votre mot de passe a été modifié.",
     updatePassword: "METTRE À JOUR",
     ordersEmpty: "Vous n'avez encore passé aucune commande avec ce compte.",
-    ordersGuestNote: "Les commandes passées en invité, avant la connexion, n'apparaissent pas ici — retrouvez-les via Suivre ma commande.",
+    ordersGuestNote: "Les commandes passées en invité, avant la connexion, n'apparaissent pas ici - retrouvez-les via Suivre ma commande.",
     trackOrder: "Suivre ma commande",
     placedOn: "Passée le",
     status: "Statut",

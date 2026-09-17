@@ -111,7 +111,7 @@ function fileFilter(req, file, cb) {
       `Unsupported file type: ${file.mimetype}. Accepted: ` +
         (isVideoMime(file.mimetype) ? 'MP4, MOV, WEBM' : 'JPG, PNG, WEBP, GIF, AVIF') +
         (file.mimetype === 'image/heic' || file.mimetype === 'image/heif'
-          ? '. iPhone photos in HEIC format aren\'t supported by web browsers — open the photo in an editor (or Photos > Share > choose JPEG) and re-export as JPEG first.'
+          ? '. iPhone photos in HEIC format aren\'t supported by web browsers - open the photo in an editor (or Photos > Share > choose JPEG) and re-export as JPEG first.'
           : '.')
     );
     err.status = 400;

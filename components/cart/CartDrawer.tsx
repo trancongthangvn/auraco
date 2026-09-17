@@ -332,7 +332,7 @@ export default function CartDrawer() {
                       </p>
                       {isOutOfStock(item.slug, item.variantId) && (
                         <p className="mt-0.5 text-[11px] font-medium text-red-700">
-                          Out of stock — please remove to check out
+                          Out of stock - please remove to check out
                         </p>
                       )}
                       <div className="mt-1.5 flex h-6 w-[68px] items-center justify-between rounded-full border border-black/15 px-1.5">

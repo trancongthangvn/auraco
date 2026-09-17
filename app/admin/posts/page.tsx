@@ -106,14 +106,14 @@ function slugify(input: string): string {
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("vi-VN");
 }
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString("vi-VN", {
@@ -450,7 +450,7 @@ export default function AdminPostsPage() {
                     </span>
                   </Td>
                   <Td className="text-black/60 whitespace-nowrap">
-                    {p.category_name || "—"}
+                    {p.category_name || "-"}
                   </Td>
                   <Td>
                     <StatusBadge post={p} />
@@ -673,7 +673,7 @@ export default function AdminPostsPage() {
                         onChange={(e) => setField("category_id", e.target.value)}
                         disabled={saving}
                       >
-                        <option value="">— Không có —</option>
+                        <option value="">- Không có -</option>
                         {categories.map((c) => (
                           <option key={c.id} value={String(c.id)}>
                             {c.name}

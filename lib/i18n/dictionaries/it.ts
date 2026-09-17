@@ -144,7 +144,7 @@ const dictionary = {
       createOne: "Creane uno",
       accountNotePrefix: "Gestisci il tuo profilo e i tuoi ordini in",
       myAccount: "Il mio account",
-      demoNotice: "Demo dell'interfaccia — nessun sistema di account reale collegato.",
+      demoNotice: "Demo dell'interfaccia - nessun sistema di account reale collegato.",
     },
     register: {
       title: "Crea account",
@@ -162,7 +162,7 @@ const dictionary = {
       demoMessage: "Questa è una demo dell'interfaccia. Nessun sistema di account è ancora collegato.",
       haveAccount: "Hai già un account?",
       signIn: "Accedi",
-      demoNotice: "Demo dell'interfaccia — nessun sistema di account reale collegato.",
+      demoNotice: "Demo dell'interfaccia - nessun sistema di account reale collegato.",
     },
   },
   account: {
@@ -189,7 +189,7 @@ const dictionary = {
     passwordChanged: "La tua password è stata cambiata.",
     updatePassword: "AGGIORNA PASSWORD",
     ordersEmpty: "Non hai ancora effettuato ordini con questo account.",
-    ordersGuestNote: "Gli ordini effettuati come ospite, prima dell'accesso, non sono elencati qui — cercali con Traccia ordine.",
+    ordersGuestNote: "Gli ordini effettuati come ospite, prima dell'accesso, non sono elencati qui - cercali con Traccia ordine.",
     trackOrder: "Traccia ordine",
     placedOn: "Effettuato il",
     status: "Stato",

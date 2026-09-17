@@ -1007,7 +1007,7 @@ export default function CheckoutClient() {
                 className="mt-0.5 h-4 w-4 accent-ink"
               />
               Don&apos;t miss out. Sign up for VIP access to sales, promos and
-              new collections — straight to your inbox.
+              new collections - straight to your inbox.
             </label>
           </section>
 

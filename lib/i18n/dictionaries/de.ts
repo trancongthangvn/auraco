@@ -144,7 +144,7 @@ const dictionary = {
       createOne: "Konto erstellen",
       accountNotePrefix: "Profil und Bestellungen verwalten Sie unter",
       myAccount: "Mein Konto",
-      demoNotice: "UI-Demo — noch kein echtes Kontosystem angebunden.",
+      demoNotice: "UI-Demo - noch kein echtes Kontosystem angebunden.",
     },
     register: {
       title: "Konto erstellen",
@@ -162,7 +162,7 @@ const dictionary = {
       demoMessage: "Dies ist eine UI-Demo. Es ist noch kein Kontosystem angebunden.",
       haveAccount: "Sie haben bereits ein Konto?",
       signIn: "Anmelden",
-      demoNotice: "UI-Demo — noch kein echtes Kontosystem angebunden.",
+      demoNotice: "UI-Demo - noch kein echtes Kontosystem angebunden.",
     },
   },
   account: {
@@ -189,7 +189,7 @@ const dictionary = {
     passwordChanged: "Ihr Passwort wurde geändert.",
     updatePassword: "PASSWORT AKTUALISIEREN",
     ordersEmpty: "Sie haben mit diesem Konto noch keine Bestellung aufgegeben.",
-    ordersGuestNote: "Als Gast vor der Anmeldung aufgegebene Bestellungen erscheinen hier nicht — suchen Sie sie über Bestellung verfolgen.",
+    ordersGuestNote: "Als Gast vor der Anmeldung aufgegebene Bestellungen erscheinen hier nicht - suchen Sie sie über Bestellung verfolgen.",
     trackOrder: "Bestellung verfolgen",
     placedOn: "Bestellt am",
     status: "Status",

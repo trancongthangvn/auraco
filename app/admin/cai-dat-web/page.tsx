@@ -421,7 +421,7 @@ export default function AdminSiteSettingsPage() {
             <p className="text-xs text-black/40 mt-2">
               Dòng chữ in đậm phía trên đoạn mô tả sản phẩm (ví dụ:
               &quot;Why You&apos;ll Love It:&quot;). Áp dụng cho toàn bộ sản
-              phẩm (chưa hỗ trợ theo từng ngôn ngữ — hiện chỉ có bản tiếng
+              phẩm (chưa hỗ trợ theo từng ngôn ngữ - hiện chỉ có bản tiếng
               Anh).
             </p>
           </div>
@@ -472,7 +472,7 @@ export default function AdminSiteSettingsPage() {
               + Thêm dòng
             </Button>
             <p className="text-xs text-black/40 mt-2">
-              Áp dụng cho toàn bộ sản phẩm (chưa hỗ trợ theo từng ngôn ngữ — hiện
+              Áp dụng cho toàn bộ sản phẩm (chưa hỗ trợ theo từng ngôn ngữ - hiện
               chỉ có bản tiếng Anh).
             </p>
           </div>
@@ -530,7 +530,7 @@ export default function AdminSiteSettingsPage() {
             <Label>Tỉ giá quy đổi (USD → EUR/GBP)</Label>
             <p className="text-xs text-black/40 mb-3">
               Giá hiển thị = giá niêm yết (USD) × tỉ giá. Chỉ áp dụng ở khu duyệt
-              sản phẩm (trang sản phẩm nổi bật, catalog, mua cùng nhau) — giỏ
+              sản phẩm (trang sản phẩm nổi bật, catalog, mua cùng nhau) - giỏ
               hàng và thanh toán luôn giữ nguyên USD.
             </p>
             <div className="overflow-hidden rounded-xl border border-black/10">

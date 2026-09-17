@@ -178,7 +178,7 @@ export default function AdminPostCategoriesPage() {
                   <Td className="text-[#2b261f]">{c.name}</Td>
                   <Td className="text-black/40">/{c.slug}</Td>
                   <Td className="text-black/50 max-w-xs truncate">
-                    {c.description || "—"}
+                    {c.description || "-"}
                   </Td>
                   <Td align="center" className="text-black/50">
                     {c.sort_order}
@@ -255,7 +255,7 @@ export default function AdminPostCategoriesPage() {
               </p>
               <p className="text-sm text-black/60 mb-6">
                 {confirmDelete.post_count ?? 0} bài viết trong danh mục này{" "}
-                <strong>không bị xóa</strong> — chúng chỉ trở thành bài viết chưa
+                <strong>không bị xóa</strong> - chúng chỉ trở thành bài viết chưa
                 phân loại và bạn có thể gán lại danh mục sau.
               </p>
               {deleteError && (

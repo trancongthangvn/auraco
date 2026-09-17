@@ -9,7 +9,7 @@ export default function SecurityPolicyPage() {
       sections={[
         {
           heading: "1. Encryption",
-          body: "Our site is secured with SSL encryption. Every piece of data transmitted between your browser and our servers — including personal details and login credentials — is encrypted in transit. Look for the lock icon and https:// in your browser's address bar to confirm.",
+          body: "Our site is secured with SSL encryption. Every piece of data transmitted between your browser and our servers - including personal details and login credentials - is encrypted in transit. Look for the lock icon and https:// in your browser's address bar to confirm.",
         },
         {
           heading: "2. Secure Payment Processing",
@@ -21,7 +21,7 @@ export default function SecurityPolicyPage() {
         },
         {
           heading: "4. Restricted Data Access",
-          body: "Access to your personal data is limited to team members who need it to do their job — such as order fulfillment or customer support — under strict confidentiality practices.",
+          body: "Access to your personal data is limited to team members who need it to do their job - such as order fulfillment or customer support - under strict confidentiality practices.",
         },
         {
           heading: "5. Reporting a Concern",

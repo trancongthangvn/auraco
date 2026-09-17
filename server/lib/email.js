@@ -61,7 +61,7 @@ function renderOrderConfirmationHtml(order, promo) {
     .map(
       (it) => `
       <tr>
-        <td style="padding:8px 0;border-bottom:1px solid #eee;">${it.name}${it.material ? ` — ${it.material}` : ''}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;">${it.name}${it.material ? ` - ${it.material}` : ''}</td>
         <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center;">${it.qty}</td>
         <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${formatUsd(it.price)}</td>
       </tr>`

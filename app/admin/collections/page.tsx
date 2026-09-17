@@ -301,7 +301,7 @@ function EditModal({
           />
           <div className="mt-4">
             <ImageField
-              label="Ảnh banner (hiển thị to ở đầu trang /catalog/<collection> — thường là ảnh người mẫu/lifestyle)"
+              label="Ảnh banner (hiển thị to ở đầu trang /catalog/<collection> - thường là ảnh người mẫu/lifestyle)"
               value={bannerUrl || null}
               onChange={(url) => setBannerUrl(url ?? "")}
               disabled={saving}

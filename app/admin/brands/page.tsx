@@ -129,7 +129,7 @@ export default function AdminBrandsPage() {
       )}
 
       <p className="text-xs text-black/40 mt-4">
-        Đây là 4 danh mục cố định trên thanh menu (Necklaces, Bracelets, Earrings, Signature Sets) — chỉ sửa được mô tả và ảnh.
+        Đây là 4 danh mục cố định trên thanh menu (Necklaces, Bracelets, Earrings, Signature Sets) - chỉ sửa được mô tả và ảnh.
       </p>
     </AdminShell>
   );

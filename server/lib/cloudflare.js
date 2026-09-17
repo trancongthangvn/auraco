@@ -32,7 +32,7 @@ const PRODUCTION_ORIGIN = 'https://aetherpieces.com';
 async function purgeUploadedFiles(filenames) {
   if (!CF_API_TOKEN || !CF_ZONE_ID) {
     console.warn(
-      '[cloudflare] CF_API_TOKEN/CF_ZONE_ID not configured — skipping cache purge for:',
+      '[cloudflare] CF_API_TOKEN/CF_ZONE_ID not configured - skipping cache purge for:',
       filenames
     );
     return;

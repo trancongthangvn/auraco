@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
         },
         {
           heading: "4. How We Share Your Information",
-          body: "We do not sell your personal data. We only share it with trusted service providers — such as shipping carriers and payment processors — solely to fulfill your order, or when required by law.",
+          body: "We do not sell your personal data. We only share it with trusted service providers - such as shipping carriers and payment processors - solely to fulfill your order, or when required by law.",
         },
         {
           heading: "5. Your Rights",

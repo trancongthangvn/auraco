@@ -105,8 +105,8 @@ export default function VideoField({
       if (!(await canBrowserPlay(file))) {
         setError(
           "Trình duyệt không đọc được video này (thường là video iPhone quay ở chế độ " +
-            "High Efficiency/HEVC). Hãy xuất lại sang MP4 H.264 — trên iPhone: Cài đặt > " +
-            "Máy ảnh > Định dạng > Tương thích nhất — rồi tải lại."
+            "High Efficiency/HEVC). Hãy xuất lại sang MP4 H.264 - trên iPhone: Cài đặt > " +
+            "Máy ảnh > Định dạng > Tương thích nhất - rồi tải lại."
         );
         return;
       }

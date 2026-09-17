@@ -144,7 +144,7 @@ const dictionary = {
       createOne: "Crea una",
       accountNotePrefix: "Gestiona tu perfil y tus pedidos en",
       myAccount: "Mi cuenta",
-      demoNotice: "Demo de interfaz — aún sin sistema de cuentas real conectado.",
+      demoNotice: "Demo de interfaz - aún sin sistema de cuentas real conectado.",
     },
     register: {
       title: "Crear cuenta",
@@ -162,7 +162,7 @@ const dictionary = {
       demoMessage: "Esta es una demo de interfaz. Aún no hay un sistema de cuentas conectado.",
       haveAccount: "¿Ya tienes una cuenta?",
       signIn: "Iniciar sesión",
-      demoNotice: "Demo de interfaz — aún sin sistema de cuentas real conectado.",
+      demoNotice: "Demo de interfaz - aún sin sistema de cuentas real conectado.",
     },
   },
   account: {
@@ -189,7 +189,7 @@ const dictionary = {
     passwordChanged: "Tu contraseña se ha cambiado.",
     updatePassword: "ACTUALIZAR CONTRASEÑA",
     ordersEmpty: "Aún no has realizado pedidos con esta cuenta.",
-    ordersGuestNote: "Los pedidos hechos como invitado, antes de iniciar sesión, no aparecen aquí — búscalos en Seguir mi pedido.",
+    ordersGuestNote: "Los pedidos hechos como invitado, antes de iniciar sesión, no aparecen aquí - búscalos en Seguir mi pedido.",
     trackOrder: "Seguir mi pedido",
     placedOn: "Realizado el",
     status: "Estado",

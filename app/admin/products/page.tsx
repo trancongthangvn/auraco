@@ -289,7 +289,7 @@ function VideoUrlsField({
         </Button>
       </div>
       <p className="mb-3 text-xs text-black/40">
-        Video MP4 ngắn, lặp — thêm bao nhiêu video cũng được, không giới hạn
+        Video MP4 ngắn, lặp - thêm bao nhiêu video cũng được, không giới hạn
         số lượng. Mỗi video hiện thành một ô riêng ở mục &quot;See It
         IRL&quot; trên trang sản phẩm; riêng video số 1 còn được dùng cho
         băng video ở trang chủ. Để trống nếu sản phẩm không có video.
@@ -1095,7 +1095,7 @@ export default function AdminProductsPage() {
                       {p.sort_order}
                     </span>
                   ) : (
-                    <span className="text-black/25">—</span>
+                    <span className="text-black/25">-</span>
                   )}
                 </Td>
                 <Td align="right">${Number(p.price).toFixed(2)}</Td>
@@ -1526,7 +1526,7 @@ export default function AdminProductsPage() {
                     Hiện ở băng video trang chủ
                   </label>
 
-                  <Label>SEO — Tiêu đề Meta</Label>
+                  <Label>SEO - Tiêu đề Meta</Label>
                   <Input
                     value={editMetaTitle}
                     onChange={(e) => setEditMetaTitle(e.target.value)}
@@ -1534,7 +1534,7 @@ export default function AdminProductsPage() {
                     className="mb-4"
                     disabled={saving}
                   />
-                  <Label>SEO — Mô tả Meta</Label>
+                  <Label>SEO - Mô tả Meta</Label>
                   <Textarea
                     value={editMetaDescription}
                     onChange={(e) => setEditMetaDescription(e.target.value)}
@@ -1613,7 +1613,7 @@ export default function AdminProductsPage() {
                     <Input
                       value={splitFeature(feature).label}
                       onChange={(e) => updateFeatureLabel(i, e.target.value)}
-                      placeholder="Tên (VD: Metal) — để trống nếu không cần"
+                      placeholder="Tên (VD: Metal) - để trống nếu không cần"
                       className="w-full min-w-[140px] flex-1 basis-40 text-xs sm:w-1/3 sm:flex-none"
                       disabled={saving}
                     />
@@ -1839,7 +1839,7 @@ export default function AdminProductsPage() {
                       <div className="space-y-2">
                         {group.images.length === 0 && (
                           <p className="text-xs italic text-black/30">
-                            Chưa có ảnh riêng — đang dùng ảnh sản phẩm gốc.
+                            Chưa có ảnh riêng - đang dùng ảnh sản phẩm gốc.
                           </p>
                         )}
                         {group.images.map((image, imgIndex) => (
@@ -1985,7 +1985,7 @@ export default function AdminProductsPage() {
                               tone="danger"
                               className="ml-auto shrink-0"
                               aria-label="Xóa size này"
-                              title={group.sizes.length <= 1 ? "Mỗi màu cần ít nhất 1 dòng — xóa cả màu bằng nút × phía trên" : "Xóa size này"}
+                              title={group.sizes.length <= 1 ? "Mỗi màu cần ít nhất 1 dòng - xóa cả màu bằng nút × phía trên" : "Xóa size này"}
                               disabled={saving || group.sizes.length <= 1}
                               onClick={() => removeSizeRow(gi, si)}
                             >

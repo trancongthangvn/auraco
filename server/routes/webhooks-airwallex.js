@@ -35,7 +35,7 @@ async function handleAirwallexWebhook(req, res) {
     return res.status(503).send('Webhook not configured');
   }
   if (!valid) {
-    console.warn('[airwallex webhook] invalid signature — rejecting');
+    console.warn('[airwallex webhook] invalid signature - rejecting');
     return res.status(400).send('Invalid signature');
   }
 

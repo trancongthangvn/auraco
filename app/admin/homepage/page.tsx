@@ -573,7 +573,7 @@ export default function AdminHomepagePage() {
                 </div>
               </div>
               <p className="text-xs text-black/40">
-                Mục này chỉ minh họa giao diện — API trang chủ hiện chưa hỗ trợ
+                Mục này chỉ minh họa giao diện - API trang chủ hiện chưa hỗ trợ
                 quản lý danh sách sản phẩm nổi bật theo từng nhóm, nên thay đổi
                 ở đây chưa ghi ngược lại vào nội dung thật.
               </p>
@@ -620,7 +620,7 @@ export default function AdminHomepagePage() {
                       <tr key={t.id ?? t.name + t.quote_date} className={TR_HOVER}>
                         <Td className="whitespace-nowrap">{t.name}</Td>
                         <Td className="whitespace-nowrap text-black/60">
-                          {t.product_name || "—"}
+                          {t.product_name || "-"}
                         </Td>
                         <Td className="whitespace-nowrap">
                           {t.quote_date
@@ -714,7 +714,7 @@ export default function AdminHomepagePage() {
                   }
                   onChange={(e) => setSlideForm((f) => ({ ...f, href: e.target.value }))}
                 >
-                  <option value="">— Chọn collection —</option>
+                  <option value="">- Chọn collection -</option>
                   {collectionOptions.map((c) => (
                     <option key={c.id} value={`/catalog/${c.slug.toUpperCase()}`}>
                       {c.name}

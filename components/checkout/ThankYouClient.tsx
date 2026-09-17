@@ -131,7 +131,7 @@ export default function ThankYouClient() {
             Total (display currency at checkout): {money(Number(order.total))}
           </p>
           <p className="mt-3 font-ui text-xs text-black/50">
-            Save your order code — you can check its status any time at{" "}
+            Save your order code - you can check its status any time at{" "}
             <Link href="/pages/track-order" className="text-[#2b261f] underline hover:text-gold">
               Track Your Order
             </Link>
@@ -149,10 +149,10 @@ export default function ThankYouClient() {
                     <div>
                       <p className="font-ui text-sm text-[#28241f]">
                         {it.name}
-                        {it.variant_label ? ` — ${it.variant_label}` : ""}
+                        {it.variant_label ? ` - ${it.variant_label}` : ""}
                       </p>
                       <p className="font-ui text-sm text-black/60">
-                        × {it.qty} — {money(Number(it.price))}
+                        × {it.qty} - {money(Number(it.price))}
                       </p>
                     </div>
                     {it.product_slug && (

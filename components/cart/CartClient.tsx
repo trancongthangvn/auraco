@@ -195,7 +195,7 @@ export default function CartClient({
                         )}
                         {isOutOfStock(item.slug, item.variantId) && (
                           <p className="mt-1 text-xs font-medium text-red-700">
-                            Out of stock — please remove to check out
+                            Out of stock - please remove to check out
                           </p>
                         )}
                         {/* Price sits directly under the name, above the

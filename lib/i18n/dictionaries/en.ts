@@ -149,7 +149,7 @@ const dictionary: Dictionary = {
       // Add that sentence once real Google sign-in is configured.
       accountNotePrefix: "Manage your profile and orders in",
       myAccount: "My account",
-      demoNotice: "UI demo — no real account system connected yet.",
+      demoNotice: "UI demo - no real account system connected yet.",
     },
     register: {
       title: "Create account",
@@ -166,7 +166,7 @@ const dictionary: Dictionary = {
       demoMessage: "This is a UI demo. No account system is connected yet.",
       haveAccount: "Already have an account?",
       signIn: "Sign in",
-      demoNotice: "UI demo — no real account system connected yet.",
+      demoNotice: "UI demo - no real account system connected yet.",
     },
   },
   account: {
@@ -193,7 +193,7 @@ const dictionary: Dictionary = {
     passwordChanged: "Your password has been changed.",
     updatePassword: "UPDATE PASSWORD",
     ordersEmpty: "You haven't placed any orders with this account yet.",
-    ordersGuestNote: "Orders placed as a guest, before signing in, aren't listed here — look them up with Track Your Order.",
+    ordersGuestNote: "Orders placed as a guest, before signing in, aren't listed here - look them up with Track Your Order.",
     trackOrder: "Track Your Order",
     placedOn: "Placed",
     status: "Status",

@@ -625,7 +625,7 @@ export default function AdminReviewsPage() {
       {editing && (
         <ModalBackdrop onClose={() => !editSaving && setEditing(null)}>
           <ModalPanel maxWidth="max-w-lg">
-            <ModalHeader title={`Sửa đánh giá — ${editing.product_name}`} onClose={() => setEditing(null)} />
+            <ModalHeader title={`Sửa đánh giá - ${editing.product_name}`} onClose={() => setEditing(null)} />
             <div className="space-y-4 px-6 py-5">
               <div>
                 <Label>Tên khách hàng</Label>

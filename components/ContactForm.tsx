@@ -99,7 +99,7 @@ export default function ContactForm() {
     if (sending || sent) return;
     setSending(true);
     setError(null);
-    const body = [`Address: ${address.trim() || "—"}`, message.trim()]
+    const body = [`Address: ${address.trim() || "-"}`, message.trim()]
       .filter(Boolean)
       .join("\n\n");
     apiFetch("/api/inquiries", {

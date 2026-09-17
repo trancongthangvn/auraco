@@ -13,11 +13,11 @@ export default function ReturnPolicyPage() {
         },
         {
           heading: "2. Defective or Incorrect Items",
-          body: "If we made a mistake — the wrong item was sent, or your piece arrived damaged — we'll cover the cost of return shipping and make it right.",
+          body: "If we made a mistake - the wrong item was sent, or your piece arrived damaged - we'll cover the cost of return shipping and make it right.",
         },
         {
           heading: "3. Return Shipping",
-          body: "For a change-of-mind return, you're responsible for the cost of return shipping. We recommend using a trackable shipping method — we can't guarantee we'll receive a package sent without tracking.",
+          body: "For a change-of-mind return, you're responsible for the cost of return shipping. We recommend using a trackable shipping method - we can't guarantee we'll receive a package sent without tracking.",
         },
         {
           heading: "4. Refunds",
@@ -33,7 +33,7 @@ export default function ReturnPolicyPage() {
         },
         {
           heading: "How to Start a Return",
-          body: "Contact us through our Contact page with your order number. We'll provide return instructions and the correct return address — please don't ship items back to the address on the original package.",
+          body: "Contact us through our Contact page with your order number. We'll provide return instructions and the correct return address - please don't ship items back to the address on the original package.",
         },
       ]}
     />

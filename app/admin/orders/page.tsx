@@ -183,7 +183,7 @@ export default function AdminOrdersPage() {
       {!loading && !error && (
         <p className="mb-3 text-xs text-black/50">
           {hasFilters ? `Tìm thấy ${total} đơn hàng` : `Tổng ${total} đơn hàng`}
-          {total > orders.length ? ` — đang hiện ${orders.length} đơn mới nhất` : ""}
+          {total > orders.length ? ` - đang hiện ${orders.length} đơn mới nhất` : ""}
         </p>
       )}
 

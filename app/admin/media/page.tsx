@@ -85,7 +85,7 @@ export default function AdminMediaPage() {
         setTimeout(() => setCopiedFilename(null), 1500);
       })
       .catch(() => {
-        setError("Không thể sao chép — trình duyệt chặn clipboard.");
+        setError("Không thể sao chép - trình duyệt chặn clipboard.");
       });
   };
 

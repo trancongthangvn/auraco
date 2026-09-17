@@ -86,7 +86,7 @@ function renderOrderConfirmationHtml(order, promo) {
     : '';
 
   return `
-  <div style="background:#f4f4f4;padding:32px 16px;font-family:Georgia,'Times New Roman',Times,serif;">
+  <div style="background:#f4f4f4;padding:32px 16px;font-family:'Times New Roman',Times,Georgia,serif;">
     <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;padding:32px;color:#111;">
       <p style="margin:0 0 24px;text-align:center;font-size:18px;font-weight:normal;letter-spacing:2px;text-transform:uppercase;">AETHER</p>
 
@@ -150,7 +150,7 @@ async function sendOrderConfirmationEmail(order, promo) {
 // no null-promo case to render here.
 function renderWelcomeHtml(promo) {
   return `
-  <div style="background:#f4f4f4;padding:32px 16px;font-family:Georgia,'Times New Roman',Times,serif;">
+  <div style="background:#f4f4f4;padding:32px 16px;font-family:'Times New Roman',Times,Georgia,serif;">
     <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;padding:32px;color:#111;text-align:center;">
       <p style="margin:0 0 24px;font-size:18px;font-weight:normal;letter-spacing:2px;text-transform:uppercase;">AETHER</p>
 
@@ -200,7 +200,7 @@ const RESET_TOKEN_VALID_MINUTES = 60;
 // the usable value exists outside that one request).
 function renderPasswordResetHtml(resetUrl) {
   return `
-  <div style="background:#f4f4f4;padding:32px 16px;font-family:Georgia,'Times New Roman',Times,serif;">
+  <div style="background:#f4f4f4;padding:32px 16px;font-family:'Times New Roman',Times,Georgia,serif;">
     <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;padding:32px;color:#111;">
       <p style="margin:0 0 24px;text-align:center;font-size:18px;font-weight:normal;letter-spacing:2px;text-transform:uppercase;">AETHER</p>
 

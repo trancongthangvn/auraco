@@ -164,6 +164,18 @@ const countries = [
 // a valid order payment_method, so it's filtered out below.
 const ORDER_PAYMENT_KEYS = ["card", "paypal", "cashapp", "zelle", "airwallex"];
 
+// Mirrors server/lib/upload.js's whitelist exactly, so a file the client
+// happily previews is never one the server then rejects. HEIC/HEIF are
+// handled separately above (converted to JPEG before this check runs), and
+// SVG is deliberately never allowed — it can carry a script.
+const ACCEPTED_PROOF_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+]);
+
 /** How many order-summary rows stay visible before the list scrolls.
  *  Counts cart lines, not units — a line of "× 5" is still one row. Smaller
  *  on a phone: this section sits inline in the page flow there (see
@@ -882,7 +894,15 @@ export default function CheckoutClient() {
         );
         return;
       }
-    } else if (!usable.type.startsWith("image/")) {
+    } else if (!ACCEPTED_PROOF_TYPES.has(usable.type)) {
+      // Was `!usable.type.startsWith("image/")`, which let an SVG through
+      // (its type is "image/svg+xml") straight into the preview below —
+      // the server's own whitelist (server/lib/upload.js) has never
+      // accepted SVG (it can carry a script), so submitting always failed
+      // there. The mismatch left a preview on screen with a rejection
+      // banner and a "Remove" link the shopper didn't know to look for
+      // (bug report). Checking the same whitelist here means an
+      // unsupported file is rejected before any preview appears at all.
       setProofError("Please choose an image file (JPG, PNG, WEBP, GIF or AVIF).");
       return;
     }

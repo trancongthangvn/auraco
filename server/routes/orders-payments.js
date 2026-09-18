@@ -4,8 +4,7 @@ const express = require('express');
 const { pool, query } = require('../db');
 const { authMiddleware, requireAdmin, requireStaffOrAdmin } = require('../middleware/auth');
 const { upload, verifyMagicBytes } = require('../lib/upload');
-const { sendOrderConfirmationEmail } = require('../lib/email');
-const { createThankYouDiscount } = require('../lib/discounts');
+const { sendOrderConfirmationOnce } = require('../lib/orderEmail');
 const { discountedUnitPrice } = require('../lib/pricing');
 const airwallex = require('../lib/airwallex');
 const paypal = require('../lib/paypal');
@@ -64,6 +63,18 @@ const ORDER_ITEMS_SQL = `
     LEFT JOIN products p ON p.id = oi.product_id
    WHERE oi.order_id = $1
    ORDER BY oi.id`;
+
+// Methods whose payment is confirmed later by something other than the
+// order-creation request itself. cashapp/zelle are confirmed by an admin
+// reviewing the transfer screenshot; the two gateways confirm themselves,
+// but only when this server actually has their credentials — without them
+// the checkout falls back to its manual path and no event ever arrives.
+function hasPaymentConfirmationStep(method) {
+  if (method === 'cashapp' || method === 'zelle') return true;
+  if (method === 'paypal') return paypal.isConfigured();
+  if (method === 'airwallex') return airwallex.isConfigured();
+  return false;
+}
 
 function isNonEmptyString(v) {
   return typeof v === 'string' && v.trim().length > 0;
@@ -401,14 +412,23 @@ router.post('/orders', async (req, res) => {
     const itemsRes = await query(ORDER_ITEMS_SQL, [order.id]);
     const fullOrder = { ...order, items: itemsRes.rows };
 
-    // Fire-and-forget, same as the email itself: the order is already
-    // committed, so neither generating the thank-you code nor sending the
-    // email may delay or fail this response. createThankYouDiscount() never
-    // throws (see lib/discounts.js) — a failure there just means the
-    // confirmation email goes out without a promo block.
-    createThankYouDiscount().then((promo) =>
-      sendOrderConfirmationEmail(fullOrder, promo).catch(() => {})
-    );
+    // The confirmation ("thank you") email is NOT sent here: at this point
+    // the order exists but nothing has been paid, and a shopper who
+    // cancelled on PayPal's approval page was still being thanked for a
+    // payment they never made (bug report). It now goes out when a payment
+    // is confirmed — the PayPal capture, the Airwallex webhook, or an admin
+    // marking a transfer received — via lib/orderEmail.js.
+    //
+    // The exception is a method with no confirmation step to wait for: the
+    // manual 'card' flow (and 'paypal' on a server without PayPal
+    // credentials) takes the shopper straight to the thank-you page and
+    // never produces a payment event, so for those the email would never be
+    // sent at all. Those keep the old send-on-creation behaviour, which is
+    // fire-and-forget: the order is committed already and an email must not
+    // delay or fail this response.
+    if (!hasPaymentConfirmationStep(order.payment_method)) {
+      sendOrderConfirmationOnce(order.id).catch(() => {});
+    }
 
     return res.status(201).json({ data: fullOrder });
   } catch (err) {
@@ -1137,6 +1157,11 @@ router.post('/orders/:id/paypal-capture', async (req, res) => {
       console.error('[paypal capture] mismatch', { orderId: order.id, expected, currency, summary });
       return res.status(502).json({ error: 'PayPal payment could not be confirmed' });
     }
+    // Payment confirmed — this is where the customer is thanked, not at
+    // order creation. Fire-and-forget so a slow mail API can't hold up the
+    // response that takes the shopper to the thank-you page.
+    sendOrderConfirmationOnce(order.id).catch(() => {});
+
     return res.json({ data: { status: 'Đã thanh toán', capture_id: summary.captureId } });
   } catch (err) {
     console.error(err);
@@ -1168,6 +1193,13 @@ router.put('/admin/payment-transactions/:id', authMiddleware, requireAdmin, asyn
       [resolvedStatus, req.user.id, Number(id)]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Payment transaction not found' });
+
+    // An admin confirming a Cash App / Zelle transfer is the moment that
+    // payment becomes real, so that is when the customer's confirmation
+    // email goes out (sent once, even if the row is saved again).
+    if (resolvedStatus === 'Đã thanh toán') {
+      sendOrderConfirmationOnce(result.rows[0].order_id).catch(() => {});
+    }
 
     // If marked paid, reflect that on the parent order too (best-effort;
     // orders.status has no dedicated "paid" state in schema.sql, so this

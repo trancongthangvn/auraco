@@ -15,6 +15,7 @@
 
 const { query } = require('../db');
 const { verifyWebhookSignature } = require('../lib/airwallex');
+const { sendOrderConfirmationOnce } = require('../lib/orderEmail');
 
 const TERMINAL_STATUS_BY_EVENT = {
   'payment_intent.succeeded': 'Đã thanh toán',
@@ -69,6 +70,12 @@ async function handleAirwallexWebhook(req, res) {
     );
     if (result.rows.length === 0) {
       console.warn('[airwallex webhook] no payment_transactions row for intent', intentId);
+    } else if (newStatus === 'Đã thanh toán') {
+      // Confirmed payment — send the customer's confirmation email. Airwallex
+      // retries this webhook until it gets a 2xx, so it can arrive several
+      // times for one payment; sendOrderConfirmationOnce is what keeps that
+      // to a single email. Not awaited: the 200 below must not wait on mail.
+      sendOrderConfirmationOnce(result.rows[0].order_id).catch(() => {});
     }
     return res.status(200).send('OK');
   } catch (err) {

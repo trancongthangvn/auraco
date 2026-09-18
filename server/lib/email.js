@@ -124,11 +124,14 @@ function renderOrderConfirmationHtml(order, promo) {
   </div>`;
 }
 
+// Returns true only if the email really went out: lib/orderEmail.js uses
+// that to decide whether its "already sent" mark stands or is rolled back,
+// so a missing API key doesn't permanently swallow a customer's email.
 async function sendOrderConfirmationEmail(order, promo) {
   const resend = getClient();
   if (!resend) {
     console.warn('[email] RESEND_API_KEY not set - skipping order confirmation email for', order.order_code);
-    return;
+    return false;
   }
   const from = process.env.EMAIL_FROM || 'AETHER <orders@aetherpieces.com>';
   try {
@@ -138,9 +141,11 @@ async function sendOrderConfirmationEmail(order, promo) {
       subject: `Order Confirmation ${order.order_code} - AETHER`,
       html: renderOrderConfirmationHtml(order, promo),
     });
+    return true;
   } catch (err) {
     // Never let an email failure surface as an order-creation failure.
     console.error('[email] Failed to send order confirmation for', order.order_code, err);
+    return false;
   }
 }
 

@@ -276,6 +276,11 @@ export default function CheckoutClient() {
   const [paymentMethodsError, setPaymentMethodsError] = useState("");
 
   const [showExpressDemo, setShowExpressDemo] = useState(false);
+  // The express PayPal button sits at the top of the page, far above the
+  // PAY NOW button whose error line it would otherwise share — a shopper who
+  // clicked it with an empty form would see nothing happen. This mirrors the
+  // same message under the express button itself.
+  const [errorFromExpress, setErrorFromExpress] = useState(false);
 
   // Contact
   const [email, setEmail] = useState("");
@@ -600,8 +605,18 @@ export default function CheckoutClient() {
     }
   }
 
-  async function handlePayNow() {
+  /**
+   * `methodOverride` is what the express PayPal button passes: it selects
+   * PayPal and pays in one click, and React state set in that same click
+   * isn't readable here yet, so the method travels as an argument instead of
+   * through `payment`.
+   */
+  async function handlePayNow(methodOverride?: string) {
     setSubmitError("");
+    const method = methodOverride ?? payment;
+    // A PAY NOW click owns the error line at the bottom of the page; clear
+    // the express mirror so one error is never shown twice.
+    if (!methodOverride) setErrorFromExpress(false);
 
     if (!email.trim()) return setSubmitError("Email is required.");
     if (!firstName.trim() || !lastName.trim())
@@ -610,7 +625,7 @@ export default function CheckoutClient() {
     if (!shippingReady)
       return setSubmitError("City and postal code are required.");
     if (!phone.trim()) return setSubmitError("Phone is required.");
-    if (!payment) return setSubmitError("Select a payment method.");
+    if (!method) return setSubmitError("Select a payment method.");
     if (items.length === 0) return setSubmitError("Your bag is empty.");
     if (checkoutBlocked)
       return setSubmitError(
@@ -661,7 +676,7 @@ export default function CheckoutClient() {
             : address.trim(),
           city: city.trim(),
           country,
-          payment_method: payment,
+          payment_method: method,
           // Both were collected by the form but never sent, so they were
           // lost; the order now stores them (migration 024).
           company: company.trim() || undefined,
@@ -678,12 +693,12 @@ export default function CheckoutClient() {
       // redirect like Airwallex; without them it stays on the old
       // manual-confirmation path with the rest, so a half-configured server
       // never strands a shopper on an approval page it can't capture.
-      const paypalLive = payment === "paypal" && paypalConfigured;
+      const paypalLive = method === "paypal" && paypalConfigured;
 
       // Nothing more is asked of the customer for these methods, so they go
       // straight to the thank-you page. Cash App / Zelle stay on this page
       // for the QR + proof screen first; Airwallex/PayPal redirect out below.
-      if (!paypalLive && payment !== "airwallex" && payment !== "cashapp" && payment !== "zelle") {
+      if (!paypalLive && method !== "airwallex" && method !== "cashapp" && method !== "zelle") {
         goToThankYou(data, false);
         return;
       }
@@ -712,7 +727,7 @@ export default function CheckoutClient() {
       // see orders-payments.js) — the order already exists at this point,
       // so a failure past here is surfaced as an inline error rather than
       // losing the order or double-submitting it.
-      if (payment === "airwallex") {
+      if (method === "airwallex") {
         const intent = await apiFetch<{
           intent_id: string;
           client_secret: string;
@@ -953,16 +968,47 @@ export default function CheckoutClient() {
             <h2 className="mb-3 text-center font-ui text-xs uppercase tracking-wide text-black/50">
               Express checkout
             </h2>
+            {/* Was a demo button that only printed "no payment was
+                processed". It now runs the very same flow as picking PayPal
+                below — create the order, then hand off to PayPal's approval
+                page — so the one click pays for real. It still falls back to
+                the notice when the server has no PayPal credentials, rather
+                than sending anyone to a page that could never be captured. */}
             <button
               type="button"
-              onClick={() => setShowExpressDemo(true)}
-              className="flex h-11 w-full items-center justify-center rounded-[4px] bg-[#ffc439] font-ui text-sm font-bold italic text-[#003087] transition-opacity hover:opacity-90"
+              disabled={submitting}
+              onClick={() => {
+                if (!paypalConfigured) {
+                  setShowExpressDemo(true);
+                  return;
+                }
+                setShowExpressDemo(false);
+                setErrorFromExpress(true);
+                setPayment("paypal");
+                void handlePayNow("paypal");
+              }}
+              className="flex h-11 w-full items-center justify-center rounded-[4px] bg-[#ffc439] font-ui text-sm font-bold italic text-[#003087] transition-opacity hover:opacity-90 disabled:opacity-60"
             >
-              Pay<span className="text-[#009cde]">Pal</span>
+              {submitting && errorFromExpress ? (
+                "Redirecting to PayPal..."
+              ) : (
+                <>
+                  Pay<span className="text-[#009cde]">Pal</span>
+                </>
+              )}
             </button>
             {showExpressDemo && (
               <p className="mt-3 border border-black/10 bg-black/5 px-4 py-3 font-ui text-xs text-black/70">
-                This is a UI demo. No payment was processed.
+                PayPal express checkout is not available right now. Please use
+                a payment method below.
+              </p>
+            )}
+            {errorFromExpress && submitError && (
+              <p
+                role="alert"
+                className="mt-3 border border-red-700/30 bg-red-50 px-4 py-3 font-ui text-xs text-red-700"
+              >
+                {submitError}
               </p>
             )}
           </section>
@@ -1272,7 +1318,9 @@ export default function CheckoutClient() {
               <button
                 type="button"
                 disabled={submitting || itemsLoading || checkoutBlocked}
-                onClick={handlePayNow}
+                // Wrapped, not passed directly: the click event must not
+                // arrive as handlePayNow's method argument.
+                onClick={() => void handlePayNow()}
                 className="w-full rounded-[6px] bg-[#2b261f] py-[18px] font-ui text-[13px] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-black disabled:opacity-50"
               >
                 {submitting ? "PLACING ORDER..." : "PAY NOW"}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { useCart } from "@/components/cart/CartProvider";
 import { formatPrice } from "@/lib/currency";
 import { readLastOrder, saveLastOrder, type CreatedOrder, type LastOrder } from "./lastOrder";
 
@@ -21,12 +22,18 @@ import { readLastOrder, saveLastOrder, type CreatedOrder, type LastOrder } from 
  */
 export default function ThankYouClient() {
   const { currency, rates } = useCurrency();
+  const { clear } = useCart();
   const money = (v: number) => formatPrice(v, currency, rates[currency]);
 
   const [data, setData] = useState<LastOrder | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // Reaching this page means the order went through, so the bag is emptied
+    // here rather than at checkout: a gateway redirect (Airwallex success, or
+    // PayPal) may be cancelled halfway, and clearing before payment left
+    // shoppers with an empty bag and an unpaid order.
+    clear();
     // Read after mount: sessionStorage doesn't exist during server render.
     // Query string via window.location, never useSearchParams — this
     // codebase's standing rule (DEPLOYMENT.md), since that hook forces a
@@ -51,6 +58,9 @@ export default function ThankYouClient() {
       setData(readLastOrder());
       setLoaded(true);
     });
+    // Runs once on mount; `clear` comes from the cart context and is stable
+    // enough that re-running this on its identity would re-fetch the order.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!loaded) {

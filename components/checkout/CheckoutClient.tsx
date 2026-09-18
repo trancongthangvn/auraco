@@ -281,6 +281,10 @@ export default function CheckoutClient() {
   // clicked it with an empty form would see nothing happen. This mirrors the
   // same message under the express button itself.
   const [errorFromExpress, setErrorFromExpress] = useState(false);
+  // Set when a PayPal approval was cancelled: the order exists and is unpaid,
+  // so the retry button below pays for it rather than creating another one.
+  const [retryOrderId, setRetryOrderId] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   // Contact
   const [email, setEmail] = useState("");
@@ -483,11 +487,15 @@ export default function CheckoutClient() {
     if (!ourOrderId) return;
 
     if (params.get("paypal_status") === "cancelled" || !paypalOrderId) {
-      queueMicrotask(() =>
+      queueMicrotask(() => {
         setSubmitError(
           "Your PayPal payment was not completed. You can try again, or choose another payment method."
-        )
-      );
+        );
+        // The order itself already exists and its stock is already reserved,
+        // so retrying re-opens PayPal for THAT order instead of placing a
+        // second one for the same bag.
+        setRetryOrderId(ourOrderId);
+      });
       return;
     }
 
@@ -498,7 +506,10 @@ export default function CheckoutClient() {
       body: JSON.stringify({ paypalOrderId }),
     })
       .then(() => {
-        if (!cancelled) router.replace(`/thankyou?order=${encodeURIComponent(ourOrderId)}`);
+        if (cancelled) return;
+        // Paid — now the bag can go.
+        clear();
+        router.replace(`/thankyou?order=${encodeURIComponent(ourOrderId)}`);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -512,6 +523,10 @@ export default function CheckoutClient() {
     return () => {
       cancelled = true;
     };
+    // `clear` is rebuilt on every CartProvider render, so listing it here
+    // would re-run the capture on each render — the PayPal return is a
+    // once-per-mount job and reads it as it is at that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   useEffect(() => {
@@ -605,6 +620,32 @@ export default function CheckoutClient() {
     }
   }
 
+  /** Re-opens PayPal's approval page for an order that already exists. */
+  async function retryPaypal(orderId: string) {
+    setRetrying(true);
+    setSubmitError("");
+    try {
+      const pp = await apiFetch<{ approve_url: string }>(
+        `/api/orders/${encodeURIComponent(orderId)}/paypal-order`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            returnUrl: `${window.location.origin}/checkout?paypal_order=${orderId}`,
+            cancelUrl: `${window.location.origin}/checkout?paypal_order=${orderId}&paypal_status=cancelled`,
+          }),
+        }
+      );
+      window.location.href = pp.approve_url;
+    } catch (err) {
+      setRetrying(false);
+      setSubmitError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not reopen PayPal. Please choose another payment method."
+      );
+    }
+  }
+
   /**
    * `methodOverride` is what the express PayPal button passes: it selects
    * PayPal and pays in one click, and React state set in that same click
@@ -663,6 +704,12 @@ export default function CheckoutClient() {
       // Links the order to the signed-in account so it shows in its order
       // history. A separate header from Authorization, which apiFetch uses
       // for the admin token.
+      // PayPal, once the server has credentials for it, is a real gateway
+      // redirect like Airwallex; without them it stays on the old
+      // manual-confirmation path with the rest, so a half-configured server
+      // never strands a shopper on an approval page it can't capture.
+      const paypalLive = method === "paypal" && paypalConfigured;
+
       const customerToken = getCustomerToken();
       const data = await apiFetch<CreatedOrder>("/api/orders", {
         method: "POST",
@@ -687,13 +734,14 @@ export default function CheckoutClient() {
         }),
       });
       createdOrder = data;
-      clear();
 
-      // PayPal, once the server has credentials for it, is a real gateway
-      // redirect like Airwallex; without them it stays on the old
-      // manual-confirmation path with the rest, so a half-configured server
-      // never strands a shopper on an approval page it can't capture.
-      const paypalLive = method === "paypal" && paypalConfigured;
+      // The bag is emptied only once there is nothing left to pay: for a
+      // gateway redirect the shopper may still cancel on PayPal's/Airwallex's
+      // own page and come back, and clearing here left them staring at "Your
+      // bag is empty" with no way to retry (bug report). Success clears it on
+      // the capture below, or on the thank-you page for a redirect that lands
+      // there directly.
+      if (!paypalLive && payment !== "airwallex") clear();
 
       // Nothing more is asked of the customer for these methods, so they go
       // straight to the thank-you page. Cash App / Zelle stay on this page
@@ -1333,6 +1381,26 @@ export default function CheckoutClient() {
                 >
                   {submitError}
                 </p>
+              )}
+
+              {/* Came back from PayPal without paying: the order is already
+                  placed, so this pays for that one rather than sending the
+                  shopper through checkout a second time. */}
+              {retryOrderId && (
+                <button
+                  type="button"
+                  disabled={retrying}
+                  onClick={() => void retryPaypal(retryOrderId)}
+                  className="mt-3 flex h-11 w-full items-center justify-center rounded-[4px] bg-[#ffc439] font-ui text-sm font-bold italic text-[#003087] transition-opacity hover:opacity-90 disabled:opacity-60"
+                >
+                  {retrying ? (
+                    "Reopening PayPal..."
+                  ) : (
+                    <>
+                      Try Pay<span className="text-[#009cde]">Pal</span> again
+                    </>
+                  )}
+                </button>
               )}
             </>
           )}

@@ -19,7 +19,7 @@ const router = express.Router();
 const ORDER_STATUSES = ['Đang xử lý', 'Đã giao', 'Đã hủy'];
 const PAYMENT_METHODS = ['card', 'paypal', 'cashapp', 'zelle', 'airwallex', 'payos'];
 const TRANSACTION_STATUSES = ['Chờ xử lý', 'Đã thanh toán', 'Thất bại', 'Đã hủy'];
-const PAYMENT_METHOD_KEYS = ['card', 'paypal', 'applePay', 'cashapp', 'zelle', 'airwallex'];
+const PAYMENT_METHOD_KEYS = ['card', 'paypal', 'applePay', 'cashapp', 'zelle', 'airwallex', 'payos'];
 
 // How many units of a Frequently Bought Together companion the bundle price
 // covers per order. Mirrors CartProvider's BUNDLE_MAX_QTY on the storefront.

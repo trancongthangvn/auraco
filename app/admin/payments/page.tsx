@@ -28,6 +28,7 @@ const PAYMENT_METHODS: { value: string; label: string }[] = [
   { value: "cashapp", label: "Cash App" },
   { value: "zelle", label: "Zelle" },
   { value: "airwallex", label: "Airwallex" },
+  { value: "payos", label: "PayOS" },
 ];
 
 // Same 4-value enum the server enforces on payment_transactions.status

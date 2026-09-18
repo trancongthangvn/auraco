@@ -77,6 +77,7 @@ const METHOD_LABEL: Record<string, string> = {
   card: "Thẻ tín dụng",
   paypal: "PayPal",
   airwallex: "Airwallex",
+  payos: "PayOS",
 };
 
 export default function OrderDetailClient({ id }: { id: string }) {

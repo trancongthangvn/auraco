@@ -25,6 +25,7 @@ const PAYMENT_METHODS: { value: string; label: string }[] = [
   { value: "cashapp", label: "Cash App" },
   { value: "zelle", label: "Zelle" },
   { value: "airwallex", label: "Airwallex" },
+  { value: "payos", label: "PayOS" },
 ];
 
 type AdminOrder = {

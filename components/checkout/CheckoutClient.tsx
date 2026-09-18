@@ -335,11 +335,29 @@ export default function CheckoutClient() {
   const [order, setOrder] = useState<CreatedOrder | null>(null);
   // Recovers a Cash App/Zelle order that was created but never got its proof
   // screenshot uploaded — see the comment on savePendingProofOrder for why.
-  // Runs once on mount, before anything else could show the empty-bag form.
+  //
+  // Only restores it while the bag is still empty, i.e. the original
+  // scenario: the order was just created (which empties the bag) and the
+  // page reloaded before proof was uploaded. A non-empty bag means the
+  // shopper deliberately went back and added something else — the "Choose a
+  // different payment method" escape covers that once they're already on
+  // this stale screen, but landing here in the first place (bug report:
+  // Add to Bag → straight to the old order, no way to pick a payment method
+  // for the new item) is exactly what this guard prevents.
+  //
+  // Waits for `hydrated`: the bag reads from localStorage after mount, so
+  // `items` is briefly `[]` on first render even when it truly has items —
+  // deciding before that would wrongly treat a real cart as empty.
   useEffect(() => {
+    if (!hydrated) return;
     const pending = readPendingProofOrder();
-    if (pending) queueMicrotask(() => setOrder(pending));
-  }, []);
+    if (!pending) return;
+    if (items.length > 0) {
+      clearPendingProofOrder();
+      return;
+    }
+    queueMicrotask(() => setOrder(pending));
+  }, [hydrated, items.length]);
 
   const [proofFile, setProofFile] = useState<File | null>(null);
   // Object URL for the chosen screenshot, so the customer can see what they

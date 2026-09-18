@@ -875,6 +875,24 @@ export default function CheckoutClient() {
     });
   }
 
+  /**
+   * Lets a shopper leave an unpaid Cash App/Zelle order and see the full
+   * checkout form again — the order itself is untouched (still open,
+   * findable by an admin, capturable if they come back and finish it), only
+   * the sessionStorage pointer that keeps re-surfacing this screen is
+   * dropped. Without this, restoring that pointer on every visit (added to
+   * recover from an accidental reload — see savePendingProofOrder) instead
+   * trapped a shopper who deliberately went back for a different payment
+   * method: "Back to cart" → add to bag → Checkout kept landing back on the
+   * same stale proof screen with no way out (bug report).
+   */
+  function chooseDifferentPaymentMethod() {
+    clearPendingProofOrder();
+    setOrder(null);
+    setProofFile(null);
+    setProofError("");
+  }
+
   async function handleUploadProof() {
     if (!order || !proofFile) return;
     setProofError("");
@@ -1590,6 +1608,14 @@ export default function CheckoutClient() {
                     className="mt-6 w-full rounded-full border border-[#28241f] py-4 font-ui text-sm uppercase tracking-[0.08em] text-[#28241f] transition-colors hover:bg-[#28241f] hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#28241f]"
                   >
                     {proofUploading ? "SUBMITTING..." : "SUBMIT PAYMENT PROOF"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={chooseDifferentPaymentMethod}
+                    className="mt-3 w-full text-center font-ui text-sm text-[#6b655c] underline hover:text-[#28241f]"
+                  >
+                    Choose a different payment method
                   </button>
 
                   {proofError && (

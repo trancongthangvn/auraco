@@ -309,7 +309,7 @@ export default function CheckoutClient() {
   const [marketingOptIn, setMarketingOptIn] = useState(true);
 
   // Delivery
-  const [country, setCountry] = useState("Vietnam");
+  const [country, setCountry] = useState("United States");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [company, setCompany] = useState("");

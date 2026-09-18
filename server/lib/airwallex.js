@@ -17,13 +17,31 @@
 // Until AIRWALLEX_CLIENT_ID/AIRWALLEX_API_KEY are set, isConfigured() is
 // false and the routes that use this module return a clear 503 instead of
 // attempting a request that would only fail confusingly.
+//
+// Airwallex API keys support (and the dashboard nudges you toward) IP
+// whitelisting — once turned on for a key, every request from an
+// unlisted IP is rejected with a bare 403 from Airwallex's own edge,
+// before the key/secret are even checked (airwallex.com/docs/developer-
+// tools/api/ip-whitelisting). That 403 looks identical to a bad
+// credential and gave no other clue — found by reproducing it with curl
+// from this exact server and cross-checking Airwallex's docs. If
+// isConfigured() is true and every request still 403s here, whitelist
+// this server's outbound IP for the key in the Airwallex dashboard
+// (Developer > API keys) before assuming the credentials are wrong.
 
 const crypto = require('crypto');
 
 function apiBase() {
+  // 'api-demo.airwallex.com' (this project's original sandbox host) now
+  // 404s/403s on Airwallex's own edge — their current docs
+  // (airwallex.com/docs/api) list the sandbox base as api.sandbox.
+  // airwallex.com instead. Found while diagnosing a "test payment gateway"
+  // request: every call was rejected before it reached Airwallex's app
+  // layer at all (see the IP-whitelist note on isConfigured() below, the
+  // other half of that diagnosis).
   return process.env.AIRWALLEX_ENV === 'prod'
     ? 'https://api.airwallex.com'
-    : 'https://api-demo.airwallex.com';
+    : 'https://api.sandbox.airwallex.com';
 }
 
 function isConfigured() {
@@ -51,7 +69,12 @@ async function getAccessToken() {
     },
   });
   if (!res.ok) {
-    throw new Error(`Airwallex auth failed: ${res.status} ${await res.text()}`);
+    const body = await res.text();
+    const hint =
+      res.status === 403
+        ? ' (a bare 403 with no Airwallex error body usually means this server\'s IP isn\'t on the key\'s IP whitelist yet — see the note above isConfigured())'
+        : '';
+    throw new Error(`Airwallex auth failed: ${res.status} ${body}${hint}`);
   }
   const data = await res.json();
   cachedToken = { token: data.token, expiresAt: new Date(data.expires_at).getTime() };

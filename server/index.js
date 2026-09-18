@@ -220,6 +220,7 @@ app.get('/api/health', (req, res) => {
 // ----------------------------------------------------------------------------
 app.use('/api/account', require('./routes/account'));
 app.use('/api', require('./routes/orders-payments'));
+app.use('/api', require('./routes/webhooks-payos'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/collections', require('./routes/collections'));

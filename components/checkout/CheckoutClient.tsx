@@ -72,6 +72,14 @@ function PaymentMethodBadge({ methodKey }: { methodKey: string }) {
           </span>
         </span>
       );
+    case "payos":
+      return (
+        <span className={`${base} w-11 !bg-[#00B14F]`}>
+          <span className="text-[8px] font-bold uppercase tracking-wide text-white">
+            VietQR
+          </span>
+        </span>
+      );
     default:
       return (
         <span className={base}>
@@ -162,7 +170,7 @@ const countries = [
 // Payment methods accepted by the orders API (server/routes/orders-payments.js
 // PAYMENT_METHODS). The settings table may also carry 'applePay', which isn't
 // a valid order payment_method, so it's filtered out below.
-const ORDER_PAYMENT_KEYS = ["card", "paypal", "cashapp", "zelle", "airwallex"];
+const ORDER_PAYMENT_KEYS = ["card", "paypal", "cashapp", "zelle", "airwallex", "payos"];
 
 // Mirrors server/lib/upload.js's whitelist exactly, so a file the client
 // happily previews is never one the server then rejects. HEIC/HEIF are
@@ -302,6 +310,7 @@ export default function CheckoutClient() {
   // Set when a PayPal approval was cancelled: the order exists and is unpaid,
   // so the retry button below pays for it rather than creating another one.
   const [retryOrderId, setRetryOrderId] = useState<string | null>(null);
+  const [retryMethod, setRetryMethod] = useState<"paypal" | "payos">("paypal");
   const [retrying, setRetrying] = useState(false);
 
   // Contact
@@ -541,6 +550,7 @@ export default function CheckoutClient() {
         // so retrying re-opens PayPal for THAT order instead of placing a
         // second one for the same bag.
         setRetryOrderId(ourOrderId);
+        setRetryMethod("paypal");
       });
       return;
     }
@@ -572,6 +582,53 @@ export default function CheckoutClient() {
     // `clear` is rebuilt on every CartProvider render, so listing it here
     // would re-run the capture on each render — the PayPal return is a
     // once-per-mount job and reads it as it is at that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
+
+  // Returning from PayOS's hosted checkout: same reasoning as the PayPal
+  // effect above — the confirm call asks the server (which asks PayOS
+  // directly) whether this order is actually paid, rather than trusting
+  // PayOS's own return query params, which can be replayed or forged.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const ourOrderId = params.get("payos_order");
+    if (!ourOrderId) return;
+
+    if (params.get("payos_status") === "cancelled") {
+      queueMicrotask(() => {
+        setSubmitError(
+          "Your PayOS payment was not completed. You can try again, or choose another payment method."
+        );
+        setRetryOrderId(ourOrderId);
+        setRetryMethod("payos");
+      });
+      return;
+    }
+
+    let cancelled = false;
+    queueMicrotask(() => setSubmitting(true));
+    apiFetch(`/api/orders/${encodeURIComponent(ourOrderId)}/payos-confirm`, { method: "POST" })
+      .then(() => {
+        if (cancelled) return;
+        clear();
+        router.replace(`/thankyou?order=${encodeURIComponent(ourOrderId)}`);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSubmitting(false);
+        setSubmitError(
+          err instanceof ApiError
+            ? err.message
+            : "We could not confirm your PayOS payment. Please contact support with your order code."
+        );
+        setRetryOrderId(ourOrderId);
+        setRetryMethod("payos");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Same reasoning as the PayPal effect above for omitting `clear`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
@@ -692,6 +749,32 @@ export default function CheckoutClient() {
     }
   }
 
+  /** Re-opens PayOS's checkout page for an order that already exists. */
+  async function retryPayos(orderId: string) {
+    setRetrying(true);
+    setSubmitError("");
+    try {
+      const link = await apiFetch<{ checkout_url: string }>(
+        `/api/orders/${encodeURIComponent(orderId)}/payos-payment-link`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            returnUrl: `${window.location.origin}/checkout?payos_order=${orderId}`,
+            cancelUrl: `${window.location.origin}/checkout?payos_order=${orderId}&payos_status=cancelled`,
+          }),
+        }
+      );
+      window.location.href = link.checkout_url;
+    } catch (err) {
+      setRetrying(false);
+      setSubmitError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not reopen PayOS. Please choose another payment method."
+      );
+    }
+  }
+
   /**
    * `methodOverride` is what the express PayPal button passes: it selects
    * PayPal and pays in one click, and React state set in that same click
@@ -787,12 +870,19 @@ export default function CheckoutClient() {
       // bag is empty" with no way to retry (bug report). Success clears it on
       // the capture below, or on the thank-you page for a redirect that lands
       // there directly.
-      if (!paypalLive && payment !== "airwallex") clear();
+      if (!paypalLive && method !== "airwallex" && method !== "payos") clear();
 
       // Nothing more is asked of the customer for these methods, so they go
       // straight to the thank-you page. Cash App / Zelle stay on this page
-      // for the QR + proof screen first; Airwallex/PayPal redirect out below.
-      if (!paypalLive && method !== "airwallex" && method !== "cashapp" && method !== "zelle") {
+      // for the QR + proof screen first; Airwallex/PayPal/PayOS redirect out
+      // below.
+      if (
+        !paypalLive &&
+        method !== "airwallex" &&
+        method !== "payos" &&
+        method !== "cashapp" &&
+        method !== "zelle"
+      ) {
         goToThankYou(data, false);
         return;
       }
@@ -850,12 +940,30 @@ export default function CheckoutClient() {
         });
         return; // navigating away to Airwallex's hosted page
       }
+
+      // PayOS: a hosted-checkout redirect like PayPal/Airwallex, not a
+      // manual-confirmation method — the order already exists, so a
+      // failure past here surfaces inline rather than losing the order.
+      if (method === "payos") {
+        const link = await apiFetch<{ checkout_url: string }>(
+          `/api/orders/${data.id}/payos-payment-link`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              returnUrl: `${window.location.origin}/checkout?payos_order=${data.id}`,
+              cancelUrl: `${window.location.origin}/checkout?payos_order=${data.id}&payos_status=cancelled`,
+            }),
+          }
+        );
+        window.location.href = link.checkout_url;
+        return; // navigating away to PayOS's hosted checkout page
+      }
     } catch (err) {
       setSubmitError(
         err instanceof ApiError
           ? err.message
           : createdOrder
-            ? "Đơn hàng đã được tạo, nhưng không thể mở trang thanh toán Airwallex. Vui lòng liên hệ hỗ trợ với mã đơn hàng của bạn."
+            ? "Đơn hàng đã được tạo, nhưng không thể mở trang thanh toán. Vui lòng liên hệ hỗ trợ với mã đơn hàng của bạn."
             : "Failed to place order"
       );
       // Stock ran out between opening checkout and paying: re-read it so the
@@ -1475,10 +1583,10 @@ export default function CheckoutClient() {
                 </p>
               )}
 
-              {/* Came back from PayPal without paying: the order is already
-                  placed, so this pays for that one rather than sending the
-                  shopper through checkout a second time. */}
-              {retryOrderId && (
+              {/* Came back from PayPal/PayOS without paying: the order is
+                  already placed, so this pays for that one rather than
+                  sending the shopper through checkout a second time. */}
+              {retryOrderId && retryMethod === "paypal" && (
                 <button
                   type="button"
                   disabled={retrying}
@@ -1492,6 +1600,16 @@ export default function CheckoutClient() {
                       Try Pay<span className="text-[#009cde]">Pal</span> again
                     </>
                   )}
+                </button>
+              )}
+              {retryOrderId && retryMethod === "payos" && (
+                <button
+                  type="button"
+                  disabled={retrying}
+                  onClick={() => void retryPayos(retryOrderId)}
+                  className="mt-3 flex h-11 w-full items-center justify-center rounded-[4px] border border-[#2b261f] font-ui text-sm font-semibold uppercase tracking-[0.08em] text-[#2b261f] transition-colors hover:bg-[#2b261f] hover:text-white disabled:opacity-60"
+                >
+                  {retrying ? "Reopening PayOS..." : "Try PayOS again"}
                 </button>
               )}
             </>

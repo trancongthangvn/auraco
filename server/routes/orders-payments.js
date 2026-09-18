@@ -7,6 +7,7 @@ const { upload, verifyMagicBytes } = require('../lib/upload');
 const { sendOrderConfirmationOnce } = require('../lib/orderEmail');
 const { discountedUnitPrice } = require('../lib/pricing');
 const airwallex = require('../lib/airwallex');
+const payos = require('../lib/payos');
 const paypal = require('../lib/paypal');
 const { verifyCustomerToken } = require('../lib/customerAuth');
 
@@ -16,7 +17,7 @@ const router = express.Router();
 // Constants mirrored from schema.sql CHECK constraints
 // ----------------------------------------------------------------------------
 const ORDER_STATUSES = ['Đang xử lý', 'Đã giao', 'Đã hủy'];
-const PAYMENT_METHODS = ['card', 'paypal', 'cashapp', 'zelle', 'airwallex'];
+const PAYMENT_METHODS = ['card', 'paypal', 'cashapp', 'zelle', 'airwallex', 'payos'];
 const TRANSACTION_STATUSES = ['Chờ xử lý', 'Đã thanh toán', 'Thất bại', 'Đã hủy'];
 const PAYMENT_METHOD_KEYS = ['card', 'paypal', 'applePay', 'cashapp', 'zelle', 'airwallex'];
 
@@ -73,6 +74,7 @@ function hasPaymentConfirmationStep(method) {
   if (method === 'cashapp' || method === 'zelle') return true;
   if (method === 'paypal') return paypal.isConfigured();
   if (method === 'airwallex') return airwallex.isConfigured();
+  if (method === 'payos') return payos.isConfigured();
   return false;
 }
 
@@ -718,20 +720,24 @@ router.put('/admin/orders/:id/charges', authMiddleware, requireAdmin, async (req
 // ----------------------------------------------------------------------------
 // GET /payment-methods — public, only enabled methods (for checkout).
 //
-// 'airwallex' additionally requires this SERVER to have working credentials
-// (airwallex.isConfigured() — its own AIRWALLEX_CLIENT_ID/API_KEY env vars),
-// not just the enabled flag. Staging and production share one database, so
-// enabled=true for airwallex there would otherwise turn it on everywhere at
-// once; gating it on each server's own env lets it be switched on for
-// testing on the one environment that actually has credentials configured,
-// without touching the other.
+// 'airwallex'/'payos' additionally require this SERVER to have working
+// credentials (each module's own isConfigured()), not just the enabled
+// flag. Staging and production share one database, so enabled=true for one
+// of these there would otherwise turn it on everywhere at once; gating it
+// on each server's own env lets it be switched on for testing on the one
+// environment that actually has credentials configured, without touching
+// the other.
 // ----------------------------------------------------------------------------
+const GATEWAY_CONFIG_CHECK = { airwallex, payos };
 router.get('/payment-methods', async (req, res) => {
   try {
     const result = await query(
       `SELECT key, label, detail, qr_image_url FROM payment_method_settings WHERE enabled = TRUE ORDER BY key`
     );
-    const rows = result.rows.filter((row) => row.key !== 'airwallex' || airwallex.isConfigured());
+    const rows = result.rows.filter((row) => {
+      const gateway = GATEWAY_CONFIG_CHECK[row.key];
+      return !gateway || gateway.isConfigured();
+    });
     return res.json({ data: rows });
   } catch (err) {
     console.error(err);
@@ -981,6 +987,129 @@ router.post('/orders/:id/airwallex-intent', async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(502).json({ error: 'Failed to create Airwallex payment intent' });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// POST /orders/:id/payos-payment-link — creates a PayOS hosted-checkout
+// link (VietQR) for an existing order and records a pending
+// payment_transactions row for it. The frontend redirects the shopper to
+// the returned checkout_url; the actual "is this paid" answer comes from
+// POST /orders/:id/payos-confirm on return (or the webhook, see
+// routes/webhooks-payos.js) — never this response alone.
+// Body: { returnUrl, cancelUrl } — both must be on an allowlisted origin,
+// same rule as the PayPal route below.
+// ----------------------------------------------------------------------------
+router.post('/orders/:id/payos-payment-link', async (req, res) => {
+  const { id } = req.params;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'Invalid order id' });
+
+  if (!payos.isConfigured()) {
+    return res.status(503).json({
+      error: 'PayOS chưa được cấu hình trên máy chủ (thiếu PAYOS_CLIENT_ID/PAYOS_API_KEY/PAYOS_CHECKSUM_KEY).',
+    });
+  }
+
+  const returnUrl = allowedReturnUrl(req.body && req.body.returnUrl);
+  const cancelUrl = allowedReturnUrl(req.body && req.body.cancelUrl);
+  if (!returnUrl || !cancelUrl) {
+    return res.status(400).json({ error: 'returnUrl and cancelUrl must be on an allowed origin' });
+  }
+
+  try {
+    const orderRes = await query(`SELECT * FROM orders WHERE id = $1`, [Number(id)]);
+    const order = orderRes.rows[0];
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    // A payment link already exists for this order (e.g. the shopper hit
+    // cancelUrl and is retrying) — PayOS rejects a second create() for the
+    // same orderCode, so reuse whatever transaction is still pending rather
+    // than erroring.
+    const existing = await query(
+      `SELECT * FROM payment_transactions
+        WHERE order_id = $1 AND method = 'payos' AND status = 'Chờ xử lý'
+        ORDER BY id DESC LIMIT 1`,
+      [order.id]
+    );
+    if (existing.rows.length > 0) {
+      const info = await payos.getPaymentLinkInfo(order.id).catch(() => null);
+      if (info && info.status === 'PENDING' && info.checkoutUrl) {
+        return res.status(200).json({ data: { checkout_url: info.checkoutUrl } });
+      }
+    }
+
+    const link = await payos.createPaymentLink({
+      orderId: order.id,
+      orderCode: order.order_code,
+      amount: parseFloat(order.total),
+      description: `Order ${order.order_code}`,
+      returnUrl,
+      cancelUrl,
+    });
+    if (!link || !link.checkoutUrl) {
+      return res.status(502).json({ error: 'PayOS did not return a checkout link' });
+    }
+
+    await query(
+      `INSERT INTO payment_transactions (order_id, method, amount, status, gateway_intent_id, gateway_raw_status)
+       VALUES ($1,'payos',$2,'Chờ xử lý',$3,$4)`,
+      [order.id, order.total, String(link.paymentLinkId || order.id), link.status || null]
+    );
+
+    return res.status(201).json({ data: { checkout_url: link.checkoutUrl } });
+  } catch (err) {
+    console.error(err);
+    return res.status(502).json({ error: 'Failed to create PayOS payment link' });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// POST /orders/:id/payos-confirm — called when the shopper returns from
+// PayOS's hosted checkout. Like PayPal's capture, this asks PayOS directly
+// ("is order <id> actually paid?") rather than trusting the return URL's
+// own query params, which can be replayed or forged.
+// ----------------------------------------------------------------------------
+router.post('/orders/:id/payos-confirm', async (req, res) => {
+  const { id } = req.params;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'Invalid order id' });
+  if (!payos.isConfigured()) {
+    return res.status(503).json({ error: 'PayOS chưa được cấu hình trên máy chủ.' });
+  }
+
+  try {
+    const orderRes = await query(`SELECT * FROM orders WHERE id = $1`, [Number(id)]);
+    const order = orderRes.rows[0];
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    const txRes = await query(
+      `SELECT * FROM payment_transactions WHERE order_id = $1 AND method = 'payos' ORDER BY id DESC LIMIT 1`,
+      [order.id]
+    );
+    const tx = txRes.rows[0];
+    if (!tx) return res.status(400).json({ error: 'No PayOS payment link found for this order' });
+    if (tx.status === 'Đã thanh toán') {
+      return res.json({ data: { status: 'Đã thanh toán', already: true } });
+    }
+
+    const info = await payos.getPaymentLinkInfo(order.id);
+    const paid = info && info.status === 'PAID';
+
+    await query(
+      `UPDATE payment_transactions
+          SET status = $1, gateway_raw_status = $2, updated_at = now()
+        WHERE id = $3`,
+      [paid ? 'Đã thanh toán' : 'Thất bại', (info && info.status) || null, tx.id]
+    );
+
+    if (!paid) {
+      return res.status(400).json({ error: 'PayOS payment not confirmed yet' });
+    }
+
+    sendOrderConfirmationOnce(order.id).catch(() => {});
+    return res.json({ data: { status: 'Đã thanh toán' } });
+  } catch (err) {
+    console.error(err);
+    return res.status(502).json({ error: 'Failed to confirm PayOS payment' });
   }
 });
 

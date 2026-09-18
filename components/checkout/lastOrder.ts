@@ -61,3 +61,45 @@ export function readLastOrder(): LastOrder | null {
     return null;
   }
 }
+
+// Separate from the pair above, which only exists once a payment is fully
+// settled (or, for Cash App/Zelle, once a proof screenshot was submitted).
+// Cash App and Zelle have a gap before that: the order is created and the
+// bag is emptied immediately, but the shopper still has to upload proof —
+// and until now, any reload or accidental navigation in that gap (a lock
+// screen, a flaky mobile connection, a stray back-swipe) lost the in-memory
+// `order` state entirely, leaving checkout showing an empty bag with no way
+// to pay (bug report: "thanh toán cash app và zelle không được"). This key
+// is what lets the proof-upload screen reappear instead.
+const PENDING_PROOF_ORDER_KEY = "aura-pending-proof-order";
+
+export function savePendingProofOrder(order: CreatedOrder): void {
+  try {
+    window.sessionStorage.setItem(PENDING_PROOF_ORDER_KEY, JSON.stringify(order));
+  } catch {
+    // Storage blocked: the shopper keeps working in this same tab session,
+    // so this only matters if they reload — same graceful fallback as above.
+  }
+}
+
+/** Only cashapp/zelle orders are ever stored here — see the comment above. */
+export function readPendingProofOrder(): CreatedOrder | null {
+  try {
+    const raw = window.sessionStorage.getItem(PENDING_PROOF_ORDER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CreatedOrder;
+    return parsed && parsed.order_code && ["cashapp", "zelle"].includes(parsed.payment_method)
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingProofOrder(): void {
+  try {
+    window.sessionStorage.removeItem(PENDING_PROOF_ORDER_KEY);
+  } catch {
+    // Nothing to clean up if storage was never reachable.
+  }
+}

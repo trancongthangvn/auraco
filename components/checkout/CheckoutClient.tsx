@@ -12,7 +12,13 @@ import CurrencyPicker from "@/components/currency/CurrencyPicker";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { formatPrice } from "@/lib/currency";
 import { shippingFeeFor, type ShippingSettings } from "@/lib/shipping";
-import { saveLastOrder, type CreatedOrder } from "@/components/checkout/lastOrder";
+import {
+  saveLastOrder,
+  savePendingProofOrder,
+  readPendingProofOrder,
+  clearPendingProofOrder,
+  type CreatedOrder,
+} from "@/components/checkout/lastOrder";
 import {
   ChevronLeftIcon,
   ChevronDownIcon,
@@ -327,6 +333,13 @@ export default function CheckoutClient() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [order, setOrder] = useState<CreatedOrder | null>(null);
+  // Recovers a Cash App/Zelle order that was created but never got its proof
+  // screenshot uploaded — see the comment on savePendingProofOrder for why.
+  // Runs once on mount, before anything else could show the empty-bag form.
+  useEffect(() => {
+    const pending = readPendingProofOrder();
+    if (pending) queueMicrotask(() => setOrder(pending));
+  }, []);
 
   const [proofFile, setProofFile] = useState<File | null>(null);
   // Object URL for the chosen screenshot, so the customer can see what they
@@ -751,6 +764,13 @@ export default function CheckoutClient() {
         return;
       }
       setOrder(data);
+      // Cash App / Zelle only: the order exists and the bag is already
+      // empty, but the shopper still has to upload proof — a reload or
+      // accidental navigation in that gap used to lose this order entirely
+      // and strand them on an empty-bag checkout form with no way to pay.
+      if (method === "cashapp" || method === "zelle") {
+        savePendingProofOrder(data);
+      }
 
       if (paypalLive) {
         const pp = await apiFetch<{ approve_url: string }>(
@@ -871,6 +891,7 @@ export default function CheckoutClient() {
         body: formData,
       });
       setProofUploaded(true);
+      clearPendingProofOrder();
       goToThankYou(order, true);
     } catch (err) {
       setProofError(

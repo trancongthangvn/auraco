@@ -61,6 +61,7 @@ const PAYMENT_LABEL: Record<string, string> = {
   cashapp: "Cash App",
   zelle: "Zelle",
   airwallex: "Card (Airwallex)",
+  payos: "PayOS (VietQR)",
 };
 
 const card =

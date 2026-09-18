@@ -53,14 +53,13 @@ function getClient() {
 // this store's own numeric orders.id already satisfies that, so it's
 // reused directly rather than inventing a second id to track.
 //
-// amount is passed as a whole number of VND-equivalent units per PayOS's
-// API (it does not accept decimals); since this store prices and charges in
-// USD, the order's USD total is what's actually captured by the linked
-// bank transfer — PayOS's own checkout page shows/converts it, this call
-// just has to send a whole number, so it's rounded to the nearest dollar.
-// (Scope note: fine for staging testing; a real launch would want to
-// confirm with PayOS support how they expect a USD-priced order to be
-// represented, since VietQR transfers are natively VND.)
+// `amount` here must already be a whole number of VND — PayOS's API
+// doesn't accept decimals and has no other currency; converting from this
+// store's USD prices is the CALLER's job (see the payos_usd_to_vnd_rate
+// admin setting used in routes/orders-payments.js), not this module's,
+// since sending a raw USD number straight through as if it were VND
+// undercharges by roughly the exchange rate (found while testing: a
+// $140.40 order produced a 140 VND QR code).
 async function createPaymentLink({ orderId, orderCode, amount, description, returnUrl, cancelUrl }) {
   const payos = getClient();
   return payos.paymentRequests.create({

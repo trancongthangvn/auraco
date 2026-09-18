@@ -403,6 +403,17 @@ router.put('/admin/site-settings', authMiddleware, requireAdmin, async (req, res
     }
     extraPatch.tax_percent = body.taxPercent;
   }
+  // PayOS charges in VND; this store prices in USD. Kept separate from
+  // currencyRates (which is validated as exactly USD/EUR/GBP for the
+  // customer-facing currency picker) rather than folding VND into that —
+  // this rate is an internal payment-gateway detail, not a currency a
+  // shopper can choose to see prices in.
+  if (body.payosUsdToVndRate !== undefined) {
+    if (!isFiniteNumber(body.payosUsdToVndRate) || body.payosUsdToVndRate <= 0) {
+      return res.status(400).json({ error: 'payosUsdToVndRate must be a positive number' });
+    }
+    extraPatch.payos_usd_to_vnd_rate = body.payosUsdToVndRate;
+  }
   if (body.deliveryReturnsItems !== undefined) {
     if (!isStringArray(body.deliveryReturnsItems) || body.deliveryReturnsItems.length === 0) {
       return res.status(400).json({ error: 'deliveryReturnsItems must be a non-empty array of non-empty strings' });

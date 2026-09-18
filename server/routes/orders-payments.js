@@ -1021,6 +1021,21 @@ router.post('/orders/:id/payos-payment-link', async (req, res) => {
     const order = orderRes.rows[0];
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
+    // PayOS charges in VND; this store prices and records the order total
+    // in USD. Sending the USD number straight through as if it were VND
+    // undercharges by a factor of ~25,000 — found while testing (a $140.40
+    // order produced a 140 VND QR code, well under a cent). The admin-set
+    // rate (Cài đặt website) is required here rather than defaulted, since
+    // guessing a stale rate is a real money bug, not a cosmetic one.
+    const settingsRes = await query(`SELECT extra FROM site_settings LIMIT 1`);
+    const usdToVndRate = Number(settingsRes.rows[0] && settingsRes.rows[0].extra.payos_usd_to_vnd_rate);
+    if (!Number.isFinite(usdToVndRate) || usdToVndRate <= 0) {
+      return res.status(503).json({
+        error: 'Chưa cấu hình tỷ giá USD → VNĐ cho PayOS (Cài đặt website).',
+      });
+    }
+    const amountVnd = Math.round(parseFloat(order.total) * usdToVndRate);
+
     // A payment link already exists for this order (e.g. the shopper hit
     // cancelUrl and is retrying) — PayOS rejects a second create() for the
     // same orderCode, so reuse whatever transaction is still pending rather
@@ -1041,7 +1056,7 @@ router.post('/orders/:id/payos-payment-link', async (req, res) => {
     const link = await payos.createPaymentLink({
       orderId: order.id,
       orderCode: order.order_code,
-      amount: parseFloat(order.total),
+      amount: amountVnd,
       description: `Order ${order.order_code}`,
       returnUrl,
       cancelUrl,

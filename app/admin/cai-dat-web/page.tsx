@@ -30,6 +30,7 @@ type SiteSettings = {
     why_love_it_label?: string | null;
     og_image_url?: string | null;
     tax_percent?: number | null;
+    payos_usd_to_vnd_rate?: number | null;
     shipping_fee?: number | null;
     it_girl_edit_image_url?: string | null;
     it_girl_edit_heading?: string | null;
@@ -94,6 +95,7 @@ export default function AdminSiteSettingsPage() {
   const [freeShippingThreshold, setFreeShippingThreshold] = useState("");
   const [taxPercent, setTaxPercent] = useState("");
   const [shippingFee, setShippingFee] = useState("");
+  const [payosUsdToVndRate, setPayosUsdToVndRate] = useState("");
   const [itGirlEditImage, setItGirlEditImage] = useState<string | null>(null);
   const [itGirlEditHeading, setItGirlEditHeading] = useState("");
   const [itGirlEditDescription, setItGirlEditDescription] = useState("");
@@ -156,6 +158,9 @@ export default function AdminSiteSettingsPage() {
         setWelcomePopupHeading(
           (extra.welcome_popup_heading as string) || DEFAULT_WELCOME_POPUP_HEADING
         );
+        setPayosUsdToVndRate(
+          extra.payos_usd_to_vnd_rate != null ? String(extra.payos_usd_to_vnd_rate) : ""
+        );
         if (extra.currency_rates) {
           setCurrencyRates({
             EUR: extra.currency_rates.EUR != null ? String(extra.currency_rates.EUR) : "1",
@@ -217,6 +222,12 @@ export default function AdminSiteSettingsPage() {
       setSaving(false);
       return;
     }
+    const parsedPayosRate = payosUsdToVndRate.trim() ? Number(payosUsdToVndRate) : null;
+    if (parsedPayosRate !== null && (!Number.isFinite(parsedPayosRate) || parsedPayosRate <= 0)) {
+      setError("Tỷ giá USD → VNĐ (PayOS) phải là số lớn hơn 0");
+      setSaving(false);
+      return;
+    }
     const parsedEurRate = Number(currencyRates.EUR);
     const parsedGbpRate = Number(currencyRates.GBP);
     if (
@@ -257,6 +268,7 @@ export default function AdminSiteSettingsPage() {
           ...(parsedThreshold !== null ? { freeShippingThreshold: parsedThreshold } : {}),
           taxPercent: parsedTaxPercent ?? 0,
           shippingFee: parsedShippingFee,
+          ...(parsedPayosRate !== null ? { payosUsdToVndRate: parsedPayosRate } : {}),
         }),
       });
       setDeliveryReturnsItems(items);
@@ -379,6 +391,24 @@ export default function AdminSiteSettingsPage() {
               <p className="mt-1 text-xs text-black/40">
                 Tính vào Tổng cộng khi thanh toán, hiển thị dạng &quot;Bao
                 gồm $X thuế&quot;. Để trống hoặc 0 nếu không thu thuế.
+              </p>
+            </div>
+            <div>
+              <Label>Tỷ giá USD → VNĐ (PayOS)</Label>
+              <Input
+                type="number"
+                min={0}
+                step="1"
+                value={payosUsdToVndRate}
+                onChange={(e) => setPayosUsdToVndRate(e.target.value)}
+                placeholder="VD: 25000"
+              />
+              <p className="mt-1 text-xs text-black/40">
+                Chỉ dùng khi khách chọn thanh toán PayOS (quét mã VietQR) —
+                PayOS tính bằng VNĐ trong khi đơn hàng lưu bằng USD, nên số
+                tiền trên mã QR được quy đổi theo tỷ giá này. Để trống thì
+                PayOS tạm ngừng nhận thanh toán cho đến khi tỷ giá được
+                thiết lập.
               </p>
             </div>
           </div>

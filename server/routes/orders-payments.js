@@ -717,13 +717,22 @@ router.put('/admin/orders/:id/charges', authMiddleware, requireAdmin, async (req
 
 // ----------------------------------------------------------------------------
 // GET /payment-methods — public, only enabled methods (for checkout).
+//
+// 'airwallex' additionally requires this SERVER to have working credentials
+// (airwallex.isConfigured() — its own AIRWALLEX_CLIENT_ID/API_KEY env vars),
+// not just the enabled flag. Staging and production share one database, so
+// enabled=true for airwallex there would otherwise turn it on everywhere at
+// once; gating it on each server's own env lets it be switched on for
+// testing on the one environment that actually has credentials configured,
+// without touching the other.
 // ----------------------------------------------------------------------------
 router.get('/payment-methods', async (req, res) => {
   try {
     const result = await query(
       `SELECT key, label, detail, qr_image_url FROM payment_method_settings WHERE enabled = TRUE ORDER BY key`
     );
-    return res.json({ data: result.rows });
+    const rows = result.rows.filter((row) => row.key !== 'airwallex' || airwallex.isConfigured());
+    return res.json({ data: rows });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Failed to fetch payment methods' });

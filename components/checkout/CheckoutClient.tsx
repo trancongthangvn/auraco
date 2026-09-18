@@ -345,6 +345,17 @@ export default function CheckoutClient() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [order, setOrder] = useState<CreatedOrder | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  // Object URL for the chosen screenshot, so the customer can see what they
+  // are about to submit (the reference design shows a thumbnail under the
+  // drop zone). Revoked whenever it's replaced — see the effect below.
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [proofDragging, setProofDragging] = useState(false);
+  const [proofReference, setProofReference] = useState("");
+  const [proofUploading, setProofUploading] = useState(false);
+  const [proofError, setProofError] = useState("");
+  const [proofUploaded, setProofUploaded] = useState(false);
+
   // Recovers a Cash App/Zelle order that was created but never got its proof
   // screenshot uploaded — see the comment on savePendingProofOrder for why.
   //
@@ -368,19 +379,11 @@ export default function CheckoutClient() {
       clearPendingProofOrder();
       return;
     }
-    queueMicrotask(() => setOrder(pending));
+    queueMicrotask(() => {
+      setOrder(pending.order);
+      if (pending.proofSubmitted) setProofUploaded(true);
+    });
   }, [hydrated, items.length]);
-
-  const [proofFile, setProofFile] = useState<File | null>(null);
-  // Object URL for the chosen screenshot, so the customer can see what they
-  // are about to submit (the reference design shows a thumbnail under the
-  // drop zone). Revoked whenever it's replaced — see the effect below.
-  const [proofPreview, setProofPreview] = useState<string | null>(null);
-  const [proofDragging, setProofDragging] = useState(false);
-  const [proofReference, setProofReference] = useState("");
-  const [proofUploading, setProofUploading] = useState(false);
-  const [proofError, setProofError] = useState("");
-  const [proofUploaded, setProofUploaded] = useState(false);
 
   const [taxPercent, setTaxPercent] = useState(0);
   const [flatShippingFee, setFlatShippingFee] = useState(0);
@@ -947,8 +950,20 @@ export default function CheckoutClient() {
         body: formData,
       });
       setProofUploaded(true);
-      clearPendingProofOrder();
-      goToThankYou(order, true);
+      // Stops short of the real thank-you page on purpose (was
+      // `goToThankYou(order, true)`): nobody has checked this screenshot
+      // yet, so it isn't a completed sale — going to /thankyou here sent
+      // an unverified Cash App/Zelle "order" through the same page an
+      // admin-confirmed PayPal/Airwallex payment reaches, which is also
+      // what Facebook's Purchase pixel is wired to (Ads Manager flagged
+      // this — a filled address plus any uploaded image already counted
+      // as a sale). The genuine thank-you view now only happens once an
+      // admin marks the transfer received (server/lib/orderEmail.js), via
+      // the "View order" link in that confirmation email — reached here,
+      // the shopper stays on this "awaiting verification" screen, and
+      // reloading keeps showing it (savePendingProofOrder's proofSubmitted
+      // flag) instead of an empty-bag checkout form.
+      savePendingProofOrder(order, true);
     } catch (err) {
       setProofError(
         err instanceof ApiError ? err.message : "Failed to upload proof"
@@ -1672,6 +1687,29 @@ export default function CheckoutClient() {
                 >
                   {submitError}
                 </p>
+              ) : order.payment_method === "cashapp" || order.payment_method === "zelle" ? (
+                // Reached once proof is uploaded (see handleUploadProof):
+                // deliberately not the real thank-you page — nobody has
+                // confirmed this transfer yet. The genuine confirmation
+                // (and its own "View order" link to /thankyou) arrives by
+                // email once an admin marks it received.
+                <div className="rounded-[10px] border border-gold-light/45 bg-white px-5 py-8 text-center sm:px-7">
+                  <h2 className="font-serif-display text-[26px] leading-tight text-[#28241f]">
+                    We&apos;ve got your payment proof
+                  </h2>
+                  <p className="mt-4 font-ui text-sm text-[#4a443c]">
+                    We&apos;re verifying your {payMethodLabel} transfer for order{" "}
+                    <strong>{order.order_code}</strong>. You&apos;ll get a confirmation
+                    email as soon as it&apos;s approved — usually within a few hours.
+                  </p>
+                  <p className="mt-4 font-ui text-sm text-[#6b655c]">
+                    Need to check on it later?{" "}
+                    <Link href="/pages/track-order" className="underline hover:text-gold">
+                      Track your order
+                    </Link>
+                    .
+                  </p>
+                </div>
               ) : (
                 // Momentary: the thank-you page lives at /thankyou, and the
                 // navigation there is already under way.

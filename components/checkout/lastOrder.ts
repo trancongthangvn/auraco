@@ -71,11 +71,21 @@ export function readLastOrder(): LastOrder | null {
 // `order` state entirely, leaving checkout showing an empty bag with no way
 // to pay (bug report: "thanh toán cash app và zelle không được"). This key
 // is what lets the proof-upload screen reappear instead.
+//
+// `proofSubmitted` extends the same record past that: once the screenshot
+// is actually uploaded, the order isn't done — nobody has checked whether
+// the transfer is real yet, so it's held here as "awaiting verification"
+// rather than treated as a completed sale (see CheckoutClient's
+// handleUploadProof). Reloading in THAT state should show the "we're
+// verifying it" screen again, not the upload form.
 const PENDING_PROOF_ORDER_KEY = "aura-pending-proof-order";
 
-export function savePendingProofOrder(order: CreatedOrder): void {
+type PendingProofOrder = { order: CreatedOrder; proofSubmitted: boolean };
+
+export function savePendingProofOrder(order: CreatedOrder, proofSubmitted = false): void {
   try {
-    window.sessionStorage.setItem(PENDING_PROOF_ORDER_KEY, JSON.stringify(order));
+    const value: PendingProofOrder = { order, proofSubmitted };
+    window.sessionStorage.setItem(PENDING_PROOF_ORDER_KEY, JSON.stringify(value));
   } catch {
     // Storage blocked: the shopper keeps working in this same tab session,
     // so this only matters if they reload — same graceful fallback as above.
@@ -83,12 +93,12 @@ export function savePendingProofOrder(order: CreatedOrder): void {
 }
 
 /** Only cashapp/zelle orders are ever stored here — see the comment above. */
-export function readPendingProofOrder(): CreatedOrder | null {
+export function readPendingProofOrder(): PendingProofOrder | null {
   try {
     const raw = window.sessionStorage.getItem(PENDING_PROOF_ORDER_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as CreatedOrder;
-    return parsed && parsed.order_code && ["cashapp", "zelle"].includes(parsed.payment_method)
+    const parsed = JSON.parse(raw) as PendingProofOrder;
+    return parsed?.order?.order_code && ["cashapp", "zelle"].includes(parsed.order.payment_method)
       ? parsed
       : null;
   } catch {

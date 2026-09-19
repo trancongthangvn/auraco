@@ -20,6 +20,11 @@ import {
   type CreatedOrder,
 } from "@/components/checkout/lastOrder";
 import {
+  saveCheckoutDraft,
+  readCheckoutDraft,
+  clearCheckoutDraft,
+} from "@/components/checkout/checkoutDraft";
+import {
   ChevronLeftIcon,
   ChevronDownIcon,
   PlusIcon,
@@ -295,6 +300,7 @@ export default function CheckoutClient() {
   // handed over through sessionStorage; see lastOrder.ts for why not the URL.
   const goToThankYou = (placed: CreatedOrder, proofUploaded: boolean) => {
     saveLastOrder({ order: placed, proofUploaded });
+    clearCheckoutDraft();
     router.push("/thankyou");
   };
 
@@ -328,6 +334,60 @@ export default function CheckoutClient() {
   const [postalCode, setPostalCode] = useState("");
   const [phone, setPhone] = useState("");
   const [smsOptIn, setSmsOptIn] = useState(false);
+
+  // Restores the Contact/Delivery fields above after the PayPal/PayOS round
+  // trip reloads this page — see checkoutDraft.ts for why that's needed.
+  // Runs once on mount, before the persist effect below so a draft from a
+  // previous load isn't immediately clobbered by this render's still-empty
+  // state.
+  useEffect(() => {
+    const draft = readCheckoutDraft();
+    if (!draft) return;
+    queueMicrotask(() => {
+      setEmail(draft.email);
+      setMarketingOptIn(draft.marketingOptIn);
+      setCountry(draft.country);
+      setFirstName(draft.firstName);
+      setLastName(draft.lastName);
+      setCompany(draft.company);
+      setAddress(draft.address);
+      setApartment(draft.apartment);
+      setCity(draft.city);
+      setPostalCode(draft.postalCode);
+      setPhone(draft.phone);
+      setSmsOptIn(draft.smsOptIn);
+    });
+  }, []);
+
+  useEffect(() => {
+    saveCheckoutDraft({
+      email,
+      marketingOptIn,
+      country,
+      firstName,
+      lastName,
+      company,
+      address,
+      apartment,
+      city,
+      postalCode,
+      phone,
+      smsOptIn,
+    });
+  }, [
+    email,
+    marketingOptIn,
+    country,
+    firstName,
+    lastName,
+    company,
+    address,
+    apartment,
+    city,
+    postalCode,
+    phone,
+    smsOptIn,
+  ]);
 
   const [payment, setPayment] = useState("");
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(true);
@@ -565,6 +625,7 @@ export default function CheckoutClient() {
         if (cancelled) return;
         // Paid — now the bag can go.
         clear();
+        clearCheckoutDraft();
         router.replace(`/thankyou?order=${encodeURIComponent(ourOrderId)}`);
       })
       .catch((err) => {
@@ -612,6 +673,7 @@ export default function CheckoutClient() {
       .then(() => {
         if (cancelled) return;
         clear();
+        clearCheckoutDraft();
         router.replace(`/thankyou?order=${encodeURIComponent(ourOrderId)}`);
       })
       .catch((err) => {

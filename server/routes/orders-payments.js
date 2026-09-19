@@ -123,6 +123,11 @@ router.post('/orders', async (req, res) => {
   if (!isNonEmptyString(customer_name)) return res.status(400).json({ error: 'customer_name is required' });
   if (!isNonEmptyString(email)) return res.status(400).json({ error: 'email is required' });
   if (!isNonEmptyString(phone)) return res.status(400).json({ error: 'phone is required' });
+  // Digits only, matching the client-side check in CheckoutClient.tsx — a
+  // "+", spaces, dashes or parentheses don't count against the minimum.
+  if (phone.replace(/\D/g, '').length < 10) {
+    return res.status(400).json({ error: 'phone must have at least 10 digits' });
+  }
   if (!isNonEmptyString(address)) return res.status(400).json({ error: 'address is required' });
   if (!isNonEmptyString(city)) return res.status(400).json({ error: 'city is required' });
   if (!PAYMENT_METHODS.includes(payment_method)) {

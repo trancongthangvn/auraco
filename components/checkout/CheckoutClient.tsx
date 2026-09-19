@@ -795,6 +795,13 @@ export default function CheckoutClient() {
     if (!shippingReady)
       return setSubmitError("City and postal code are required.");
     if (!phone.trim()) return setSubmitError("Phone is required.");
+    // Counts digits only (a "+", spaces, dashes or parentheses don't count
+    // against the minimum) — matches the same rule enforced server-side in
+    // POST /orders, so a request that slips past this client check still
+    // gets rejected there rather than silently accepted.
+    if (phone.replace(/\D/g, "").length < 10) {
+      return setSubmitError("Phone number must be at least 10 digits.");
+    }
     if (!method) return setSubmitError("Select a payment method.");
     if (items.length === 0) return setSubmitError("Your bag is empty.");
     if (checkoutBlocked)

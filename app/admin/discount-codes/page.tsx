@@ -41,8 +41,30 @@ export default function AdminDiscountCodesPage() {
 
   const editCodeRef = useRef<HTMLInputElement | null>(null);
   const editValueRef = useRef<HTMLInputElement | null>(null);
+  const editMinOrderRef = useRef<HTMLInputElement | null>(null);
+  const editUsageLimitRef = useRef<HTMLInputElement | null>(null);
+  const editStartDateRef = useRef<HTMLInputElement | null>(null);
+  const editEndDateRef = useRef<HTMLInputElement | null>(null);
   const createCodeRef = useRef<HTMLInputElement | null>(null);
   const createValueRef = useRef<HTMLInputElement | null>(null);
+  const createMinOrderRef = useRef<HTMLInputElement | null>(null);
+  const createUsageLimitRef = useRef<HTMLInputElement | null>(null);
+  const createStartDateRef = useRef<HTMLInputElement | null>(null);
+  const createEndDateRef = useRef<HTMLInputElement | null>(null);
+
+  // <input type="date"> needs exactly "yyyy-mm-dd" — startDate/endDate come
+  // back from the API as full ISO timestamps (Postgres DATE serialized with
+  // a 00:00:00.000Z time), which the input would otherwise show blank for.
+  const toDateInputValue = (iso: string) => iso.slice(0, 10);
+
+  // Same 30-day window the create form always used, now just pre-filled
+  // into editable inputs instead of hardcoded straight into the request.
+  const defaultStartDate = new Date().toISOString().slice(0, 10);
+  const defaultEndDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  })();
 
   const isAdmin = session?.role === "admin";
 
@@ -93,12 +115,16 @@ export default function AdminDiscountCodesPage() {
     if (!editing) return;
     const code = editCodeRef.current?.value ?? editing.code;
     const value = Number(editValueRef.current?.value ?? editing.value);
+    const minOrder = Number(editMinOrderRef.current?.value ?? editing.minOrder);
+    const usageLimit = Number(editUsageLimitRef.current?.value ?? editing.usageLimit);
+    const startDate = editStartDateRef.current?.value || toDateInputValue(editing.startDate);
+    const endDate = editEndDateRef.current?.value || toDateInputValue(editing.endDate);
     try {
       const updated = await apiFetch<DiscountCode>(
         `/api/discount-codes/admin/discount-codes/${editing.id}`,
         {
           method: "PUT",
-          body: JSON.stringify({ code, value }),
+          body: JSON.stringify({ code, value, minOrder, usageLimit, startDate, endDate }),
         }
       );
       setCodes((list) => list.map((c) => (c.id === editing.id ? updated : c)));
@@ -111,9 +137,10 @@ export default function AdminDiscountCodesPage() {
   const saveCreate = async () => {
     const code = createCodeRef.current?.value ?? "";
     const value = Number(createValueRef.current?.value ?? 0);
-    const today = new Date();
-    const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 30);
+    const minOrder = Number(createMinOrderRef.current?.value ?? 0);
+    const usageLimit = Number(createUsageLimitRef.current?.value ?? 0);
+    const startDate = createStartDateRef.current?.value || defaultStartDate;
+    const endDate = createEndDateRef.current?.value || defaultEndDate;
     try {
       const created = await apiFetch<DiscountCode>(
         "/api/discount-codes/admin/discount-codes",
@@ -123,10 +150,10 @@ export default function AdminDiscountCodesPage() {
             code,
             type: "percent",
             value,
-            minOrder: 0,
-            usageLimit: 0,
-            startDate: today.toISOString().slice(0, 10),
-            endDate: endDate.toISOString().slice(0, 10),
+            minOrder,
+            usageLimit,
+            startDate,
+            endDate,
             active: true,
           }),
         }
@@ -227,7 +254,43 @@ export default function AdminDiscountCodesPage() {
                 ref={editValueRef}
                 defaultValue={editing.value}
                 type="number"
+                className="mb-4"
               />
+              <Label>Đơn tối thiểu ($, 0 = không giới hạn)</Label>
+              <Input
+                ref={editMinOrderRef}
+                defaultValue={editing.minOrder}
+                type="number"
+                min={0}
+                className="mb-4"
+              />
+              <Label>Lượt dùng tối đa (0 = không giới hạn)</Label>
+              <Input
+                ref={editUsageLimitRef}
+                defaultValue={editing.usageLimit}
+                type="number"
+                min={0}
+                step={1}
+                className="mb-4"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Bắt đầu hiệu lực</Label>
+                  <Input
+                    ref={editStartDateRef}
+                    defaultValue={toDateInputValue(editing.startDate)}
+                    type="date"
+                  />
+                </div>
+                <div>
+                  <Label>Kết thúc hiệu lực</Label>
+                  <Input
+                    ref={editEndDateRef}
+                    defaultValue={toDateInputValue(editing.endDate)}
+                    type="date"
+                  />
+                </div>
+              </div>
             </div>
             <ModalFooter>
               <Button variant="secondary" onClick={() => setEditing(null)}>
@@ -249,7 +312,34 @@ export default function AdminDiscountCodesPage() {
               <Label>Mã</Label>
               <Input ref={createCodeRef} placeholder="VD: AETHER15" className="mb-4" />
               <Label>Giá trị giảm (%)</Label>
-              <Input ref={createValueRef} type="number" />
+              <Input ref={createValueRef} type="number" className="mb-4" />
+              <Label>Đơn tối thiểu ($, 0 = không giới hạn)</Label>
+              <Input
+                ref={createMinOrderRef}
+                type="number"
+                min={0}
+                defaultValue={0}
+                className="mb-4"
+              />
+              <Label>Lượt dùng tối đa (0 = không giới hạn)</Label>
+              <Input
+                ref={createUsageLimitRef}
+                type="number"
+                min={0}
+                step={1}
+                defaultValue={0}
+                className="mb-4"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Bắt đầu hiệu lực</Label>
+                  <Input ref={createStartDateRef} type="date" defaultValue={defaultStartDate} />
+                </div>
+                <div>
+                  <Label>Kết thúc hiệu lực</Label>
+                  <Input ref={createEndDateRef} type="date" defaultValue={defaultEndDate} />
+                </div>
+              </div>
             </div>
             <ModalFooter>
               <Button variant="secondary" onClick={() => setCreating(false)}>
